@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import {
@@ -19,22 +19,24 @@ import {
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
 import PowerFlowDiagram from '../components/PowerFlowDiagram';
-import Substation3D from '../components/Substation3D';
-import GridDefenderModal from '../components/GridDefenderModal';
-import FieldTechAR from '../components/FieldTechAR';
-import DroneFleet from '../components/DroneFleet';
 import BatteryGauge from '../components/BatteryGauge';
 import LoadCurveChart from '../components/LoadCurveChart';
 import ControlPanel from '../components/ControlPanel';
 import MetricsOverview from '../components/MetricsOverview';
 import HourlyTable from '../components/HourlyTable';
-import MeterScanner from '../components/MeterScanner';
 import WeatherSync from '../components/WeatherSync';
 import { useSettings } from '../context/SettingsContext';
 import { useVoiceCommands } from '../hooks/useVoiceCommands';
 import { useVoiceAlerts } from '../hooks/useVoiceAlerts';
 import { calculateTransformerHealth } from '../utils/failurePredictor';
 import { HACKATHON_DEMO_DATA } from '../utils/demoData';
+
+// Lazy-loaded heavy components for code splitting & faster initial render
+const Substation3D = lazy(() => import('../components/Substation3D'));
+const GridDefenderModal = lazy(() => import('../components/GridDefenderModal'));
+const FieldTechAR = lazy(() => import('../components/FieldTechAR'));
+const DroneFleet = lazy(() => import('../components/DroneFleet'));
+const MeterScanner = lazy(() => import('../components/MeterScanner'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
 
@@ -758,18 +760,26 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 relative">
       {/* Feature 5: Gamified Grid Defender Modal */}
-      <GridDefenderModal
-        isOpen={isDefenderOpen}
-        onClose={() => setIsDefenderOpen(false)}
-        onResumeSimulation={() => {
-          setIsDefenderOpen(false);
-          setIsStreaming(true);
-        }}
-        overloadDemand={defenderDemand}
-      />
+      <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+        {isDefenderOpen && (
+          <GridDefenderModal
+            isOpen={isDefenderOpen}
+            onClose={() => setIsDefenderOpen(false)}
+            onResumeSimulation={() => {
+              setIsDefenderOpen(false);
+              setIsStreaming(true);
+            }}
+            overloadDemand={defenderDemand}
+          />
+        )}
+      </Suspense>
 
       {/* Feature 3: Augmented Reality (AR) Field Tech Modal */}
-      <FieldTechAR isOpen={isArOpen} onClose={() => setIsArOpen(false)} />
+      <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+        {isArOpen && (
+          <FieldTechAR isOpen={isArOpen} onClose={() => setIsArOpen(false)} />
+        )}
+      </Suspense>
 
       {/* Feature 7: Mock SMS/Email Alert Toast Notification */}
       {smsAlert && (
@@ -945,10 +955,12 @@ export default function Dashboard() {
       />
 
       {/* Optical Meter Ingestion (OCR) Component */}
-      <MeterScanner
-        onOverrideLoad={handleOverrideLoad}
-        currentLoad={latestPrediction?.predicted_demand_kw}
-      />
+      <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+        <MeterScanner
+          onOverrideLoad={handleOverrideLoad}
+          currentLoad={latestPrediction?.predicted_demand_kw}
+        />
+      </Suspense>
 
       {/* Printable Report Canvas Container */}
       <div id="dashboard-report-content" className="space-y-6 rounded-2xl bg-slate-950/60 p-2 sm:p-4">
@@ -1074,7 +1086,9 @@ export default function Dashboard() {
         {forecastData.length > 0 && <MetricsOverview forecastData={forecastData} />}
 
         {/* Feature 5: Autonomous Drone Fleet Telemetry Map */}
-        <DroneFleet transformerHealth={transformerHealth.healthPct} />
+        <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+          <DroneFleet transformerHealth={transformerHealth.healthPct} />
+        </Suspense>
 
         {/* Digital Twin Microgrid Visualization (3D WebGL vs 2D Schematic) */}
         <div className="space-y-3">
@@ -1130,11 +1144,13 @@ export default function Dashboard() {
           </div>
 
           {digitalTwinMode === '3D' ? (
-            <Substation3D
-              gridMode={effectiveGridMode}
-              batterySoc={latestSoc}
-              demandKw={latestPrediction?.predicted_demand_kw || 140}
-            />
+            <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+              <Substation3D
+                gridMode={effectiveGridMode}
+                batterySoc={latestSoc}
+                demandKw={latestPrediction?.predicted_demand_kw || 140}
+              />
+            </Suspense>
           ) : (
             <PowerFlowDiagram
               mode={effectiveGridMode}
