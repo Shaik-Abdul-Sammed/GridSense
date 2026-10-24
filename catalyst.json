@@ -4,5 +4,11 @@
       "source": ".",
       "name": "appsail"
     }
+  ],
+  "slate": [
+    {
+      "name": "gridsense-ui",
+      "source": "/home/rgukt/Github/hulk/gridsense-ui"
+    }
   ]
 }
