@@ -7,19 +7,22 @@ export default defineConfig({
   base: '/',
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 600,
+    chunkSizeWarningLimit: 1200,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Three.js, R3F & Drei in a separate 3D vendor bundle
+            // Three.js core
+            if (id.includes('node_modules/three/')) {
+              return 'three-core';
+            }
+            // R3F, Drei & helpers
             if (
-              id.includes('three') ||
               id.includes('@react-three') ||
               id.includes('three-stdlib') ||
               id.includes('three-mesh-bvh')
             ) {
-              return 'three';
+              return 'three-fiber';
             }
             // Tesseract OCR engine in separate chunk
             if (id.includes('tesseract.js') || id.includes('tesseract')) {

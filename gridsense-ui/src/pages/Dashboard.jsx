@@ -1,6 +1,4 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import {
   Mic,
   MicOff,
@@ -584,6 +582,11 @@ export default function Dashboard() {
 
     setIsExportingPdf(true);
     try {
+      const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+        import('jspdf'),
+        import('html2canvas'),
+      ]);
+
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
