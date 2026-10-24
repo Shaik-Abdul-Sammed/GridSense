@@ -1,4 +1,14 @@
-import { Zap, Activity, Sun, Moon, TrendingUp, ShieldAlert, DollarSign } from 'lucide-react';
+import {
+  Zap,
+  Activity,
+  Sun,
+  Moon,
+  TrendingUp,
+  ShieldAlert,
+  DollarSign,
+  Volume2,
+  VolumeX,
+} from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Header({
@@ -8,6 +18,8 @@ export default function Header({
   criticalThreshold = 200,
   isCyberattack = false,
   onTriggerCyberattack,
+  isVoiceMuted = false,
+  onToggleVoiceMute,
 }) {
   const { isDark, toggleTheme } = useTheme();
 
@@ -148,6 +160,27 @@ export default function Header({
           >
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>{isCyberattack ? '🛡️ Restore Grid' : '⚠️ Cyberattack'}</span>
+          </button>
+        )}
+
+        {/* Feature 4: Automated AI Voice Alert Mute/Unmute Toggle */}
+        {onToggleVoiceMute && (
+          <button
+            type="button"
+            onClick={onToggleVoiceMute}
+            title={isVoiceMuted ? 'Unmute AI Audio Voice Alerts' : 'Mute AI Audio Voice Alerts'}
+            className={`p-2 rounded-xl border transition-all cursor-pointer select-none ${
+              isVoiceMuted
+                ? 'bg-slate-850 text-slate-500 border-white/5 hover:text-slate-300'
+                : 'bg-cyan-950/80 text-cyan-300 border-cyan-800/80 shadow-md shadow-cyan-950/50'
+            }`}
+            aria-label="Toggle voice alerts"
+          >
+            {isVoiceMuted ? (
+              <VolumeX className="w-4 h-4 text-slate-500" />
+            ) : (
+              <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
+            )}
           </button>
         )}
 

@@ -15,6 +15,8 @@ import {
   Coins,
   Flame,
   FileText,
+  ThermometerSnowflake,
+  Activity,
 } from 'lucide-react';
 import {
   TEST_NORMAL_DAY_CSV,
@@ -22,6 +24,8 @@ import {
   TEST_PEAK_SURGE_CSV,
   TEST_P2P_MARKET_JSON,
   TEST_ZERO_SOLAR_CSV,
+  TEST_STRESS_FAILURE_CSV,
+  TEST_CLIMATE_HEATWAVE_JSON,
   downloadFile,
 } from '../utils/testSuiteGenerator';
 
@@ -269,6 +273,68 @@ export default function Settings() {
                   showInjectMessage('Downloaded test_zero_solar.csv');
                 }}
                 className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 6. test_stress_failure.csv (Feature 1 & 6) */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-rose-500/40 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                  <Activity className="w-3.5 h-3.5 text-rose-400" />
+                  test_stress_failure.csv
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                  RUL DECAY
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                24h sequence reaching 45&deg;C ambient temperature with sustained 190 kW loads to trigger RUL failure forecaster.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_STRESS_FAILURE_CSV, 'test_stress_failure.csv', 'text/csv');
+                  showInjectMessage('Downloaded test_stress_failure.csv');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-300 bg-rose-950 hover:bg-rose-900 border border-rose-800/60 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 7. test_climate_heatwave.json (Feature 2 & 6) */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/40 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <ThermometerSnowflake className="w-3.5 h-3.5 text-amber-400" />
+                  test_climate_heatwave.json
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                  CLIMATE +4.5&deg;C
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                Simulates extreme +4.5&deg;C climate delta forcing regional HVAC chilling saturation and predictive transformer trip.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_CLIMATE_HEATWAVE_JSON, 'test_climate_heatwave.json', 'application/json');
+                  showInjectMessage('Downloaded test_climate_heatwave.json');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-amber-950 hover:bg-amber-900 border border-amber-800/60 transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Download</span>

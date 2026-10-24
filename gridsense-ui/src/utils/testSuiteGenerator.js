@@ -1,4 +1,4 @@
-// Generator utility for all 5 Hackathon Test Suite scenarios
+// Generator utility for Hackathon Test Suite scenarios
 // Can be downloaded as files or injected directly into GridSense runtime state
 
 export const TEST_NORMAL_DAY_CSV = `timestamp,ambient_temp_c,humidity_pct,solar_irradiance_wm2
@@ -35,21 +35,6 @@ export const TEST_CYBERATTACK_JSON = JSON.stringify(
     gridStatus: "OFFLINE_COMPROMISED",
     mainGridPowerKw: 0,
     emergencyBatteryDischarge: true,
-    telemetryOverride: Array.from({ length: 24 }, (_, h) => {
-      const hourStr = String(h).padStart(2, '0');
-      return {
-        timestamp: `2026-10-24 ${hourStr}:00:00`,
-        hour: `${hourStr}:00`,
-        ambient_temp_c: 29.0,
-        humidity_pct: 65.0,
-        solar_irradiance_wm2: h >= 6 && h <= 18 ? 450 : 0,
-        predicted_demand_kw: 185.0,
-        grid_mode: "ISLANDED_MODE",
-        alert: "CRITICAL_OVERLOAD",
-        battery_soc: Math.max(10, (95 - h * 3.5)).toFixed(1),
-        isCyberattack: true,
-      };
-    }),
   },
   null,
   2
@@ -87,13 +72,6 @@ export const TEST_P2P_MARKET_JSON = JSON.stringify(
     description: "Rooftop solar generation exceeds regional load, generating massive P2P microgrid transactions.",
     activeProsumers: 42,
     totalSurplusKw: 680.5,
-    averageClearingPrice: 0.095,
-    sampleTransactions: [
-      { id: "TX-01", seller: "House #04 (Solar 8kW)", buyer: "Bakery Alpha", amountKw: 5.2, pricePerKwh: 0.09, timestamp: "12:00:00" },
-      { id: "TX-02", seller: "House #12 (Solar 10kW)", buyer: "EV Charging Hub #1", amountKw: 7.8, pricePerKwh: 0.095, timestamp: "12:01:15" },
-      { id: "TX-03", seller: "House #19 (Solar 6kW)", buyer: "House #02", amountKw: 3.4, pricePerKwh: 0.10, timestamp: "12:02:40" },
-      { id: "TX-04", seller: "Community Solar Array #1", buyer: "Data Center Beta", amountKw: 24.5, pricePerKwh: 0.088, timestamp: "12:03:10" },
-    ],
   },
   null,
   2
@@ -124,6 +102,49 @@ export const TEST_ZERO_SOLAR_CSV = `timestamp,ambient_temp_c,humidity_pct,solar_
 2026-10-24 21:00:00,15.2,92.0,0.0
 2026-10-24 22:00:00,14.9,93.0,0.0
 2026-10-24 23:00:00,14.5,94.0,0.0`;
+
+// Feature 6: Failure Scenarios
+export const TEST_STRESS_FAILURE_CSV = `timestamp,ambient_temp_c,humidity_pct,solar_irradiance_wm2
+2026-10-24 00:00:00,28.0,60.0,0.0
+2026-10-24 01:00:00,28.5,58.0,0.0
+2026-10-24 02:00:00,29.0,55.0,0.0
+2026-10-24 03:00:00,29.5,54.0,0.0
+2026-10-24 04:00:00,30.0,52.0,0.0
+2026-10-24 05:00:00,31.0,50.0,0.0
+2026-10-24 06:00:00,33.0,46.0,120.0
+2026-10-24 07:00:00,35.5,42.0,290.0
+2026-10-24 08:00:00,37.0,38.0,490.0
+2026-10-24 09:00:00,39.2,35.0,690.0
+2026-10-24 10:00:00,41.0,32.0,840.0
+2026-10-24 11:00:00,42.5,30.0,910.0
+2026-10-24 12:00:00,43.8,28.0,930.0
+2026-10-24 13:00:00,44.5,27.0,900.0
+2026-10-24 14:00:00,45.0,26.0,820.0
+2026-10-24 15:00:00,44.8,27.0,680.0
+2026-10-24 16:00:00,44.0,29.0,460.0
+2026-10-24 17:00:00,43.0,32.0,240.0
+2026-10-24 18:00:00,41.5,36.0,60.0
+2026-10-24 19:00:00,42.0,40.0,0.0
+2026-10-24 20:00:00,40.5,44.0,0.0
+2026-10-24 21:00:00,39.0,48.0,0.0
+2026-10-24 22:00:00,37.5,52.0,0.0
+2026-10-24 23:00:00,36.0,55.0,0.0`;
+
+export const TEST_CLIMATE_HEATWAVE_JSON = JSON.stringify(
+  {
+    scenario: "GLOBAL_WARMING_HEATWAVE_SURGE",
+    description: "Simulates an extreme +4.5°C climate anomaly forcing regional HVAC chilling saturation and predictive transformer degradation.",
+    globalTempDeltaC: 4.5,
+    hvacCoolingLoadFactor: 1.48,
+    incidentMetadata: {
+      substation: "ALPHA-1",
+      riskLevel: "CRITICAL_THERMAL_OVERLOAD",
+      expectedRulHours: 3.2
+    }
+  },
+  null,
+  2
+);
 
 export function downloadFile(content, filename, type = 'text/plain') {
   const blob = new Blob([content], { type });

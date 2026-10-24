@@ -11,12 +11,18 @@ import {
   Gamepad2,
   Box,
   Layers,
+  ThermometerSnowflake,
+  AlertTriangle,
+  Camera,
+  Activity,
 } from 'lucide-react';
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
 import PowerFlowDiagram from '../components/PowerFlowDiagram';
 import Substation3D from '../components/Substation3D';
 import GridDefenderModal from '../components/GridDefenderModal';
+import FieldTechAR from '../components/FieldTechAR';
+import DroneFleet from '../components/DroneFleet';
 import BatteryGauge from '../components/BatteryGauge';
 import LoadCurveChart from '../components/LoadCurveChart';
 import ControlPanel from '../components/ControlPanel';
@@ -26,6 +32,8 @@ import MeterScanner from '../components/MeterScanner';
 import WeatherSync from '../components/WeatherSync';
 import { useSettings } from '../context/SettingsContext';
 import { useVoiceCommands } from '../hooks/useVoiceCommands';
+import { useVoiceAlerts } from '../hooks/useVoiceAlerts';
+import { calculateTransformerHealth } from '../utils/failurePredictor';
 import { HACKATHON_DEMO_DATA } from '../utils/demoData';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
@@ -162,6 +170,15 @@ export default function Dashboard() {
   const [defenderDemand, setDefenderDemand] = useState(225);
   const hasTriggeredDefenderRef = useRef(false);
 
+  // Feature 3: Augmented Reality (AR) Field Tech Modal
+  const [isArOpen, setIsArOpen] = useState(false);
+
+  // Feature 2: "What-If" Climate Simulator Temperature Delta (0 to +6 °C)
+  const [climateDelta, setClimateDelta] = useState(0);
+
+  // Feature 4: Automated AI Voice Alerts (TTS)
+  const { isMuted: isVoiceMuted, toggleMute: toggleVoiceMute, speakAlert } = useVoiceAlerts();
+
   // Digital Twin Display Mode Toggle ('3D' vs '2D')
   const [digitalTwinMode, setDigitalTwinMode] = useState('3D');
 
@@ -208,14 +225,17 @@ export default function Dashboard() {
         if (stopRequestedRef.current) break;
 
         setCurrentStep(i + 1);
-        const item = itemsToProcess[i];
+        const rawItem = itemsToProcess[i];
+        const effectiveTemp = Number((Number(rawItem.ambient_temp_c) + climateDelta).toFixed(1));
+        const item = { ...rawItem, ambient_temp_c: effectiveTemp };
+
         const { hourNum, hourLabel } = parseTimezoneSafeHour(item.timestamp, i);
 
         let prediction = null;
         abortControllerRef.current = new AbortController();
 
         if (isDemoScenario && item.target_demand_kw !== undefined) {
-          const targetDemand = Number(item.target_demand_kw);
+          const targetDemand = Number(item.target_demand_kw) + climateDelta * 4.5;
           const isOverload = targetDemand >= settings.criticalThreshold;
           const peakStart = parseInt(settings.peakWindowStart.split(':')[0], 10) || 18;
           const peakEnd = parseInt(settings.peakWindowEnd.split(':')[0], 10) || 22;
@@ -266,9 +286,13 @@ export default function Dashboard() {
 
         if (stopRequestedRef.current) break;
 
-        const predicted_demand_kw = Number(prediction.predicted_demand_kw);
+        // Apply cooling demand penalty if climate delta is elevated
+        let predicted_demand_kw = Number(prediction.predicted_demand_kw);
+        if (climateDelta > 0 && !isDemoScenario) {
+          predicted_demand_kw = Number((predicted_demand_kw + climateDelta * 4.8).toFixed(1));
+        }
 
-        // Feature 5: Gamified Grid Defender Trigger on overload during simulation
+        // Gamified Grid Defender Trigger on overload during simulation
         if (
           predicted_demand_kw >= settings.criticalThreshold &&
           !hasTriggeredDefenderRef.current &&
@@ -277,7 +301,12 @@ export default function Dashboard() {
           hasTriggeredDefenderRef.current = true;
           setDefenderDemand(predicted_demand_kw);
           setIsDefenderOpen(true);
-          // Pause briefly to let the defender modal engage the operator
+          // AI Voice Alert
+          speakAlert(
+            "Warning. Critical grid overload detected. Predictive failure imminent. Switching to battery storage.",
+            false,
+            25000
+          );
           await new Promise((resolve) => setTimeout(resolve, 800));
         }
 
@@ -313,7 +342,6 @@ export default function Dashboard() {
         const isPeak = hourNum >= peakStartHour && hourNum <= peakEndHour;
         const isHighDemand = predicted_demand_kw > settings.maxDemandThreshold;
 
-        // Force ISLANDED_MODE if under active cyberattack
         const grid_mode = isCyberattack
           ? 'ISLANDED_MODE'
           : prediction.grid_mode ||
@@ -350,7 +378,7 @@ export default function Dashboard() {
       setIsStreaming(false);
       if (datasetName) setLoadedCsvName(datasetName);
     },
-    [settings, isCyberattack]
+    [settings, isCyberattack, climateDelta, speakAlert]
   );
 
   const handleStartSimulation = useCallback(() => {
@@ -397,9 +425,15 @@ export default function Dashboard() {
 
     const mockResults = Array.from({ length: 24 }, (_, hour) => {
       const payload = generateHourlyWeather(todayStr, hour);
-      const response = generateSimulatedResponse(payload, hour, settings);
+      const effectivePayload = {
+        ...payload,
+        ambient_temp_c: Number((payload.ambient_temp_c + climateDelta).toFixed(1)),
+      };
+      const response = generateSimulatedResponse(effectivePayload, hour, settings);
       const hourLabel = `${String(hour).padStart(2, '0')}:00`;
-      const predicted_demand_kw = Number(response.predicted_demand_kw);
+      const predicted_demand_kw = Number(
+        (Number(response.predicted_demand_kw) + climateDelta * 4.8).toFixed(1)
+      );
 
       let isAnomaly = false;
       let anomalySurgePct = 0;
@@ -420,7 +454,7 @@ export default function Dashboard() {
           : Math.max(0, 100 - (predicted_demand_kw / 3)).toFixed(1);
 
       return {
-        ...payload,
+        ...effectivePayload,
         ...response,
         grid_mode: response.grid_mode || 'MAIN_GRID_MODE',
         hour: hourLabel,
@@ -436,7 +470,32 @@ export default function Dashboard() {
     setIsOnline(true);
     setLastUpdated(`${new Date().toLocaleTimeString()} (Instant Mock)`);
     setSelectedHour(null);
-  }, [handleStopSimulation, todayStr, settings]);
+  }, [handleStopSimulation, todayStr, settings, climateDelta]);
+
+  // Feature 2: "What-If" Climate Simulator Slider Change Handler
+  const handleClimateDeltaChange = (delta) => {
+    setClimateDelta(delta);
+    setForecastData((prev) =>
+      prev.map((d) => {
+        const baseTemp = Number(d.base_temp ?? d.ambient_temp_c);
+        const newTemp = Number((baseTemp + delta).toFixed(1));
+        const baseDemand = Number(d.base_demand ?? d.predicted_demand_kw);
+        const newDemand = Number((baseDemand + delta * 4.8).toFixed(1));
+        const isOverload = newDemand >= settings.criticalThreshold;
+
+        return {
+          ...d,
+          base_temp: baseTemp,
+          base_demand: baseDemand,
+          ambient_temp_c: newTemp,
+          predicted_demand_kw: newDemand,
+          alert: isOverload ? 'CRITICAL_OVERLOAD' : d.alert,
+          grid_mode: isOverload ? 'RENEWABLE_STORAGE_MODE' : d.grid_mode,
+          battery_soc: Math.max(0, 100 - newDemand / 3).toFixed(1),
+        };
+      })
+    );
+  };
 
   // Feature 2: Trigger / Neutralize Cyberattack Simulator
   const handleToggleCyberattack = () => {
@@ -456,6 +515,7 @@ export default function Dashboard() {
           message:
             '🚨 SCADA BREACH: Adversary packet injection detected on Port 502 (Modbus). Main Grid disconnected. EMERGENCY ISLANDED PROTOCOL ENGAGED.',
         });
+        speakAlert('Critical alert. SCADA telemetry breach detected. Forcing emergency islanded mode.', true);
       }
       return nextState;
     });
@@ -596,6 +656,7 @@ export default function Dashboard() {
         timestamp: new Date().toISOString(),
         totalHours: forecastData.length,
         isCyberattackActive: isCyberattack,
+        climateDeltaAppliedC: climateDelta,
         settings: {
           maxDemandThresholdKw: settings.maxDemandThreshold,
           criticalThresholdKw: settings.criticalThreshold,
@@ -670,6 +731,22 @@ export default function Dashboard() {
     return '100.0';
   }, [latestPrediction]);
 
+  // Feature 1: Predictive Failure Forecaster (RUL)
+  const transformerHealth = useMemo(() => {
+    return calculateTransformerHealth(forecastData, latestPrediction);
+  }, [forecastData, latestPrediction]);
+
+  // Trigger voice alert when transformer health is critical
+  useEffect(() => {
+    if (transformerHealth.status === 'IMMINENT_FAILURE') {
+      speakAlert(
+        `Critical warning. Transformer degradation detected. Remaining useful life: ${transformerHealth.rulHours} hours. Emergency storage dispatch active.`,
+        false,
+        25000
+      );
+    }
+  }, [transformerHealth.status, transformerHealth.rulHours, speakAlert]);
+
   const effectiveGridMode = isCyberattack
     ? 'ISLANDED_MODE'
     : latestPrediction?.grid_mode || 'MAIN_GRID_MODE';
@@ -690,6 +767,9 @@ export default function Dashboard() {
         }}
         overloadDemand={defenderDemand}
       />
+
+      {/* Feature 3: Augmented Reality (AR) Field Tech Modal */}
+      <FieldTechAR isOpen={isArOpen} onClose={() => setIsArOpen(false)} />
 
       {/* Feature 7: Mock SMS/Email Alert Toast Notification */}
       {smsAlert && (
@@ -746,17 +826,99 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Header Section with Grid Frequency, Theme Toggle & Cyberattack button */}
+      {/* Feature 1: Predictive Failure Forecaster Banner */}
+      {transformerHealth.status === 'IMMINENT_FAILURE' && (
+        <div className="bg-rose-950/90 border-2 border-rose-500 text-white p-4 sm:p-5 rounded-2xl shadow-2xl shadow-rose-950/80 animate-pulse flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-2.5 rounded-xl bg-rose-600/30 text-rose-400 border border-rose-500/60 animate-bounce">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono uppercase tracking-widest text-rose-400 font-bold block">
+                Predictive AI Degradation Forecaster &bull; IEC 60076-7
+              </span>
+              <h4 className="text-base font-black font-mono text-white">
+                ⚠️ PREDICTIVE ALERT: Transformer degradation detected. RUL: {transformerHealth.rulHours} hours.
+              </h4>
+              <p className="text-xs text-rose-200 mt-0.5">
+                Sustained winding thermal strain ({transformerHealth.metrics.windingTempEst}°C) and ambient temperature saturation. Autonomous storage load shedding recommended.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsArOpen(true)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-xl cursor-pointer shrink-0"
+          >
+            <Camera className="w-4 h-4" />
+            <span>AR Diagnostic Scan</span>
+          </button>
+        </div>
+      )}
+
+      {/* Header Section with Grid Frequency, Theme Toggle, Voice Mute & Cyberattack button */}
       <Header
         lastUpdated={lastUpdated}
         isOnline={isOnline}
         latestDemand={Number(latestPrediction?.predicted_demand_kw) || 0}
         criticalThreshold={settings.criticalThreshold}
-        gridMode={effectiveGridMode}
-        batterySoc={latestSoc}
         isCyberattack={isCyberattack}
         onTriggerCyberattack={handleToggleCyberattack}
+        isVoiceMuted={isVoiceMuted}
+        onToggleVoiceMute={toggleVoiceMute}
       />
+
+      {/* Feature 2: "What-If" Climate Simulator Interactive Slider Bar */}
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20 shrink-0">
+            <ThermometerSnowflake className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-bold text-white tracking-tight font-mono uppercase">
+                &ldquo;What-If&rdquo; Climate Simulator
+              </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800">
+                ANTHROPOGENIC FORCING
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Simulate extreme heatwaves. Elevates ambient temperatures and triggers severe HVAC cooling loads.
+            </p>
+          </div>
+        </div>
+
+        {/* Climate Delta Slider Controls */}
+        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+          <div className="flex items-center gap-3 w-full md:w-64">
+            <input
+              type="range"
+              min="0"
+              max="6"
+              step="0.5"
+              value={climateDelta}
+              onChange={(e) => handleClimateDeltaChange(Number(e.target.value))}
+              className="w-full accent-amber-400 cursor-pointer"
+            />
+            <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-white/10 font-mono text-xs font-black min-w-[75px] text-center shrink-0">
+              <span className={climateDelta > 0 ? 'text-amber-400' : 'text-slate-400'}>
+                +{climateDelta.toFixed(1)}&deg;C
+              </span>
+            </div>
+          </div>
+
+          {climateDelta > 0 && (
+            <button
+              type="button"
+              onClick={() => handleClimateDeltaChange(0)}
+              className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Feature 1: Live Location Weather Ingestion */}
       <WeatherSync onWeatherLoaded={handleWeatherLoaded} isStreaming={isStreaming} />
@@ -795,9 +957,126 @@ export default function Dashboard() {
           <AlertBanner criticalHours={criticalHours} maxDemand={maxDemand} />
         )}
 
+        {/* Feature 1: Transformer Health Visual Gauge Banner */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Health Score Gauge */}
+          <div
+            className={`p-4 rounded-2xl border backdrop-blur-xl transition-all flex flex-col justify-between ${
+              transformerHealth.healthPct > 70
+                ? 'bg-slate-900/50 border-emerald-500/30 text-emerald-300'
+                : transformerHealth.healthPct > 30
+                ? 'bg-slate-900/50 border-amber-500/40 text-amber-300'
+                : 'bg-rose-950/50 border-rose-500/80 text-rose-300 animate-pulse'
+            }`}
+          >
+            <div className="flex items-center justify-between text-xs font-semibold">
+              <span className="text-slate-400 uppercase tracking-wider text-[10px]">
+                Transformer Health
+              </span>
+              <span
+                className={`text-[9px] px-2 py-0.5 rounded-full font-bold font-mono ${
+                  transformerHealth.healthPct > 70
+                    ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
+                    : transformerHealth.healthPct > 30
+                    ? 'bg-amber-950 text-amber-400 border border-amber-800'
+                    : 'bg-rose-950 text-rose-400 border border-rose-800'
+                }`}
+              >
+                {transformerHealth.status}
+              </span>
+            </div>
+            <div className="mt-2">
+              <span className="text-3xl font-black font-mono">
+                {transformerHealth.healthPct}%
+              </span>
+              <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                <div
+                  className={`h-full transition-all duration-500 ${
+                    transformerHealth.healthPct > 70
+                      ? 'bg-emerald-400'
+                      : transformerHealth.healthPct > 30
+                      ? 'bg-amber-400'
+                      : 'bg-rose-500'
+                  }`}
+                  style={{ width: `${transformerHealth.healthPct}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Remaining Useful Life (RUL) Card */}
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
+              <span className="uppercase tracking-wider text-[10px]">Remaining Useful Life (RUL)</span>
+              <Activity className="w-4 h-4 text-cyan-400" />
+            </div>
+            <div className="mt-2">
+              <span
+                className={`text-2xl font-black font-mono ${
+                  transformerHealth.rulHours
+                    ? 'text-rose-400 animate-pulse'
+                    : 'text-cyan-300'
+                }`}
+              >
+                {transformerHealth.rulHours
+                  ? `${transformerHealth.rulHours} Hours`
+                  : 'Nominal (>120h)'}
+              </span>
+              <p className="text-[11px] text-slate-400 mt-1">
+                {transformerHealth.rulHours
+                  ? '⚠️ Critical failure trajectory active'
+                  : 'No accelerated wear detected'}
+              </p>
+            </div>
+          </div>
+
+          {/* Winding Core Temp Estimate */}
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
+              <span className="uppercase tracking-wider text-[10px]">Estimated Winding Temp</span>
+              <ThermometerSnowflake className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="mt-2">
+              <span
+                className={`text-2xl font-black font-mono ${
+                  Number(transformerHealth.metrics.windingTempEst) > 75
+                    ? 'text-rose-400'
+                    : 'text-amber-300'
+                }`}
+              >
+                {transformerHealth.metrics.windingTempEst}&deg;C
+              </span>
+              <p className="text-[11px] text-slate-400 mt-1">
+                IEEE C57.91 Thermal Model
+              </p>
+            </div>
+          </div>
+
+          {/* Field Tech AR Trigger Card */}
+          <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col justify-between">
+            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
+              <span className="uppercase tracking-wider text-[10px]">Field Tech Inspection</span>
+              <Camera className="w-4 h-4 text-purple-400" />
+            </div>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setIsArOpen(true)}
+                className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md cursor-pointer transition-all"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>Launch AR Lens</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {forecastData.length > 0 && <MetricsOverview forecastData={forecastData} />}
 
-        {/* Feature 1: Digital Twin Microgrid Visualization (3D WebGL vs 2D Schematic) */}
+        {/* Feature 5: Autonomous Drone Fleet Telemetry Map */}
+        <DroneFleet transformerHealth={transformerHealth.healthPct} />
+
+        {/* Digital Twin Microgrid Visualization (3D WebGL vs 2D Schematic) */}
         <div className="space-y-3">
           <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2">
@@ -868,7 +1147,6 @@ export default function Dashboard() {
 
         {/* Main Grid: Recharts Load Curve + Battery Gauge & Hourly Scrubber */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Load Curve Chart */}
           <div className="lg:col-span-2">
             <LoadCurveChart
               data={forecastData}
@@ -879,7 +1157,6 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Right Column: Battery Gauge + Scrubber */}
           <div className="flex flex-col gap-6 justify-between">
             <BatteryGauge
               latestDemand={latestPrediction?.predicted_demand_kw}
