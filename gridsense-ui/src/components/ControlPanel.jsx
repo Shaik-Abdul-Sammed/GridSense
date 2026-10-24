@@ -1,5 +1,14 @@
 import { useState, useRef } from 'react';
 import Papa from 'papaparse';
+import {
+  Play,
+  FileDown,
+  Download,
+  RotateCcw,
+  Sparkles,
+  AlertTriangle,
+  FileText,
+} from 'lucide-react';
 
 export default function ControlPanel({
   onStartSimulation,
@@ -15,6 +24,9 @@ export default function ControlPanel({
   onCsvLoaded,
   loadedCsvName,
   forecastData = [],
+  onPlayDemoScenario,
+  onExportPDF,
+  isExportingPdf,
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [csvError, setCsvError] = useState(null);
@@ -37,7 +49,6 @@ export default function ControlPanel({
           return;
         }
 
-        // Validate required headers
         const sampleRow = results.data[0];
         const lowerKeys = Object.keys(sampleRow).map((k) => k.trim().toLowerCase());
         const required = ['timestamp', 'ambient_temp_c', 'humidity_pct', 'solar_irradiance_wm2'];
@@ -52,7 +63,6 @@ export default function ControlPanel({
           return;
         }
 
-        // Helper to find key case-insensitively
         const findKey = (row, keyName) => {
           const match = Object.keys(row).find((k) => k.trim().toLowerCase() === keyName);
           return match ? row[match] : undefined;
@@ -70,7 +80,6 @@ export default function ControlPanel({
           let humidity = Number(findKey(row, 'humidity_pct') ?? 60.0);
           let solar = Number(findKey(row, 'solar_irradiance_wm2') ?? 0.0);
 
-          // Clamping checks: solar irradiance >= 0, temperature <= 60°C
           if (solar < 0) {
             solar = 0.0;
             clampedCount++;
@@ -143,7 +152,6 @@ export default function ControlPanel({
     }
   };
 
-  // Quick 1-click loader for bundled sample_test_input.csv
   const loadDefaultSampleCsv = async () => {
     try {
       setCsvError(null);
@@ -172,7 +180,6 @@ export default function ControlPanel({
     }
   };
 
-  // Export Results to CSV via Papa.unparse()
   const handleExportResults = () => {
     if (!forecastData || forecastData.length === 0) return;
 
@@ -209,17 +216,32 @@ export default function ControlPanel({
             <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
               <span>Smart Dispatch Controller</span>
             </h3>
-            <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/60">
-              1.5s Stream Interval
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-mono bg-cyan-950/80 text-cyan-300 border border-cyan-800/60 font-bold">
+              Autonomous
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time telemetry simulation, robust CSV validation & automated retry resilience.
+            Real-time telemetry simulation, CSV drag-and-drop ingestion & automated PDF shift reporting.
           </p>
         </div>
 
         {/* Action Button Group */}
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
+          {/* Feature 3: 1-Click Demo Scenario Generator */}
+          {onPlayDemoScenario && (
+            <button
+              onClick={onPlayDemoScenario}
+              disabled={isStreaming}
+              title="Inject hardcoded 19:00 spike (>220 kW) triggering CRITICAL_OVERLOAD and storage dispatch"
+              className={`inline-flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase text-amber-100 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 shadow-xl shadow-amber-950/60 transition-all select-none cursor-pointer border border-amber-400/40 active:scale-95 ${
+                isStreaming ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
+            >
+              <Sparkles className="w-4 h-4 fill-amber-200" />
+              <span>▶ Play Hackathon Demo Scenario</span>
+            </button>
+          )}
+
           {/* Main Simulation / Stop Button */}
           <button
             onClick={isStreaming ? onStopSimulation : onStartSimulation}
@@ -254,25 +276,7 @@ export default function ControlPanel({
               </>
             ) : (
               <>
-                <svg
-                  className="w-4 h-4 text-cyan-200"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <Play className="w-4 h-4 text-cyan-200 fill-cyan-200" />
                 <span>{loadedCsvName ? `Stream ${loadedCsvName}` : 'Generate 24-Hour Forecast'}</span>
               </>
             )}
@@ -285,29 +289,32 @@ export default function ControlPanel({
               title="Abort current delay and fast-forward through remaining hours"
               className="px-3.5 py-3 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer select-none flex items-center gap-1.5"
             >
-              <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-              </svg>
-              <span>Fast-Forward</span>
+              <span>Fast-Forward &gt;&gt;</span>
             </button>
           )}
 
-          {/* Export Results to CSV Button (Requirement 5) */}
+          {/* Feature 1: Export Shift Report (PDF) */}
+          {onExportPDF && (
+            <button
+              onClick={onExportPDF}
+              disabled={isExportingPdf}
+              title="Generate a formatted PDF Shift Handover Report with charts, metrics & operator signature"
+              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-950/60 border border-purple-400/40 transition-all cursor-pointer select-none active:scale-95"
+            >
+              <FileDown className="w-4 h-4 text-purple-200" />
+              <span>{isExportingPdf ? 'Generating PDF...' : 'Export Shift Report (PDF)'}</span>
+            </button>
+          )}
+
+          {/* Export Results to CSV Button */}
           {forecastData && forecastData.length > 0 && !isStreaming && (
             <button
               onClick={handleExportResults}
               title="Export complete forecast telemetry to gridsense_forecast_results.csv"
-              className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-emerald-950/50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-3 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-emerald-950/50"
             >
-              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                />
-              </svg>
-              <span>Export CSV</span>
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>CSV</span>
             </button>
           )}
 
@@ -316,12 +323,10 @@ export default function ControlPanel({
             <button
               onClick={onGenerateMock}
               title="Populate instantly with mock hackathon evaluation dataset"
-              className="inline-flex items-center gap-1.5 px-4 py-3 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-colors cursor-pointer select-none"
+              className="inline-flex items-center gap-1.5 px-3.5 py-3 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-colors cursor-pointer select-none"
             >
-              <svg className="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-              <span>Instant Mock</span>
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+              <span>Reset Mock</span>
             </button>
           )}
         </div>
@@ -358,14 +363,7 @@ export default function ControlPanel({
                   : 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40'
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+              <FileText className="w-5 h-5" />
             </div>
             <div>
               <p className="text-xs font-bold text-white">
@@ -424,7 +422,7 @@ export default function ControlPanel({
       {csvWarning && (
         <div className="bg-amber-950/70 border border-amber-500/80 text-amber-200 px-4 py-2.5 rounded-xl text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-amber-400">⚠️</span>
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
             <span>{csvWarning}</span>
           </div>
           <button
@@ -447,7 +445,7 @@ export default function ControlPanel({
         </div>
         <div className="text-slate-400 flex items-center gap-3">
           <span>Retry Policy: <strong className="text-cyan-300">2 Retries (1s backoff)</strong></span>
-          <span>Stream Interval: <strong className="text-white">1.5s</strong></span>
+          <span>Simulation Speed: <strong className="text-white">Active</strong></span>
         </div>
       </div>
 
@@ -455,19 +453,7 @@ export default function ControlPanel({
       {error && (
         <div className="bg-rose-950/70 border border-rose-500/80 text-rose-200 p-4 rounded-xl text-xs flex items-start justify-between gap-3">
           <div className="flex items-start gap-2.5">
-            <svg
-              className="w-5 h-5 text-rose-400 shrink-0 mt-0.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+            <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
             <div>
               <p className="font-bold text-white text-sm">Backend Service Notice</p>
               <p className="mt-1 text-rose-300">{error}</p>
