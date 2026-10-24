@@ -8,6 +8,7 @@ import {
   Sparkles,
   AlertTriangle,
   FileText,
+  FileCode,
 } from 'lucide-react';
 
 export default function ControlPanel({
@@ -27,6 +28,7 @@ export default function ControlPanel({
   onPlayDemoScenario,
   onExportPDF,
   isExportingPdf,
+  onExportJSON,
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const [csvError, setCsvError] = useState(null);
@@ -221,7 +223,7 @@ export default function ControlPanel({
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time telemetry simulation, CSV drag-and-drop ingestion & automated PDF shift reporting.
+            Real-time telemetry simulation, GPS weather sync, CSV ingestion & automated PDF/JSON exports.
           </p>
         </div>
 
@@ -293,16 +295,28 @@ export default function ControlPanel({
             </button>
           )}
 
-          {/* Feature 1: Export Shift Report (PDF) */}
+          {/* PDF Shift Report Button */}
           {onExportPDF && (
             <button
               onClick={onExportPDF}
               disabled={isExportingPdf}
               title="Generate a formatted PDF Shift Handover Report with charts, metrics & operator signature"
-              className="inline-flex items-center gap-2 px-4 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-950/60 border border-purple-400/40 transition-all cursor-pointer select-none active:scale-95"
+              className="inline-flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-950/60 border border-purple-400/40 transition-all cursor-pointer select-none active:scale-95"
             >
               <FileDown className="w-4 h-4 text-purple-200" />
-              <span>{isExportingPdf ? 'Generating PDF...' : 'Export Shift Report (PDF)'}</span>
+              <span>{isExportingPdf ? 'Generating PDF...' : 'Shift Report (PDF)'}</span>
+            </button>
+          )}
+
+          {/* Feature 10: JSON Export Button */}
+          {forecastData && forecastData.length > 0 && !isStreaming && onExportJSON && (
+            <button
+              onClick={onExportJSON}
+              title="Export complete 24h telemetry dataset to gridsense_telemetry.json"
+              className="inline-flex items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/70 hover:bg-cyan-900/80 border border-cyan-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-cyan-950/50"
+            >
+              <FileCode className="w-3.5 h-3.5 text-cyan-400" />
+              <span>JSON</span>
             </button>
           )}
 
@@ -311,7 +325,7 @@ export default function ControlPanel({
             <button
               onClick={handleExportResults}
               title="Export complete forecast telemetry to gridsense_forecast_results.csv"
-              className="inline-flex items-center gap-1.5 px-3.5 py-3 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-emerald-950/50"
+              className="inline-flex items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-emerald-950/50"
             >
               <Download className="w-3.5 h-3.5 text-emerald-400" />
               <span>CSV</span>
@@ -411,7 +425,7 @@ export default function ControlPanel({
           </div>
           <button
             onClick={() => setCsvError(null)}
-            className="text-rose-400 hover:text-white font-bold p-1"
+            className="text-rose-400 hover:text-white font-bold p-1 cursor-pointer"
           >
             ✕
           </button>
@@ -427,7 +441,7 @@ export default function ControlPanel({
           </div>
           <button
             onClick={() => setCsvWarning(null)}
-            className="text-amber-400 hover:text-white font-bold ml-2"
+            className="text-amber-400 hover:text-white font-bold ml-2 cursor-pointer"
           >
             ✕
           </button>

@@ -8,7 +8,14 @@ import {
   AlertTriangle,
   Zap,
   Info,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
+import {
+  generateNormalDayCsv,
+  generateExtremeStormCsv,
+  triggerDownloadCsv,
+} from '../utils/generateDemoFiles';
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, DEFAULT_SETTINGS } = useSettings();
@@ -49,6 +56,15 @@ export default function Settings() {
     setFormData((prev) => ({ ...prev, ...preset }));
   };
 
+  // Automated Test & Demo File Download handlers (Feature 3)
+  const handleDownloadNormal = () => {
+    triggerDownloadCsv(generateNormalDayCsv(), 'demo_normal_day.csv');
+  };
+
+  const handleDownloadStorm = () => {
+    triggerDownloadCsv(generateExtremeStormCsv(), 'demo_extreme_storm.csv');
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -73,6 +89,74 @@ export default function Settings() {
             <span>Rules Saved to Storage!</span>
           </div>
         )}
+      </div>
+
+      {/* Feature 3: Automated Test & Demo File Generator */}
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+              Automated Test & Benchmark Datasets
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+              Evaluator Ready
+            </span>
+          </div>
+          <span className="text-[11px] text-slate-400">
+            Download standard test datasets to drag-and-drop into the Live Dashboard.
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <div className="p-4 rounded-xl bg-slate-800/60 border border-white/5 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">
+                  Normal Diurnal Day (Baseline)
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-mono">
+                  Standard Weather
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                24 hours of standard 20°C–31°C diurnal cycle and smooth solar curve. Safe demand profile within 100–160 kW.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadNormal}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/60 transition-colors cursor-pointer select-none"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Download demo_normal_day.csv</span>
+            </button>
+          </div>
+
+          <div className="p-4 rounded-xl bg-slate-800/60 border border-white/5 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-white">
+                  Extreme Storm & Peak Stress
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-mono">
+                  Overload Stress
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Extreme 42.5°C heat stress causing catastrophic 19:00 load spike (&gt; 220 kW). Triggers emergency storage and CRITICAL_OVERLOAD.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDownloadStorm}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-rose-300 bg-rose-950/80 hover:bg-rose-900 border border-rose-800/60 transition-colors cursor-pointer select-none"
+            >
+              <Download className="w-3.5 h-3.5 text-rose-400" />
+              <span>Download demo_extreme_storm.csv</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Preset Buttons */}

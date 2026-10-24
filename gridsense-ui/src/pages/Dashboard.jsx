@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { Mic, MicOff, BellRing, X, Radio } from 'lucide-react';
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
 import PowerFlowDiagram from '../components/PowerFlowDiagram';
@@ -10,7 +11,9 @@ import ControlPanel from '../components/ControlPanel';
 import MetricsOverview from '../components/MetricsOverview';
 import HourlyTable from '../components/HourlyTable';
 import MeterScanner from '../components/MeterScanner';
+import WeatherSync from '../components/WeatherSync';
 import { useSettings } from '../context/SettingsContext';
+import { useVoiceCommands } from '../hooks/useVoiceCommands';
 import { HACKATHON_DEMO_DATA } from '../utils/demoData';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
@@ -142,6 +145,9 @@ export default function Dashboard() {
   const [selectedHour, setSelectedHour] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
+  // Feature 7: SMS/Email Alert Simulation state
+  const [smsAlert, setSmsAlert] = useState(null);
+
   // CSV Ingestion State
   const [csvData, setCsvData] = useState(null);
   const [loadedCsvName, setLoadedCsvName] = useState(null);
@@ -174,6 +180,8 @@ export default function Dashboard() {
 
       const itemsToProcess = sourceItems.slice(0, 24);
       setTotalSteps(itemsToProcess.length);
+
+      let prevDemandKw = null;
 
       for (let i = 0; i < itemsToProcess.length; i++) {
         if (stopRequestedRef.current) {
@@ -254,6 +262,29 @@ export default function Dashboard() {
             ? 'CRITICAL_OVERLOAD'
             : 'NONE';
 
+        // Feature 7: SMS/Email Alert simulation trigger
+        if (alert === 'CRITICAL_OVERLOAD') {
+          setSmsAlert({
+            hour: hourLabel,
+            demand: predicted_demand_kw,
+            message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
+          });
+        }
+
+        // Feature 9: Anomaly Detection Logic (> 40% jump from previous hour)
+        let isAnomaly = false;
+        let anomalySurgePct = 0;
+        let anomalyReason = '';
+        if (prevDemandKw !== null && prevDemandKw > 0) {
+          const surge = (predicted_demand_kw - prevDemandKw) / prevDemandKw;
+          if (surge > 0.4) {
+            isAnomaly = true;
+            anomalySurgePct = Math.round(surge * 100);
+            anomalyReason = `⚠️ Sudden Load Spike Anomaly (+${anomalySurgePct}% jump from ${prevDemandKw.toFixed(1)} kW)`;
+          }
+        }
+        prevDemandKw = predicted_demand_kw;
+
         const peakStartHour = parseInt(settings.peakWindowStart.split(':')[0], 10) || 18;
         const peakEndHour = parseInt(settings.peakWindowEnd.split(':')[0], 10) || 22;
         const isPeak = hourNum >= peakStartHour && hourNum <= peakEndHour;
@@ -278,6 +309,9 @@ export default function Dashboard() {
           hour: hourLabel,
           predicted_demand_kw,
           battery_soc,
+          isAnomaly,
+          anomalySurgePct,
+          anomalyReason,
         };
 
         setForecastData((prev) => [...prev, newPoint]);
@@ -297,7 +331,7 @@ export default function Dashboard() {
     [settings]
   );
 
-  const handleStartSimulation = () => {
+  const handleStartSimulation = useCallback(() => {
     if (csvData && csvData.length > 0) {
       runStreamingSimulation(csvData, loadedCsvName, false);
       return;
@@ -306,21 +340,27 @@ export default function Dashboard() {
       generateHourlyWeather(todayStr, hour)
     );
     runStreamingSimulation(standardItems, null, false);
-  };
+  }, [csvData, loadedCsvName, runStreamingSimulation, todayStr]);
 
   // Feature 3: Play Hackathon Demo Scenario
-  const handlePlayDemoScenario = () => {
+  const handlePlayDemoScenario = useCallback(() => {
     runStreamingSimulation(HACKATHON_DEMO_DATA, 'Hackathon Demo Scenario', true);
-  };
+  }, [runStreamingSimulation]);
 
-  const handleStopSimulation = () => {
+  const handleStopSimulation = useCallback(() => {
     stopRequestedRef.current = true;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
     }
     setIsStreaming(false);
-  };
+  }, []);
+
+  // Feature 2: Voice Commands Integration
+  const { isListening, feedback, isSupported, toggleListening } = useVoiceCommands({
+    onStartSimulation: handleStartSimulation,
+    onStopSimulation: handleStopSimulation,
+  });
 
   const handleFastForward = () => {
     fastForwardRef.current = true;
@@ -332,11 +372,27 @@ export default function Dashboard() {
 
   const handleInstantMock = useCallback(() => {
     handleStopSimulation();
+    let prevMockDemand = null;
+
     const mockResults = Array.from({ length: 24 }, (_, hour) => {
       const payload = generateHourlyWeather(todayStr, hour);
       const response = generateSimulatedResponse(payload, hour, settings);
       const hourLabel = `${String(hour).padStart(2, '0')}:00`;
       const predicted_demand_kw = Number(response.predicted_demand_kw);
+
+      let isAnomaly = false;
+      let anomalySurgePct = 0;
+      let anomalyReason = '';
+      if (prevMockDemand !== null && prevMockDemand > 0) {
+        const surge = (predicted_demand_kw - prevMockDemand) / prevMockDemand;
+        if (surge > 0.4) {
+          isAnomaly = true;
+          anomalySurgePct = Math.round(surge * 100);
+          anomalyReason = `⚠️ Sudden Load Spike Anomaly (+${anomalySurgePct}% jump from ${prevMockDemand.toFixed(1)} kW)`;
+        }
+      }
+      prevMockDemand = predicted_demand_kw;
+
       const battery_soc =
         response.battery_soc !== undefined && response.battery_soc !== null
           ? Number(response.battery_soc).toFixed(1)
@@ -349,6 +405,9 @@ export default function Dashboard() {
         hour: hourLabel,
         predicted_demand_kw,
         battery_soc,
+        isAnomaly,
+        anomalySurgePct,
+        anomalyReason,
       };
     });
 
@@ -356,12 +415,19 @@ export default function Dashboard() {
     setIsOnline(true);
     setLastUpdated(`${new Date().toLocaleTimeString()} (Instant Mock)`);
     setSelectedHour(null);
-  }, [todayStr, settings]);
+  }, [handleStopSimulation, todayStr, settings]);
 
   const handleCsvLoaded = (rows, fileName) => {
     setCsvData(rows);
     setLoadedCsvName(fileName);
     runStreamingSimulation(rows, fileName, false);
+  };
+
+  // Feature 1: Live Location Weather Ingestion handler
+  const handleWeatherLoaded = (rows, label) => {
+    setCsvData(rows);
+    setLoadedCsvName(label);
+    runStreamingSimulation(rows, label, false);
   };
 
   // Feature 2: Override Current Load with OCR Reading
@@ -454,7 +520,7 @@ export default function Dashboard() {
 
       pdf.addImage(imgData, 'PNG', 14, 29, contentWidth, finalHeight);
 
-      // Footer Operator Signature Line (Requirement 1)
+      // Footer Operator Signature Line
       const footerY = pdfHeight - 20;
       pdf.setDrawColor(51, 65, 85);
       pdf.setLineWidth(0.5);
@@ -480,6 +546,52 @@ export default function Dashboard() {
     } finally {
       setIsExportingPdf(false);
     }
+  };
+
+  // Feature 10: Export Telemetry (JSON)
+  const handleExportJSON = () => {
+    if (!forecastData || forecastData.length === 0) return;
+
+    const payload = {
+      exportMetadata: {
+        system: 'GridSense Autonomous Smart Grid Command Center',
+        facility: 'Substation ALPHA-1',
+        operator: 'Samm (Grid Admin)',
+        timestamp: new Date().toISOString(),
+        totalHours: forecastData.length,
+        settings: {
+          maxDemandThresholdKw: settings.maxDemandThreshold,
+          criticalThresholdKw: settings.criticalThreshold,
+          peakWindow: `${settings.peakWindowStart} - ${settings.peakWindowEnd}`,
+        },
+      },
+      esgMetrics: {
+        carbonDisplacedKg: forecastData
+          .reduce(
+            (acc, d) =>
+              d.grid_mode === 'RENEWABLE_STORAGE_MODE'
+                ? acc + (Number(d.predicted_demand_kw) || 0) * 0.45
+                : acc,
+            0
+          )
+          .toFixed(2),
+        renewableHours: forecastData.filter(
+          (d) => d.grid_mode === 'RENEWABLE_STORAGE_MODE'
+        ).length,
+      },
+      telemetry: forecastData,
+    };
+
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'gridsense_telemetry.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const criticalHours = useMemo(() => {
@@ -525,11 +637,46 @@ export default function Dashboard() {
   }, [handleInstantMock]);
 
   return (
-    <div className="space-y-6">
-      {/* Header Section */}
-      <Header lastUpdated={lastUpdated} isOnline={isOnline} />
+    <div className="space-y-6 relative">
+      {/* Feature 7: Mock SMS/Email Alert Toast Notification */}
+      {smsAlert && (
+        <div className="fixed top-5 right-5 z-50 max-w-md bg-rose-950/95 border-2 border-rose-500 text-white p-4 rounded-2xl shadow-2xl shadow-rose-950/80 backdrop-blur-xl animate-bounce-once flex items-start gap-3">
+          <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 shrink-0 border border-rose-500/40">
+            <BellRing className="w-5 h-5 animate-pulse" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-wider text-rose-300">
+                Automated SMS Dispatch
+              </span>
+              <span className="text-[10px] font-mono text-rose-400 bg-rose-900/60 px-1.5 py-0.5 rounded">
+                Twilio Mock
+              </span>
+            </div>
+            <p className="text-xs text-rose-100 mt-1 leading-snug">{smsAlert.message}</p>
+          </div>
+          <button
+            onClick={() => setSmsAlert(null)}
+            className="text-rose-400 hover:text-white p-1 rounded-lg cursor-pointer"
+            aria-label="Dismiss SMS Alert"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-      {/* Control Section: Drag & Drop CSV + Demo Scenario + PDF Shift Report */}
+      {/* Header Section with Grid Frequency & Theme Toggle */}
+      <Header
+        lastUpdated={lastUpdated}
+        isOnline={isOnline}
+        latestDemand={Number(latestPrediction?.predicted_demand_kw) || 0}
+        criticalThreshold={settings.criticalThreshold}
+      />
+
+      {/* Feature 1: Live Location Weather Ingestion */}
+      <WeatherSync onWeatherLoaded={handleWeatherLoaded} isStreaming={isStreaming} />
+
+      {/* Control Section: Drag & Drop CSV + Demo Scenario + PDF & JSON Exports */}
       <ControlPanel
         onStartSimulation={handleStartSimulation}
         onStopSimulation={handleStopSimulation}
@@ -547,6 +694,7 @@ export default function Dashboard() {
         onPlayDemoScenario={handlePlayDemoScenario}
         onExportPDF={handleExportPDF}
         isExportingPdf={isExportingPdf}
+        onExportJSON={handleExportJSON}
       />
 
       {/* Feature 2: Optical Meter Ingestion (OCR) Component */}
@@ -605,6 +753,8 @@ export default function Dashboard() {
                     const isOverload =
                       d.alert === 'CRITICAL_OVERLOAD' ||
                       d.predicted_demand_kw >= settings.criticalThreshold;
+                    const isSpike = !!d.isAnomaly;
+
                     return (
                       <button
                         key={d.hour}
@@ -613,7 +763,9 @@ export default function Dashboard() {
                           isSelected
                             ? 'bg-cyan-500 text-white font-bold ring-2 ring-cyan-300'
                             : isOverload
-                            ? 'bg-red-950/80 text-red-300 border border-red-800'
+                            ? 'bg-rose-950/80 text-rose-300 border border-rose-800'
+                            : isSpike
+                            ? 'bg-amber-950/80 text-amber-300 border border-amber-800'
                             : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'
                         }`}
                       >
@@ -629,6 +781,39 @@ export default function Dashboard() {
 
         <HourlyTable forecastData={forecastData} />
       </div>
+
+      {/* Feature 2: Floating Voice Command Button & Feedback Bar */}
+      {isSupported && (
+        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto">
+          {feedback && (
+            <div className="px-3.5 py-2 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-xs text-cyan-300 shadow-2xl backdrop-blur-xl animate-fadeIn flex items-center gap-2 max-w-xs font-medium">
+              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse shrink-0" />
+              <span>{feedback}</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={toggleListening}
+            title={
+              isListening
+                ? 'Voice listening active. Click to mute.'
+                : 'Activate voice commands (e.g. "Start forecast", "Show analytics")'
+            }
+            className={`p-3.5 rounded-full shadow-2xl transition-all cursor-pointer flex items-center justify-center select-none active:scale-95 ${
+              isListening
+                ? 'bg-gradient-to-tr from-rose-600 to-amber-500 text-white ring-4 ring-rose-500/50 animate-pulse shadow-rose-950/80'
+                : 'bg-gradient-to-tr from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-cyan-950/80 border border-cyan-400/40'
+            }`}
+          >
+            {isListening ? (
+              <Mic className="w-6 h-6 animate-bounce" />
+            ) : (
+              <MicOff className="w-6 h-6 text-cyan-200" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

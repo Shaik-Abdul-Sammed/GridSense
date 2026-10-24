@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AlertTriangle } from 'lucide-react';
 
 export default function HourlyTable({ forecastData = [] }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +12,7 @@ export default function HourlyTable({ forecastData = [] }) {
         <div className="flex items-center gap-2">
           <h3 className="text-base font-bold text-white">24-Hour Forecast Schedule Breakdown</h3>
           <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">
-            24 Data Points
+            {forecastData.length} Data Points
           </span>
         </div>
         <button
@@ -43,6 +44,7 @@ export default function HourlyTable({ forecastData = [] }) {
                 <th className="py-2.5 px-3 text-right">Demand (kW)</th>
                 <th className="py-2.5 px-3 text-center">Grid Mode</th>
                 <th className="py-2.5 px-3 text-center">Alert State</th>
+                <th className="py-2.5 px-3 text-center">Anomaly Flag</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50 font-mono">
@@ -51,18 +53,25 @@ export default function HourlyTable({ forecastData = [] }) {
                 const isPeak =
                   parseInt(row.hour.split(':')[0], 10) >= 18 &&
                   parseInt(row.hour.split(':')[0], 10) <= 22;
+                const isAnomaly = !!row.isAnomaly;
 
                 return (
                   <tr
                     key={idx}
                     className={`hover:bg-slate-700/40 transition-colors ${
-                      isOverload ? 'bg-red-950/20' : isPeak ? 'bg-red-950/10' : ''
+                      isOverload
+                        ? 'bg-rose-950/30'
+                        : isAnomaly
+                        ? 'bg-amber-950/25'
+                        : isPeak
+                        ? 'bg-cyan-950/15'
+                        : ''
                     }`}
                   >
                     <td className="py-2 px-3 font-bold text-white flex items-center gap-1.5">
                       {row.hour}
                       {isPeak && (
-                        <span className="text-[10px] font-normal text-red-400 bg-red-950/80 px-1 rounded border border-red-800/40">
+                        <span className="text-[10px] font-normal text-cyan-400 bg-cyan-950/80 px-1 rounded border border-cyan-800/40">
                           Peak
                         </span>
                       )}
@@ -75,7 +84,7 @@ export default function HourlyTable({ forecastData = [] }) {
                     </td>
                     <td
                       className={`py-2 px-3 text-right font-bold ${
-                        row.predicted_demand_kw > 200 ? 'text-red-400' : 'text-cyan-300'
+                        row.predicted_demand_kw > 200 ? 'text-rose-400' : 'text-cyan-300'
                       }`}
                     >
                       {Number(row.predicted_demand_kw).toFixed(1)} kW
@@ -84,7 +93,7 @@ export default function HourlyTable({ forecastData = [] }) {
                       <span
                         className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
                           row.grid_mode === 'RENEWABLE_STORAGE_MODE'
-                            ? 'bg-blue-500/20 text-blue-300 border border-blue-400/40'
+                            ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
                             : 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/40'
                         }`}
                       >
@@ -93,11 +102,24 @@ export default function HourlyTable({ forecastData = [] }) {
                     </td>
                     <td className="py-2 px-3 text-center">
                       {isOverload ? (
-                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-red-600/30 text-red-300 border border-red-500/60 animate-pulse">
+                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-600/30 text-rose-300 border border-rose-500/60 animate-pulse">
                           CRITICAL_OVERLOAD
                         </span>
                       ) : (
                         <span className="text-slate-500 text-[11px]">NONE</span>
+                      )}
+                    </td>
+                    <td className="py-2 px-3 text-center">
+                      {isAnomaly ? (
+                        <span
+                          title={row.anomalyReason || 'Sudden hourly load surge > 40%'}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/50"
+                        >
+                          <AlertTriangle className="w-3 h-3 text-amber-400" />
+                          <span>Spike (+{row.anomalySurgePct}%)</span>
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 text-[11px]">-</span>
                       )}
                     </td>
                   </tr>

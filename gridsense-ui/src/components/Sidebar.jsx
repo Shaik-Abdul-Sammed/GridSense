@@ -7,6 +7,8 @@ import {
   Zap,
   ShieldCheck,
   ChevronRight,
+  Server,
+  Cpu,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -48,7 +50,7 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950/90 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -135,22 +137,46 @@ export default function Sidebar({ isOpen, onClose }) {
           })}
         </nav>
 
-        {/* System Health Snapshot */}
-        <div className="px-5 py-3 mx-4 mb-3 rounded-xl bg-slate-900/70 border border-white/5 text-[11px] space-y-1">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Controller State</span>
+        {/* Feature 8: System Health & Uptime Monitor */}
+        <div className="px-4 py-3 mx-4 mb-3 rounded-2xl bg-slate-900/80 border border-white/10 text-[11px] space-y-2">
+          <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+            <span className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+              System Telemetry Health
             </span>
-            <span className="font-mono text-emerald-400 font-bold">ARMED</span>
+            <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 font-bold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              ONLINE
+            </span>
           </div>
-          <div className="text-[10px] text-slate-500 flex items-center justify-between">
-            <span>Inference Latency</span>
-            <span className="font-mono text-cyan-300">42 ms</span>
+
+          <div className="space-y-1.5 font-mono text-[10px]">
+            <div className="flex items-center justify-between text-slate-300">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <Server className="w-3 h-3 text-cyan-400" />
+                Backend API
+              </span>
+              <span className="text-emerald-400 font-semibold">Online (Appsail)</span>
+            </div>
+
+            <div className="flex items-center justify-between text-slate-300">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <Cpu className="w-3 h-3 text-blue-400" />
+                QuickML Model
+              </span>
+              <span className="text-cyan-300 font-semibold">Connected (v2.4)</span>
+            </div>
+
+            <div className="flex items-center justify-between text-slate-300">
+              <span className="flex items-center gap-1.5 text-slate-400">
+                <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                System Uptime
+              </span>
+              <span className="text-emerald-300 font-bold">99.98%</span>
+            </div>
           </div>
         </div>
 
-        {/* Operator Profile Section (Requirement 1) */}
+        {/* Operator Profile Section */}
         <div className="p-4 mx-4 mb-4 rounded-2xl bg-gradient-to-r from-slate-900/90 to-slate-900/60 border border-white/10 shadow-xl">
           <div className="flex items-center gap-3">
             <div className="relative">
