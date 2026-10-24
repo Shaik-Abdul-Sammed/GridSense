@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Server,
   Cpu,
+  Coins,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -29,6 +30,12 @@ const NAV_ITEMS = [
     label: 'Event Logs',
     subtitle: 'Dispatch audit trail',
     icon: Clock,
+  },
+  {
+    to: '/marketplace',
+    label: 'P2P Energy Market',
+    subtitle: 'Decentralized trading',
+    icon: Coins,
   },
   {
     to: '/settings',

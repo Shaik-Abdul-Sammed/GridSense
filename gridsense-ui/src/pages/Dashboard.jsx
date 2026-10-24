@@ -1,10 +1,22 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Mic, MicOff, BellRing, X, Radio } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  BellRing,
+  X,
+  Radio,
+  ShieldAlert,
+  Gamepad2,
+  Box,
+  Layers,
+} from 'lucide-react';
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
 import PowerFlowDiagram from '../components/PowerFlowDiagram';
+import Substation3D from '../components/Substation3D';
+import GridDefenderModal from '../components/GridDefenderModal';
 import BatteryGauge from '../components/BatteryGauge';
 import LoadCurveChart from '../components/LoadCurveChart';
 import ControlPanel from '../components/ControlPanel';
@@ -18,7 +30,7 @@ import { HACKATHON_DEMO_DATA } from '../utils/demoData';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
 
-// Timezone-safe hour parser: strictly uses string splitting to avoid browser timezone shifts
+// Timezone-safe hour parser
 function parseTimezoneSafeHour(timestampStr, fallbackHour = 0) {
   if (!timestampStr || typeof timestampStr !== 'string') {
     const pad = String(fallbackHour).padStart(2, '0');
@@ -41,24 +53,21 @@ function parseTimezoneSafeHour(timestampStr, fallbackHour = 0) {
   return { hourNum: fallbackHour, hourLabel: `${pad}:00` };
 }
 
-// Helper to generate diurnal weather payload for an hour (0-23)
+// Diurnal weather generator
 function generateHourlyWeather(dateStr, hour) {
   const hourStr = String(hour).padStart(2, '0');
   const timestamp = `${dateStr} ${hourStr}:00:00`;
 
-  // Diurnal ambient temperature model: peak at 14:00, minimum around 05:00
   const tempBase = 22 + 9 * Math.sin(((hour - 7) / 12) * Math.PI);
   const ambient_temp_c = Number(
     Math.max(16, Math.min(38, tempBase + (Math.random() * 2.4 - 1.2))).toFixed(1)
   );
 
-  // Relative humidity model: inverse correlation with temperature
   const humBase = 72 - 25 * Math.sin(((hour - 7) / 12) * Math.PI);
   const humidity_pct = Number(
     Math.max(30, Math.min(95, humBase + (Math.random() * 4 - 2))).toFixed(1)
   );
 
-  // Solar irradiance model (W/m²): 0 at night; bell curve between 06:00 and 18:00
   let solar_irradiance_wm2 = 0;
   if (hour >= 6 && hour <= 18) {
     const solarBase = 880 * Math.sin(((hour - 6) / 12) * Math.PI);
@@ -75,7 +84,7 @@ function generateHourlyWeather(dateStr, hour) {
   };
 }
 
-// Fallback response generator if backend is unreachable (uses dynamic thresholds from settings)
+// Fallback response generator
 function generateSimulatedResponse(weatherPayload, hour, settings) {
   const peakStartHour = parseInt(settings.peakWindowStart.split(':')[0], 10) || 18;
   const peakEndHour = parseInt(settings.peakWindowEnd.split(':')[0], 10) || 22;
@@ -111,7 +120,7 @@ function generateSimulatedResponse(weatherPayload, hour, settings) {
   };
 }
 
-// Network retry logic: retries up to 2 times with 1-second backoff
+// Network retry logic
 async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
@@ -145,7 +154,18 @@ export default function Dashboard() {
   const [selectedHour, setSelectedHour] = useState(null);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
 
-  // Feature 7: SMS/Email Alert Simulation state
+  // Feature 2: Cyberattack / Fault Injection Simulator
+  const [isCyberattack, setIsCyberattack] = useState(false);
+
+  // Feature 5: Gamified "Grid Defender" Mini-Game Modal
+  const [isDefenderOpen, setIsDefenderOpen] = useState(false);
+  const [defenderDemand, setDefenderDemand] = useState(225);
+  const hasTriggeredDefenderRef = useRef(false);
+
+  // Digital Twin Display Mode Toggle ('3D' vs '2D')
+  const [digitalTwinMode, setDigitalTwinMode] = useState('3D');
+
+  // SMS/Email Alert state
   const [smsAlert, setSmsAlert] = useState(null);
 
   // CSV Ingestion State
@@ -157,7 +177,7 @@ export default function Dashboard() {
   const stopRequestedRef = useRef(false);
   const fastForwardRef = useRef(false);
 
-  // Today's ISO date string (YYYY-MM-DD)
+  // Today's ISO date string
   const todayStr = useMemo(() => {
     const now = new Date();
     const y = now.getFullYear();
@@ -175,6 +195,7 @@ export default function Dashboard() {
       setError(null);
       stopRequestedRef.current = false;
       fastForwardRef.current = false;
+      hasTriggeredDefenderRef.current = false;
       setForecastData([]);
       setSelectedHour(null);
 
@@ -184,9 +205,7 @@ export default function Dashboard() {
       let prevDemandKw = null;
 
       for (let i = 0; i < itemsToProcess.length; i++) {
-        if (stopRequestedRef.current) {
-          break;
-        }
+        if (stopRequestedRef.current) break;
 
         setCurrentStep(i + 1);
         const item = itemsToProcess[i];
@@ -195,7 +214,6 @@ export default function Dashboard() {
         let prediction = null;
         abortControllerRef.current = new AbortController();
 
-        // If playing the guaranteed Hackathon Demo Scenario, prioritize its targeted load curve
         if (isDemoScenario && item.target_demand_kw !== undefined) {
           const targetDemand = Number(item.target_demand_kw);
           const isOverload = targetDemand >= settings.criticalThreshold;
@@ -215,15 +233,12 @@ export default function Dashboard() {
           };
           setIsOnline(true);
         } else {
-          // Standard API communication with retry engine
           try {
             prediction = await fetchWithRetry(
               API_URL,
               {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 signal: abortControllerRef.current.signal,
                 body: JSON.stringify({
                   timestamp: item.timestamp,
@@ -237,9 +252,7 @@ export default function Dashboard() {
             );
             setIsOnline(true);
           } catch (fetchErr) {
-            if (fetchErr.name === 'AbortError' || stopRequestedRef.current) {
-              break;
-            }
+            if (fetchErr.name === 'AbortError' || stopRequestedRef.current) break;
 
             setIsOnline(false);
             prediction = generateSimulatedResponse(item, hourNum, settings);
@@ -255,15 +268,26 @@ export default function Dashboard() {
 
         const predicted_demand_kw = Number(prediction.predicted_demand_kw);
 
-        // Dynamic transition controller rules from SettingsContext
+        // Feature 5: Gamified Grid Defender Trigger on overload during simulation
+        if (
+          predicted_demand_kw >= settings.criticalThreshold &&
+          !hasTriggeredDefenderRef.current &&
+          !isCyberattack
+        ) {
+          hasTriggeredDefenderRef.current = true;
+          setDefenderDemand(predicted_demand_kw);
+          setIsDefenderOpen(true);
+          // Pause briefly to let the defender modal engage the operator
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+
         const isDynamicOverload = predicted_demand_kw >= settings.criticalThreshold;
         const alert =
           prediction.alert === 'CRITICAL_OVERLOAD' || isDynamicOverload
             ? 'CRITICAL_OVERLOAD'
             : 'NONE';
 
-        // Feature 7: SMS/Email Alert simulation trigger
-        if (alert === 'CRITICAL_OVERLOAD') {
+        if (alert === 'CRITICAL_OVERLOAD' && !isCyberattack) {
           setSmsAlert({
             hour: hourLabel,
             demand: predicted_demand_kw,
@@ -271,7 +295,6 @@ export default function Dashboard() {
           });
         }
 
-        // Feature 9: Anomaly Detection Logic (> 40% jump from previous hour)
         let isAnomaly = false;
         let anomalySurgePct = 0;
         let anomalyReason = '';
@@ -290,11 +313,13 @@ export default function Dashboard() {
         const isPeak = hourNum >= peakStartHour && hourNum <= peakEndHour;
         const isHighDemand = predicted_demand_kw > settings.maxDemandThreshold;
 
-        const grid_mode =
-          prediction.grid_mode ||
-          (isDynamicOverload || isHighDemand || isPeak || item.solar_irradiance_wm2 > 250
-            ? 'RENEWABLE_STORAGE_MODE'
-            : 'MAIN_GRID_MODE');
+        // Force ISLANDED_MODE if under active cyberattack
+        const grid_mode = isCyberattack
+          ? 'ISLANDED_MODE'
+          : prediction.grid_mode ||
+            (isDynamicOverload || isHighDemand || isPeak || item.solar_irradiance_wm2 > 250
+              ? 'RENEWABLE_STORAGE_MODE'
+              : 'MAIN_GRID_MODE');
 
         const battery_soc =
           prediction.battery_soc !== undefined && prediction.battery_soc !== null
@@ -305,7 +330,7 @@ export default function Dashboard() {
           ...item,
           ...prediction,
           grid_mode,
-          alert,
+          alert: isCyberattack ? 'CRITICAL_OVERLOAD' : alert,
           hour: hourLabel,
           predicted_demand_kw,
           battery_soc,
@@ -317,18 +342,15 @@ export default function Dashboard() {
         setForecastData((prev) => [...prev, newPoint]);
         setLastUpdated(new Date().toLocaleTimeString());
 
-        // Wait streamingInterval ms per hour unless fast-forward or at end
         if (i < itemsToProcess.length - 1 && !fastForwardRef.current) {
           await new Promise((resolve) => setTimeout(resolve, settings.streamingInterval || 1500));
         }
       }
 
       setIsStreaming(false);
-      if (datasetName) {
-        setLoadedCsvName(datasetName);
-      }
+      if (datasetName) setLoadedCsvName(datasetName);
     },
-    [settings]
+    [settings, isCyberattack]
   );
 
   const handleStartSimulation = useCallback(() => {
@@ -342,7 +364,6 @@ export default function Dashboard() {
     runStreamingSimulation(standardItems, null, false);
   }, [csvData, loadedCsvName, runStreamingSimulation, todayStr]);
 
-  // Feature 3: Play Hackathon Demo Scenario
   const handlePlayDemoScenario = useCallback(() => {
     runStreamingSimulation(HACKATHON_DEMO_DATA, 'Hackathon Demo Scenario', true);
   }, [runStreamingSimulation]);
@@ -356,7 +377,7 @@ export default function Dashboard() {
     setIsStreaming(false);
   }, []);
 
-  // Feature 2: Voice Commands Integration
+  // Voice Commands Integration
   const { isListening, feedback, isSupported, toggleListening } = useVoiceCommands({
     onStartSimulation: handleStartSimulation,
     onStopSimulation: handleStopSimulation,
@@ -417,47 +438,66 @@ export default function Dashboard() {
     setSelectedHour(null);
   }, [handleStopSimulation, todayStr, settings]);
 
+  // Feature 2: Trigger / Neutralize Cyberattack Simulator
+  const handleToggleCyberattack = () => {
+    setIsCyberattack((prev) => {
+      const nextState = !prev;
+      setForecastData((curr) =>
+        curr.map((point) => ({
+          ...point,
+          grid_mode: nextState ? 'ISLANDED_MODE' : 'MAIN_GRID_MODE',
+          alert: nextState ? 'CRITICAL_OVERLOAD' : 'NONE',
+        }))
+      );
+      if (nextState) {
+        setSmsAlert({
+          hour: 'NOW',
+          demand: 220,
+          message:
+            '🚨 SCADA BREACH: Adversary packet injection detected on Port 502 (Modbus). Main Grid disconnected. EMERGENCY ISLANDED PROTOCOL ENGAGED.',
+        });
+      }
+      return nextState;
+    });
+  };
+
   const handleCsvLoaded = (rows, fileName) => {
     setCsvData(rows);
     setLoadedCsvName(fileName);
     runStreamingSimulation(rows, fileName, false);
   };
 
-  // Feature 1: Live Location Weather Ingestion handler
   const handleWeatherLoaded = (rows, label) => {
     setCsvData(rows);
     setLoadedCsvName(label);
     runStreamingSimulation(rows, label, false);
   };
 
-  // Feature 2: Override Current Load with OCR Reading
   const handleOverrideLoad = (newDemandKw) => {
     if (!newDemandKw || isNaN(newDemandKw)) return;
 
     setForecastData((prev) => {
       if (prev.length === 0) return prev;
-
       const updated = [...prev];
       const targetIndex = selectedHour
         ? updated.findIndex((d) => d.hour === selectedHour)
         : updated.length - 1;
 
       if (targetIndex === -1) return prev;
-
       const targetItem = updated[targetIndex];
       const val = Number(newDemandKw);
 
-      // Re-evaluate transition rules for this item
       const isOverload = val >= settings.criticalThreshold;
       const peakStart = parseInt(settings.peakWindowStart.split(':')[0], 10) || 18;
       const peakEnd = parseInt(settings.peakWindowEnd.split(':')[0], 10) || 22;
       const hourNum = parseInt(targetItem.hour.split(':')[0], 10);
       const isPeak = hourNum >= peakStart && hourNum <= peakEnd;
 
-      const grid_mode =
-        isOverload || isPeak || val > settings.maxDemandThreshold
-          ? 'RENEWABLE_STORAGE_MODE'
-          : 'MAIN_GRID_MODE';
+      const grid_mode = isCyberattack
+        ? 'ISLANDED_MODE'
+        : isOverload || isPeak || val > settings.maxDemandThreshold
+        ? 'RENEWABLE_STORAGE_MODE'
+        : 'MAIN_GRID_MODE';
 
       const battery_soc = Math.max(0, 100 - val / 3).toFixed(1);
 
@@ -475,7 +515,7 @@ export default function Dashboard() {
     setLastUpdated(`${new Date().toLocaleTimeString()} (OCR Override: ${newDemandKw} kW)`);
   };
 
-  // Feature 1: Export Shift Report (PDF)
+  // Export PDF Report
   const handleExportPDF = async () => {
     const element = document.getElementById('dashboard-report-content');
     if (!element) return;
@@ -485,7 +525,7 @@ export default function Dashboard() {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        backgroundColor: '#020617', // Match dark slate-950
+        backgroundColor: '#020617',
         logging: false,
       });
 
@@ -494,33 +534,30 @@ export default function Dashboard() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
 
-      // Header Banner
       pdf.setFillColor(9, 13, 22);
       pdf.rect(0, 0, pdfWidth, 26, 'F');
 
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(13);
-      pdf.setTextColor(34, 211, 238); // Cyan-400
+      pdf.setTextColor(34, 211, 238);
       pdf.text('GridSense Autonomous System - Shift Handover Report', 14, 11);
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
-      pdf.setTextColor(148, 163, 184); // Slate-400
+      pdf.setTextColor(148, 163, 184);
       pdf.text(
         `Generated: ${new Date().toLocaleString()} | Facility: Substation ALPHA-1 | Operator: Samm (Grid Admin)`,
         14,
         19
       );
 
-      // Captured Dashboard Canvas
       const contentWidth = pdfWidth - 28;
       const contentHeight = (canvas.height * contentWidth) / canvas.width;
-      const maxContentHeight = pdfHeight - 65; // Preserve space for header & signature
+      const maxContentHeight = pdfHeight - 65;
       const finalHeight = Math.min(contentHeight, maxContentHeight);
 
       pdf.addImage(imgData, 'PNG', 14, 29, contentWidth, finalHeight);
 
-      // Footer Operator Signature Line
       const footerY = pdfHeight - 20;
       pdf.setDrawColor(51, 65, 85);
       pdf.setLineWidth(0.5);
@@ -534,7 +571,6 @@ export default function Dashboard() {
         footerY
       );
 
-      // Signature Box
       pdf.setDrawColor(34, 211, 238);
       pdf.line(pdfWidth - 85, footerY, pdfWidth - 14, footerY);
       pdf.setTextColor(226, 232, 240);
@@ -548,7 +584,7 @@ export default function Dashboard() {
     }
   };
 
-  // Feature 10: Export Telemetry (JSON)
+  // Export JSON Telemetry
   const handleExportJSON = () => {
     if (!forecastData || forecastData.length === 0) return;
 
@@ -559,6 +595,7 @@ export default function Dashboard() {
         operator: 'Samm (Grid Admin)',
         timestamp: new Date().toISOString(),
         totalHours: forecastData.length,
+        isCyberattackActive: isCyberattack,
         settings: {
           maxDemandThresholdKw: settings.maxDemandThreshold,
           criticalThresholdKw: settings.criticalThreshold,
@@ -600,10 +637,11 @@ export default function Dashboard() {
       .filter(
         (item) =>
           item.alert === 'CRITICAL_OVERLOAD' ||
-          item.predicted_demand_kw >= settings.criticalThreshold
+          item.predicted_demand_kw >= settings.criticalThreshold ||
+          isCyberattack
       )
       .map((item) => item.hour);
-  }, [forecastData, settings.criticalThreshold]);
+  }, [forecastData, settings.criticalThreshold, isCyberattack]);
 
   const maxDemand = useMemo(() => {
     if (!forecastData || forecastData.length === 0) return 0;
@@ -632,12 +670,27 @@ export default function Dashboard() {
     return '100.0';
   }, [latestPrediction]);
 
+  const effectiveGridMode = isCyberattack
+    ? 'ISLANDED_MODE'
+    : latestPrediction?.grid_mode || 'MAIN_GRID_MODE';
+
   useEffect(() => {
     handleInstantMock();
   }, [handleInstantMock]);
 
   return (
     <div className="space-y-6 relative">
+      {/* Feature 5: Gamified Grid Defender Modal */}
+      <GridDefenderModal
+        isOpen={isDefenderOpen}
+        onClose={() => setIsDefenderOpen(false)}
+        onResumeSimulation={() => {
+          setIsDefenderOpen(false);
+          setIsStreaming(true);
+        }}
+        overloadDemand={defenderDemand}
+      />
+
       {/* Feature 7: Mock SMS/Email Alert Toast Notification */}
       {smsAlert && (
         <div className="fixed top-5 right-5 z-50 max-w-md bg-rose-950/95 border-2 border-rose-500 text-white p-4 rounded-2xl shadow-2xl shadow-rose-950/80 backdrop-blur-xl animate-bounce-once flex items-start gap-3">
@@ -647,7 +700,7 @@ export default function Dashboard() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
               <span className="text-xs font-black uppercase tracking-wider text-rose-300">
-                Automated SMS Dispatch
+                Automated SCADA Dispatch
               </span>
               <span className="text-[10px] font-mono text-rose-400 bg-rose-900/60 px-1.5 py-0.5 rounded">
                 Twilio Mock
@@ -665,12 +718,44 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Header Section with Grid Frequency & Theme Toggle */}
+      {/* Feature 2: Massive Red Siren Alert for Cyberattack */}
+      {isCyberattack && (
+        <div className="bg-rose-950/90 border-2 border-rose-500 p-5 rounded-2xl shadow-2xl shadow-rose-950/90 animate-pulse flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="p-3 rounded-2xl bg-rose-600/30 text-rose-400 border border-rose-500/60 animate-bounce">
+              <ShieldAlert className="w-8 h-8" />
+            </div>
+            <div>
+              <span className="text-[10px] font-mono font-bold tracking-widest text-rose-400 uppercase">
+                DEFCON 1 &bull; SCADA BUS BREACH DETECTED
+              </span>
+              <h3 className="text-base sm:text-lg font-black text-white font-mono">
+                ⚠️ ACTIVE CYBERATTACK: MAIN GRID BREACHED - ISLANDED PROTOCOL ENGAGED
+              </h3>
+              <p className="text-xs text-rose-200 mt-0.5">
+                Regional utility feeder severed. Main grid import: 0.0 kW. BESS battery discharging at 100% capacity to power microgrid.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleToggleCyberattack}
+            className="px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 shadow-xl border border-emerald-400/40 cursor-pointer shrink-0"
+          >
+            🛡️ Neutralize &amp; Restore Grid
+          </button>
+        </div>
+      )}
+
+      {/* Header Section with Grid Frequency, Theme Toggle & Cyberattack button */}
       <Header
         lastUpdated={lastUpdated}
         isOnline={isOnline}
         latestDemand={Number(latestPrediction?.predicted_demand_kw) || 0}
         criticalThreshold={settings.criticalThreshold}
+        gridMode={effectiveGridMode}
+        batterySoc={latestSoc}
+        isCyberattack={isCyberattack}
+        onTriggerCyberattack={handleToggleCyberattack}
       />
 
       {/* Feature 1: Live Location Weather Ingestion */}
@@ -697,22 +782,91 @@ export default function Dashboard() {
         onExportJSON={handleExportJSON}
       />
 
-      {/* Feature 2: Optical Meter Ingestion (OCR) Component */}
+      {/* Optical Meter Ingestion (OCR) Component */}
       <MeterScanner
         onOverrideLoad={handleOverrideLoad}
         currentLoad={latestPrediction?.predicted_demand_kw}
       />
 
-      {/* Printable Report Canvas Container (Captured by html2canvas for PDF Shift Report) */}
+      {/* Printable Report Canvas Container */}
       <div id="dashboard-report-content" className="space-y-6 rounded-2xl bg-slate-950/60 p-2 sm:p-4">
-        {/* Unmissable Alert Banner with aria-live="assertive" */}
+        {/* Unmissable Alert Banner */}
         {criticalHours.length > 0 && (
           <AlertBanner criticalHours={criticalHours} maxDemand={maxDemand} />
         )}
 
         {forecastData.length > 0 && <MetricsOverview forecastData={forecastData} />}
 
-        {/* Main Grid: Recharts Load Curve + Animated Power Flow Diagram & Battery SOC */}
+        {/* Feature 1: Digital Twin Microgrid Visualization (3D WebGL vs 2D Schematic) */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between pb-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase font-bold tracking-wider text-slate-400">
+                Microgrid Telemetry Twin
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-bold border border-cyan-800/60">
+                Spatial WebGL
+              </span>
+            </div>
+
+            {/* View Switcher Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDefenderOpen(true)}
+                title="Launch the Gamified Grid Defender emergency tactical mini-game"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold text-amber-200 bg-amber-950/80 hover:bg-amber-900 border border-amber-600/60 cursor-pointer shadow-md"
+              >
+                <Gamepad2 className="w-3.5 h-3.5 text-amber-400" />
+                <span>Play Grid Defender Drill</span>
+              </button>
+
+              <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-white/10 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDigitalTwinMode('3D')}
+                  className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    digitalTwinMode === '3D'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Box className="w-3.5 h-3.5" />
+                  <span>3D Digital Twin</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDigitalTwinMode('2D')}
+                  className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    digitalTwinMode === '2D'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>2D Schematic</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {digitalTwinMode === '3D' ? (
+            <Substation3D
+              gridMode={effectiveGridMode}
+              batterySoc={latestSoc}
+              demandKw={latestPrediction?.predicted_demand_kw || 140}
+            />
+          ) : (
+            <PowerFlowDiagram
+              mode={effectiveGridMode}
+              timestamp={latestPrediction?.timestamp}
+              demand={latestPrediction?.predicted_demand_kw}
+              batterySoc={latestSoc}
+            />
+          )}
+        </div>
+
+        {/* Main Grid: Recharts Load Curve + Battery Gauge & Hourly Scrubber */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Load Curve Chart */}
           <div className="lg:col-span-2">
@@ -725,15 +879,8 @@ export default function Dashboard() {
             />
           </div>
 
-          {/* Right Column: Animated Power Flow Diagram + Battery Gauge */}
+          {/* Right Column: Battery Gauge + Scrubber */}
           <div className="flex flex-col gap-6 justify-between">
-            <PowerFlowDiagram
-              mode={latestPrediction?.grid_mode || 'MAIN_GRID_MODE'}
-              timestamp={latestPrediction?.timestamp}
-              demand={latestPrediction?.predicted_demand_kw}
-              batterySoc={latestSoc}
-            />
-
             <BatteryGauge
               latestDemand={latestPrediction?.predicted_demand_kw}
               soc={latestSoc}
@@ -752,7 +899,8 @@ export default function Dashboard() {
                     const isSelected = latestPrediction?.hour === d.hour;
                     const isOverload =
                       d.alert === 'CRITICAL_OVERLOAD' ||
-                      d.predicted_demand_kw >= settings.criticalThreshold;
+                      d.predicted_demand_kw >= settings.criticalThreshold ||
+                      isCyberattack;
                     const isSpike = !!d.isAnomaly;
 
                     return (
@@ -782,7 +930,7 @@ export default function Dashboard() {
         <HourlyTable forecastData={forecastData} />
       </div>
 
-      {/* Feature 2: Floating Voice Command Button & Feedback Bar */}
+      {/* Floating Voice Command Button & Feedback Bar */}
       {isSupported && (
         <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto">
           {feedback && (

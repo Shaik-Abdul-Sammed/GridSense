@@ -1,4 +1,4 @@
-import { Zap, Activity, Sun, Moon } from 'lucide-react';
+import { Zap, Activity, Sun, Moon, TrendingUp, ShieldAlert, DollarSign } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 export default function Header({
@@ -6,20 +6,35 @@ export default function Header({
   isOnline,
   latestDemand = 0,
   criticalThreshold = 200,
+  isCyberattack = false,
+  onTriggerCyberattack,
 }) {
   const { isDark, toggleTheme } = useTheme();
 
+  // Feature 4: Dynamic Pricing Engine (Tariff Ticker)
+  // Formula: price = 0.10 + (currentDemand / 1000) * 5 ($/kWh)
+  const currentTariff = (0.10 + (Number(latestDemand) / 1000) * 5).toFixed(2);
+  const isTariffSpike = latestDemand > criticalThreshold || currentTariff >= 1.0;
+
+  // Microgrid Cost Avoidance / Battery Peak Savings:
+  // When in RENEWABLE_STORAGE_MODE or high demand, avoiding high tariff:
+  const peakSavings = (
+    Math.max(0, (latestDemand * 0.7) * (Number(currentTariff) - 0.10))
+  ).toFixed(2);
+
   // Grid Frequency Simulation (Feature 4)
-  // When demand exceeds critical threshold (e.g. 200 kW), frequency drops into the 49.50 - 49.80 Hz range.
-  const isOverloaded = latestDemand >= criticalThreshold;
-  const simulatedFrequency = isOverloaded
+  const isOverloaded = latestDemand >= criticalThreshold || isCyberattack;
+  const simulatedFrequency = isCyberattack
+    ? '0.00'
+    : isOverloaded
     ? (49.5 + Math.max(0, 0.3 * (1 - (latestDemand - criticalThreshold) / 100))).toFixed(2)
     : '50.00';
 
   return (
-    <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+    <header className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pb-6 border-b border-white/10">
+      {/* Brand & Substation Identity */}
       <div className="flex items-center gap-3">
-        <div className="p-3 bg-gradient-to-tr from-cyan-600 to-emerald-500 rounded-xl shadow-lg shadow-cyan-500/20 text-white flex items-center justify-center">
+        <div className="p-3 bg-gradient-to-tr from-cyan-600 via-cyan-500 to-emerald-400 rounded-xl shadow-lg shadow-cyan-500/20 text-white flex items-center justify-center">
           <Zap className="w-8 h-8" />
         </div>
         <div>
@@ -28,32 +43,62 @@ export default function Header({
               GridSense Dashboard
             </h1>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono">
-              v2.5 Enterprise
+              v3.0 Sci-Fi Twin
             </span>
           </div>
           <p className="text-sm text-slate-400">
-            Autonomous Smart Grid Load Forecasting & Storage Management
+            Autonomous Digital Twin, P2P Energy Marketplace &amp; Neural Fault Controller
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 self-stretch md:self-auto justify-between md:justify-end">
-        {/* Grid Frequency Monitor (Feature 4) */}
+      {/* Tickers & Real-time Gauges */}
+      <div className="flex flex-wrap items-center gap-2.5 self-stretch xl:self-auto justify-between xl:justify-end">
+        {/* Feature 4: Live Dynamic Tariff Ticker */}
         <div
           title={
-            isOverloaded
-              ? 'High demand is causing grid generator frequency decay below nominal threshold!'
-              : 'Grid frequency is synchronized and stable at nominal 50.00 Hz'
+            isTariffSpike
+              ? 'PEAK SURGE TARIFF: High regional demand has triggered emergency dynamic tariff!'
+              : 'Dynamic market clearing tariff based on real-time feeder demand'
           }
           className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all ${
-            isOverloaded
+            isTariffSpike
+              ? 'bg-rose-950/80 border-rose-500/80 text-rose-300 shadow-lg shadow-rose-950/60 animate-pulse'
+              : 'bg-slate-900/80 border-white/10 text-cyan-300'
+          }`}
+        >
+          <TrendingUp className={`w-4 h-4 ${isTariffSpike ? 'text-rose-400' : 'text-emerald-400'}`} />
+          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] text-slate-400">TARIFF:</span>
+              <span className="font-black text-sm">${currentTariff}</span>
+              <span className="text-[10px] text-slate-400">/kWh</span>
+            </div>
+            <div className="hidden md:flex items-center gap-1 text-[10px] text-emerald-400 font-bold border-l border-white/10 pl-2">
+              <DollarSign className="w-3 h-3" />
+              <span>BESS Saved: ${peakSavings}/h</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Feature 4: Grid Frequency Monitor */}
+        <div
+          title={
+            isCyberattack
+              ? 'MAIN GRID DISCONNECTED UNDER CYBERATTACK'
+              : isOverloaded
+              ? 'Generator frequency decaying under severe overload stress!'
+              : 'Grid generator frequency is nominal and synchronized'
+          }
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all ${
+            isCyberattack || isOverloaded
               ? 'bg-rose-950/80 border-rose-500/60 text-rose-300 shadow-lg shadow-rose-950/50 animate-pulse'
               : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
           }`}
         >
           <Activity
             className={`w-4 h-4 ${
-              isOverloaded ? 'text-rose-400 animate-bounce' : 'text-emerald-400'
+              isCyberattack || isOverloaded ? 'text-rose-400 animate-bounce' : 'text-emerald-400'
             }`}
           />
           <div className="flex items-center gap-1.5">
@@ -61,13 +106,13 @@ export default function Header({
               {simulatedFrequency} Hz
             </span>
             <span className="text-[10px] hidden sm:inline text-slate-300">
-              {isOverloaded ? 'FREQ DROP' : 'NOMINAL'}
+              {isCyberattack ? 'ISLANDED' : isOverloaded ? 'FREQ DROP' : 'NOMINAL'}
             </span>
           </div>
         </div>
 
         {/* Live API Status */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs">
+        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs">
           <span className="relative flex h-2.5 w-2.5">
             <span
               className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
@@ -80,12 +125,33 @@ export default function Header({
               }`}
             />
           </span>
-          <span className="text-slate-300">
-            {isOnline ? 'Live API Connected' : 'Ready / Standby'}
+          <span className="text-slate-300 font-mono text-[11px]">
+            {isOnline ? 'API Connected' : 'Local Fallback'}
           </span>
         </div>
 
-        {/* Theme Toggle Button (Feature 6) */}
+        {/* Feature 2: Cyberattack / Fault Injection Quick Trigger */}
+        {onTriggerCyberattack && (
+          <button
+            type="button"
+            onClick={onTriggerCyberattack}
+            title={
+              isCyberattack
+                ? 'Neutralize cyberattack and restore main grid telemetry'
+                : 'Simulate adversary SCADA penetration forcing emergency islanded mode'
+            }
+            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              isCyberattack
+                ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-400 animate-pulse'
+                : 'bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border-rose-700/60'
+            }`}
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>{isCyberattack ? '🛡️ Restore Grid' : '⚠️ Cyberattack'}</span>
+          </button>
+        )}
+
+        {/* Theme Toggle Button */}
         <button
           type="button"
           onClick={toggleTheme}
@@ -101,7 +167,7 @@ export default function Header({
         </button>
 
         {lastUpdated && (
-          <div className="text-xs text-slate-400 font-mono bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10">
+          <div className="text-xs text-slate-400 font-mono bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10 hidden md:block">
             Sync: {lastUpdated}
           </div>
         )}

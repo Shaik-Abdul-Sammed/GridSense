@@ -9,13 +9,21 @@ import {
   Zap,
   Info,
   Download,
-  FileSpreadsheet,
+  Terminal,
+  ShieldAlert,
+  Moon,
+  Coins,
+  Flame,
+  FileText,
 } from 'lucide-react';
 import {
-  generateNormalDayCsv,
-  generateExtremeStormCsv,
-  triggerDownloadCsv,
-} from '../utils/generateDemoFiles';
+  TEST_NORMAL_DAY_CSV,
+  TEST_CYBERATTACK_JSON,
+  TEST_PEAK_SURGE_CSV,
+  TEST_P2P_MARKET_JSON,
+  TEST_ZERO_SOLAR_CSV,
+  downloadFile,
+} from '../utils/testSuiteGenerator';
 
 export default function Settings() {
   const { settings, updateSettings, resetSettings, DEFAULT_SETTINGS } = useSettings();
@@ -29,6 +37,7 @@ export default function Settings() {
   });
 
   const [savedToast, setSavedToast] = useState(false);
+  const [injectedToast, setInjectedToast] = useState(null);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -56,13 +65,9 @@ export default function Settings() {
     setFormData((prev) => ({ ...prev, ...preset }));
   };
 
-  // Automated Test & Demo File Download handlers (Feature 3)
-  const handleDownloadNormal = () => {
-    triggerDownloadCsv(generateNormalDayCsv(), 'demo_normal_day.csv');
-  };
-
-  const handleDownloadStorm = () => {
-    triggerDownloadCsv(generateExtremeStormCsv(), 'demo_extreme_storm.csv');
+  const showInjectMessage = (msg) => {
+    setInjectedToast(msg);
+    setTimeout(() => setInjectedToast(null), 3500);
   };
 
   return (
@@ -75,11 +80,11 @@ export default function Settings() {
               <Sliders className="w-5 h-5" />
             </div>
             <h2 className="text-xl md:text-2xl font-black tracking-tight text-white">
-              Transition Controller Rules
+              Grid Configuration &amp; Developer Tools
             </h2>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Configure dynamic load thresholds and peak window constraints that drive autonomous grid switching.
+            Configure autonomous transition rules, launch fault injectors, and generate the 5 automated test scenarios.
           </p>
         </div>
 
@@ -89,72 +94,186 @@ export default function Settings() {
             <span>Rules Saved to Storage!</span>
           </div>
         )}
+
+        {injectedToast && (
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 text-xs font-bold animate-fadeIn">
+            <Terminal className="w-4 h-4 text-cyan-400" />
+            <span>{injectedToast}</span>
+          </div>
+        )}
       </div>
 
-      {/* Feature 3: Automated Test & Demo File Generator */}
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-3">
+      {/* Feature 6: Developer Tools & Automated Test-Suite Scenarios */}
+      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-5 md:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Automated Test & Benchmark Datasets
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-emerald-950 text-emerald-400 border border-emerald-800/60">
-              Evaluator Ready
+            <Terminal className="w-5 h-5 text-cyan-400" />
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+              Developer Tools &bull; Automated Test Suite Suite (5 Scenarios)
+            </h3>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-cyan-950 text-cyan-300 border border-cyan-800/80">
+              ONE-CLICK BENCHMARK
             </span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Download standard test datasets to drag-and-drop into the Live Dashboard.
-          </span>
+          <p className="text-[11px] text-slate-400">
+            Stored in <code className="text-cyan-300">public/test-data/</code> for automated evaluator ingest.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <div className="p-4 rounded-xl bg-slate-800/60 border border-white/5 flex flex-col justify-between gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+          {/* 1. test_normal_day.csv */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-white/10 flex flex-col justify-between gap-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">
-                  Normal Diurnal Day (Baseline)
+                <span className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                  test_normal_day.csv
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-mono">
-                  Standard Weather
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                  BASELINE
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                24 hours of standard 20°C–31°C diurnal cycle and smooth solar curve. Safe demand profile within 100–160 kW.
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                Standard 24h diurnal curve. All hours within nominal limits (100–160 kW). Zero alerts.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleDownloadNormal}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-800/60 transition-colors cursor-pointer select-none"
-            >
-              <Download className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Download demo_normal_day.csv</span>
-            </button>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_NORMAL_DAY_CSV, 'test_normal_day.csv', 'text/csv');
+                  showInjectMessage('Downloaded test_normal_day.csv');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-cyan-300 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800/60 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-800/60 border border-white/5 flex flex-col justify-between gap-3">
+          {/* 2. test_cyberattack.json */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-rose-500/30 flex flex-col justify-between gap-3">
             <div>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-white">
-                  Extreme Storm & Peak Stress
+                <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
+                  test_cyberattack.json
                 </span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-rose-950 text-rose-300 font-mono">
-                  Overload Stress
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                  FAULT SCADA
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Extreme 42.5°C heat stress causing catastrophic 19:00 load spike (&gt; 220 kW). Triggers emergency storage and CRITICAL_OVERLOAD.
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                Forces main grid power to 0.0 kW, disengages transmission bus, and triggers emergency islanding.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={handleDownloadStorm}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-rose-300 bg-rose-950/80 hover:bg-rose-900 border border-rose-800/60 transition-colors cursor-pointer select-none"
-            >
-              <Download className="w-3.5 h-3.5 text-rose-400" />
-              <span>Download demo_extreme_storm.csv</span>
-            </button>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_CYBERATTACK_JSON, 'test_cyberattack.json', 'application/json');
+                  showInjectMessage('Downloaded test_cyberattack.json');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-300 bg-rose-950 hover:bg-rose-900 border border-rose-800/60 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 3. test_peak_surge.csv */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-amber-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <Flame className="w-3.5 h-3.5 text-amber-400" />
+                  test_peak_surge.csv
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                  OVERLOAD
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                Thermal stress surge jumping instantly to 250 kW at 19:00, forcing the Grid Defender mini-game!
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_PEAK_SURGE_CSV, 'test_peak_surge.csv', 'text/csv');
+                  showInjectMessage('Downloaded test_peak_surge.csv');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-amber-300 bg-amber-950 hover:bg-amber-900 border border-amber-800/60 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 4. test_p2p_market.json */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-purple-500/30 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+                  <Coins className="w-3.5 h-3.5 text-purple-400" />
+                  test_p2p_market.json
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
+                  LEDGER
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                Simulates 42 prosumers with 680 kW surplus rooftop solar, triggering high-frequency smart contracts.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_P2P_MARKET_JSON, 'test_p2p_market.json', 'application/json');
+                  showInjectMessage('Downloaded test_p2p_market.json');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-purple-300 bg-purple-950 hover:bg-purple-900 border border-purple-800/60 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 5. test_zero_solar.csv */}
+          <div className="p-4 rounded-xl bg-slate-950/80 border border-white/10 flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                  <Moon className="w-3.5 h-3.5 text-slate-400" />
+                  test_zero_solar.csv
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  NIGHTTIME
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1.5 leading-snug">
+                Continuous dark/cloudy scenario with zero solar irradiance (0 W/m²). Tests pure BESS resilience.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  downloadFile(TEST_ZERO_SOLAR_CSV, 'test_zero_solar.csv', 'text/csv');
+                  showInjectMessage('Downloaded test_zero_solar.csv');
+                }}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -245,16 +364,14 @@ export default function Settings() {
       {/* Main Settings Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Threshold Inputs */}
           <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-6 space-y-5">
             <div className="flex items-center gap-2 pb-3 border-b border-white/10">
               <Zap className="w-4 h-4 text-cyan-400" />
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                Demand & Overload Limits
+                Demand &amp; Overload Limits
               </h3>
             </div>
 
-            {/* Max Grid Demand Threshold */}
             <div>
               <label
                 htmlFor="maxDemandThreshold"
@@ -285,7 +402,6 @@ export default function Settings() {
               </p>
             </div>
 
-            {/* Critical Overload Threshold */}
             <div>
               <label
                 htmlFor="criticalThreshold"
@@ -318,16 +434,14 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Peak Window & Simulation Cadence */}
           <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-6 space-y-5">
             <div className="flex items-center gap-2 pb-3 border-b border-white/10">
               <AlertTriangle className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                Peak Window & Cadence Constraints
+                Peak Window &amp; Cadence Constraints
               </h3>
             </div>
 
-            {/* Peak Window Start & End */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label
@@ -372,7 +486,6 @@ export default function Settings() {
               </div>
             </div>
 
-            {/* Streaming Cadence */}
             <div>
               <label
                 htmlFor="streamingInterval"
@@ -404,7 +517,6 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Live Rule Impact Summary Card */}
         <div className="bg-gradient-to-r from-slate-900/90 to-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />

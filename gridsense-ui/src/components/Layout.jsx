@@ -4,9 +4,10 @@ import Sidebar from './Sidebar';
 import { Menu, Zap } from 'lucide-react';
 
 const PAGE_TITLES = {
-  '/': 'Real-Time Grid Telemetry & Forecasting',
+  '/': 'Real-Time Grid Telemetry & 3D Digital Twin',
   '/analytics': 'Predictive Model Insights & Feature Importance',
   '/history': 'Dispatch Decision Log & Audit Trail',
+  '/marketplace': 'Peer-to-Peer (P2P) Energy Marketplace Ledger',
   '/settings': 'Grid Transition Controller Rules & Thresholds',
 };
 
