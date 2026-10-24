@@ -653,48 +653,52 @@ export default function Dashboard() {
   const handleExportJSON = () => {
     if (!forecastData || forecastData.length === 0) return;
 
-    const payload = {
-      exportMetadata: {
-        system: 'GridSense Autonomous Smart Grid Command Center',
-        facility: 'Substation ALPHA-1',
-        operator: 'Samm (Grid Admin)',
-        timestamp: new Date().toISOString(),
-        totalHours: forecastData.length,
-        isCyberattackActive: isCyberattack,
-        climateDeltaAppliedC: climateDelta,
-        settings: {
-          maxDemandThresholdKw: settings.maxDemandThreshold,
-          criticalThresholdKw: settings.criticalThreshold,
-          peakWindow: `${settings.peakWindowStart} - ${settings.peakWindowEnd}`,
+    try {
+      const payload = {
+        exportMetadata: {
+          system: 'GridSense Autonomous Smart Grid Command Center',
+          facility: 'Substation ALPHA-1',
+          operator: 'Samm (Grid Admin)',
+          timestamp: new Date().toISOString(),
+          totalHours: forecastData.length,
+          isCyberattackActive: isCyberattack,
+          climateDeltaAppliedC: climateDelta,
+          settings: {
+            maxDemandThresholdKw: settings.maxDemandThreshold,
+            criticalThresholdKw: settings.criticalThreshold,
+            peakWindow: `${settings.peakWindowStart} - ${settings.peakWindowEnd}`,
+          },
         },
-      },
-      esgMetrics: {
-        carbonDisplacedKg: forecastData
-          .reduce(
-            (acc, d) =>
-              d.grid_mode === 'RENEWABLE_STORAGE_MODE'
-                ? acc + (Number(d.predicted_demand_kw) || 0) * 0.45
-                : acc,
-            0
-          )
-          .toFixed(2),
-        renewableHours: forecastData.filter(
-          (d) => d.grid_mode === 'RENEWABLE_STORAGE_MODE'
-        ).length,
-      },
-      telemetry: forecastData,
-    };
+        esgMetrics: {
+          carbonDisplacedKg: forecastData
+            .reduce(
+              (acc, d) =>
+                d.grid_mode === 'RENEWABLE_STORAGE_MODE'
+                  ? acc + (Number(d.predicted_demand_kw) || 0) * 0.45
+                  : acc,
+              0
+            )
+            .toFixed(2),
+          renewableHours: forecastData.filter(
+            (d) => d.grid_mode === 'RENEWABLE_STORAGE_MODE'
+          ).length,
+        },
+        telemetry: forecastData,
+      };
 
-    const jsonStr = JSON.stringify(payload, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'gridsense_telemetry.json';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'gridsense_telemetry.json';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export JSON telemetry:', err);
+    }
   };
 
   const criticalHours = useMemo(() => {

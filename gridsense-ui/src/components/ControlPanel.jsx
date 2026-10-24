@@ -185,28 +185,33 @@ export default function ControlPanel({
   const handleExportResults = () => {
     if (!forecastData || forecastData.length === 0) return;
 
-    const exportRows = forecastData.map((d) => ({
-      timestamp: d.timestamp,
-      hour: d.hour,
-      predicted_demand_kw: d.predicted_demand_kw,
-      grid_mode: d.grid_mode || 'MAIN_GRID_MODE',
-      alert: d.alert || 'NONE',
-      battery_soc: d.battery_soc ?? '100.0',
-      ambient_temp_c: d.ambient_temp_c ?? '',
-      humidity_pct: d.humidity_pct ?? '',
-      solar_irradiance_wm2: d.solar_irradiance_wm2 ?? '',
-    }));
+    try {
+      const exportRows = forecastData.map((d) => ({
+        timestamp: d.timestamp,
+        hour: d.hour,
+        predicted_demand_kw: d.predicted_demand_kw,
+        grid_mode: d.grid_mode || 'MAIN_GRID_MODE',
+        alert: d.alert || 'NONE',
+        battery_soc: d.battery_soc ?? '100.0',
+        ambient_temp_c: d.ambient_temp_c ?? '',
+        humidity_pct: d.humidity_pct ?? '',
+        solar_irradiance_wm2: d.solar_irradiance_wm2 ?? '',
+      }));
 
-    const csvContent = Papa.unparse(exportRows);
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', url);
-    downloadAnchor.setAttribute('download', 'gridsense_forecast_results.csv');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    document.body.removeChild(downloadAnchor);
-    URL.revokeObjectURL(url);
+      const csvContent = Papa.unparse(exportRows);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', url);
+      downloadAnchor.setAttribute('download', 'gridsense_forecast_results.csv');
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      document.body.removeChild(downloadAnchor);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export forecast results CSV:', err);
+      setCsvError('Failed to generate results CSV: ' + err.message);
+    }
   };
 
   return (

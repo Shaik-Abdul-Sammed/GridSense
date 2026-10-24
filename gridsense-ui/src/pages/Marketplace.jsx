@@ -83,50 +83,67 @@ export default function Marketplace() {
   const [totalKwhTraded, setTotalKwhTraded] = useState(3840);
   const [isLiveTrading, setIsLiveTrading] = useState(true);
   const [filterText, setFilterText] = useState('');
+  const [volumeFilter, setVolumeFilter] = useState('ALL'); // 'ALL', 'HIGH', 'COMMUNITY'
 
   const nextTxIdRef = useRef(8942);
 
-  // Live real-time transaction streaming using setInterval
+  // Live real-time transaction streaming using setInterval with try/catch
   useEffect(() => {
     if (!isLiveTrading) return;
 
     const interval = setInterval(() => {
-      const seller = PROSUMER_POOL[Math.floor(Math.random() * PROSUMER_POOL.length)];
-      const buyer = CONSUMER_POOL[Math.floor(Math.random() * CONSUMER_POOL.length)];
-      const amountKw = Number((2 + Math.random() * 8).toFixed(1));
-      const pricePerKwh = Number((0.10 + Math.random() * 0.05).toFixed(2));
-      const totalValue = Number((amountKw * pricePerKwh).toFixed(2));
-      const hash = `0x${Math.random().toString(16).substring(2, 6)}...${Math.random().toString(16).substring(2, 6)}`;
-      const now = new Date();
-      const timestamp = now.toTimeString().split(' ')[0];
+      try {
+        const seller = PROSUMER_POOL[Math.floor(Math.random() * PROSUMER_POOL.length)];
+        const buyer = CONSUMER_POOL[Math.floor(Math.random() * CONSUMER_POOL.length)];
+        const amountKw = Number((2 + Math.random() * 12).toFixed(1));
+        const pricePerKwh = Number((0.10 + Math.random() * 0.05).toFixed(2));
+        const totalValue = Number((amountKw * pricePerKwh).toFixed(2));
+        const hash = `0x${Math.random().toString(16).substring(2, 6)}...${Math.random().toString(16).substring(2, 6)}`;
+        const now = new Date();
+        const timestamp = now.toTimeString().split(' ')[0];
 
-      const newTx = {
-        id: `TX-${nextTxIdRef.current++}`,
-        hash,
-        seller,
-        buyer,
-        amountKw,
-        pricePerKwh,
-        totalValue,
-        timestamp,
-        status: 'VERIFIED_ON_CHAIN',
-      };
+        const newTx = {
+          id: `TX-${nextTxIdRef.current++}`,
+          hash,
+          seller,
+          buyer,
+          amountKw,
+          pricePerKwh,
+          totalValue,
+          timestamp,
+          status: 'VERIFIED_ON_CHAIN',
+        };
 
-      setTransactions((prev) => [newTx, ...prev.slice(0, 39)]); // Keep latest 40 trades
-      setTotalRevenue((prev) => Number((prev + totalValue).toFixed(2)));
-      setTotalKwhTraded((prev) => Number((prev + amountKw).toFixed(1)));
+        setTransactions((prev) => [newTx, ...prev.slice(0, 39)]); // Keep latest 40 trades
+        setTotalRevenue((prev) => Number((prev + totalValue).toFixed(2)));
+        setTotalKwhTraded((prev) => Number((prev + amountKw).toFixed(1)));
+      } catch (err) {
+        console.error('Error generating simulated P2P transaction:', err);
+      }
     }, 2200);
 
     return () => clearInterval(interval);
   }, [isLiveTrading]);
 
-  const filteredTx = transactions.filter(
-    (tx) =>
-      tx.seller.toLowerCase().includes(filterText.toLowerCase()) ||
-      tx.buyer.toLowerCase().includes(filterText.toLowerCase()) ||
-      tx.id.toLowerCase().includes(filterText.toLowerCase()) ||
-      tx.hash.toLowerCase().includes(filterText.toLowerCase())
-  );
+  const filteredTx = transactions.filter((tx) => {
+    if (!tx) return false;
+
+    if (volumeFilter === 'HIGH' && tx.amountKw < 8.0) return false;
+    if (volumeFilter === 'COMMUNITY' && !tx.seller.includes('Community') && !tx.buyer.includes('EV')) {
+      return false;
+    }
+
+    if (filterText.trim()) {
+      const q = filterText.toLowerCase().trim();
+      return (
+        tx.seller.toLowerCase().includes(q) ||
+        tx.buyer.toLowerCase().includes(q) ||
+        tx.id.toLowerCase().includes(q) ||
+        tx.hash.toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
 
   return (
     <div className="space-y-6">
@@ -237,16 +254,37 @@ export default function Marketplace() {
             </h3>
           </div>
 
-          {/* Filter Input */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
+          {/* Filter Controls */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-1 bg-slate-950/80 p-0.5 rounded-xl border border-white/10 text-xs">
+              {[
+                { id: 'ALL', label: 'All Trades' },
+                { id: 'HIGH', label: 'High Vol (≥8 kW)' },
+                { id: 'COMMUNITY', label: 'Community Hub' },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  type="button"
+                  onClick={() => setVolumeFilter(btn.id)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                    volumeFilter === btn.id
+                      ? 'bg-cyan-500 text-slate-950 font-bold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative flex-1 sm:w-56">
               <Filter className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5" />
               <input
                 type="text"
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
                 placeholder="Search house, buyer, or hash..."
-                className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-hidden focus:border-cyan-500"
+                className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-200 outline-hidden focus:border-cyan-500 font-mono"
               />
             </div>
           </div>
