@@ -5,14 +5,12 @@ import {
   Scan,
   AlertTriangle,
   Layers,
-  Sparkles,
   Thermometer,
 } from 'lucide-react';
 
 export default function FieldTechAR({ isOpen, onClose }) {
   const videoRef = useRef(null);
   const [hasCamera, setHasCamera] = useState(false);
-  const [cameraError, setCameraError] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResults, setScanResults] = useState(false);
   const [filterMode, setFilterMode] = useState('FLIR'); // 'FLIR', 'OPTICAL', 'NVG'
@@ -27,8 +25,9 @@ export default function FieldTechAR({ isOpen, onClose }) {
     let stream = null;
     const startCamera = async () => {
       try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          throw new Error('Camera device API not supported');
+        if (!navigator?.mediaDevices?.getUserMedia) {
+          setHasCamera(false);
+          return;
         }
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -38,9 +37,8 @@ export default function FieldTechAR({ isOpen, onClose }) {
           videoRef.current.srcObject = stream;
           setHasCamera(true);
         }
-      } catch (err) {
-        console.warn('Camera stream unavailable, engaging FLIR Digital Simulation mode:', err);
-        setCameraError(err.message);
+      } catch {
+        // Silently switch to FLIR Digital Simulation mode without throwing red console errors
         setHasCamera(false);
       }
     };
@@ -134,7 +132,7 @@ export default function FieldTechAR({ isOpen, onClose }) {
               }`}
             />
           ) : (
-            /* High-Tech FLIR Thermal Simulation Canvas if Camera is unavailable */
+            /* High-Tech FLIR Thermal Simulation Canvas when Camera is unavailable */
             <div className="absolute inset-0 bg-gradient-to-tr from-slate-950 via-indigo-950/60 to-rose-950/40 flex items-center justify-center overflow-hidden">
               {/* Simulated Substation Wireframe Background */}
               <div className="w-72 h-72 rounded-full border-2 border-dashed border-cyan-500/20 flex items-center justify-center animate-spin-slow">
@@ -142,6 +140,13 @@ export default function FieldTechAR({ isOpen, onClose }) {
                   <div className="w-24 h-24 rounded-full bg-rose-600/10 border border-rose-500/50 animate-ping" />
                 </div>
               </div>
+
+              {/* Exact Status Notification as Specified */}
+              <div className="absolute top-6 left-6 z-20 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-cyan-300 text-xs font-mono shadow-xl backdrop-blur-md flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+                <span>Camera unavailable, engaging FLIR Digital Simulation mode.</span>
+              </div>
+
               <div className="absolute bottom-6 left-6 text-xs font-mono text-cyan-400/60">
                 [FLIR IR SIMULATION ACTIVE &bull; SUBSTATION ALPHA-1 T-2 TRANSFORMER]
               </div>
@@ -230,51 +235,32 @@ export default function FieldTechAR({ isOpen, onClose }) {
                   Dielectric cooling flow constrained. Inspect pump seal.
                 </p>
               </div>
-
-              {/* Pin 3: Partial Discharge Pin */}
-              <div className="absolute top-1/3 left-1/4 bg-purple-950/90 border-2 border-purple-500 text-white p-3 rounded-xl shadow-2xl backdrop-blur-md max-w-xs animate-bounce-once">
-                <div className="flex items-center gap-1.5 text-purple-300 font-bold text-xs font-mono">
-                  <Sparkles className="w-4 h-4" />
-                  <span>PARTIAL DISCHARGE: 420 pC</span>
-                </div>
-                <p className="text-[10px] text-purple-200 mt-1">
-                  Winding insulation micro-fractures detected on Phase B.
-                </p>
-              </div>
             </div>
           )}
         </div>
 
-        {/* Bottom Action Footer */}
-        <div className="p-4 bg-slate-900/90 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 z-20">
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-300">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span>AI Neural Scanner Ready</span>
-            {cameraError && (
-              <span className="text-[10px] text-slate-400">(Fallback Simulation Active)</span>
-            )}
+        {/* Bottom AR Diagnostics & Control Tray */}
+        <div className="px-5 py-4 bg-slate-900/90 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4 z-20">
+          <div className="flex items-center gap-4 text-xs font-mono">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-slate-300">TELEMETRY LINK: 5G SECURE</span>
+            </div>
+            <div className="text-slate-400 hidden sm:block">
+              LATENCY: <span className="text-cyan-400 font-bold">14ms</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={handleSimulateScan}
               disabled={isScanning}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 shadow-xl shadow-cyan-950/50 cursor-pointer active:scale-95 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 shadow-xl shadow-cyan-950/60 transition-all select-none cursor-pointer"
             >
-              <Scan className={`w-4 h-4 ${isScanning ? 'animate-spin' : ''}`} />
-              <span>{isScanning ? 'Scanning Hardware...' : 'Simulate AR Diagnostic Scan'}</span>
+              <Scan className="w-4 h-4" />
+              <span>{isScanning ? 'Analyzing Telemetry...' : 'Simulate AR Defect Scan'}</span>
             </button>
-
-            {scanResults && (
-              <button
-                type="button"
-                onClick={() => setScanResults(false)}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
-              >
-                Clear Pins
-              </button>
-            )}
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   peakWindowStart: '18:00', // start of peak period
   peakWindowEnd: '22:00', // end of peak period
   streamingInterval: 1500, // ms between hourly simulation steps
+  enableGridDefender: false, // Default false: Blackout modal only triggers if explicitly enabled
 };
 
 const SettingsContext = createContext(null);

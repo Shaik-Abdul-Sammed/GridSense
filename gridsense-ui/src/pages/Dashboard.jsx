@@ -97,14 +97,16 @@ function generateSimulatedResponse(weatherPayload, hour, settings) {
   const peakStartHour = parseInt(settings.peakWindowStart.split(':')[0], 10) || 18;
   const peakEndHour = parseInt(settings.peakWindowEnd.split(':')[0], 10) || 22;
 
-  let baseDemand = 100 + 40 * Math.sin(((hour - 6) / 12) * Math.PI);
+  // Diurnal base curve: ~85kW nighttime to ~130kW midday
+  let baseDemand = 85 + 35 * Math.sin(((hour - 6) / 12) * Math.PI);
   if (hour >= peakStartHour && hour <= peakEndHour) {
-    baseDemand += 65 + (hour === 19 || hour === 20 ? 35 : 15);
+    // Evening peak reaches ~155-175kW (nominal peak, below 200kW critical threshold)
+    baseDemand += 35 + (hour === 19 || hour === 20 ? 15 : 5);
   } else if (hour >= 0 && hour <= 5) {
-    baseDemand = 75 + Math.random() * 20;
+    baseDemand = 65 + Math.random() * 15;
   }
 
-  const noise = Math.random() * 12 - 6;
+  const noise = Math.random() * 8 - 4;
   const predicted_demand_kw = Number(Math.max(40, baseDemand + noise).toFixed(1));
 
   const isOverload = predicted_demand_kw >= settings.criticalThreshold;
@@ -278,7 +280,7 @@ export default function Dashboard() {
             prediction = generateSimulatedResponse(item, hourNum, settings);
             if (i === 0) {
               setError(
-                `Backend at ${API_URL} unreachable after retries (${fetchErr.message}). Fallback resilience model engaged.`
+                'Backend offline. Running in Local Simulation Mode. Start the Python backend to connect to QuickML.'
               );
             }
           }
@@ -292,8 +294,9 @@ export default function Dashboard() {
           predicted_demand_kw = Number((predicted_demand_kw + climateDelta * 4.8).toFixed(1));
         }
 
-        // Gamified Grid Defender Trigger on overload during simulation
+        // Gamified Grid Defender Trigger on overload during simulation (Controlled by enableGridDefender setting)
         if (
+          Boolean(settings.enableGridDefender) &&
           predicted_demand_kw >= settings.criticalThreshold &&
           !hasTriggeredDefenderRef.current &&
           !isCyberattack
@@ -584,7 +587,7 @@ export default function Dashboard() {
     try {
       const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
         import('jspdf'),
-        import('html2canvas'),
+        import('html2canvas-pro'),
       ]);
 
       const canvas = await html2canvas(element, {
@@ -883,6 +886,9 @@ export default function Dashboard() {
         onTriggerCyberattack={handleToggleCyberattack}
         isVoiceMuted={isVoiceMuted}
         onToggleVoiceMute={toggleVoiceMute}
+        ambientTemp={latestPrediction?.ambient_temp_c ?? 26.5}
+        humidityPct={latestPrediction?.humidity_pct ?? 55}
+        solarIrradiance={latestPrediction?.solar_irradiance_wm2 ?? 350}
       />
 
       {/* Feature 2: "What-If" Climate Simulator Interactive Slider Bar */}
@@ -1094,7 +1100,11 @@ export default function Dashboard() {
 
         {/* Feature 5: Autonomous Drone Fleet Telemetry Map */}
         <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
-          <DroneFleet transformerHealth={transformerHealth.healthPct} />
+          <DroneFleet
+            currentDemand={Number(latestPrediction?.predicted_demand_kw) || 0}
+            gridMode={effectiveGridMode}
+            transformerHealth={transformerHealth.healthPct}
+          />
         </Suspense>
 
         {/* Digital Twin Microgrid Visualization (3D WebGL vs 2D Schematic) */}
@@ -1195,7 +1205,7 @@ export default function Dashboard() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-                  {forecastData.map((d) => {
+                  {forecastData.map((d, idx) => {
                     const isSelected = latestPrediction?.hour === d.hour;
                     const isOverload =
                       d.alert === 'CRITICAL_OVERLOAD' ||
@@ -1205,7 +1215,7 @@ export default function Dashboard() {
 
                     return (
                       <button
-                        key={d.hour}
+                        key={`${d.timestamp || d.hour}-${idx}`}
                         onClick={() => setSelectedHour(d.hour)}
                         className={`px-2 py-1 rounded text-[10px] font-mono shrink-0 cursor-pointer transition-all ${
                           isSelected

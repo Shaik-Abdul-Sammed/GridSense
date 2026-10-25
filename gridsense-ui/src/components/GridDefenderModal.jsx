@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import {
   ShieldAlert,
   Zap,
@@ -8,7 +9,32 @@ import {
   CheckCircle2,
   RotateCcw,
   Sparkles,
+  X,
+  Gamepad2,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
+
+// Web Audio sound synthesizer helper (no external audio assets required)
+function playTone(freq, duration = 0.2, type = 'sine', gainVal = 0.15) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(gainVal, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch {
+    // Audio context may be blocked by browser policy prior to user interaction
+  }
+}
 
 export default function GridDefenderModal({
   isOpen,
@@ -16,39 +42,54 @@ export default function GridDefenderModal({
   onResumeSimulation,
   overloadDemand = 225,
 }) {
-  const [timeLeft, setTimeLeft] = useState(5.0);
-  const [gameState, setGameState] = useState('PLAYING'); // 'PLAYING', 'VICTORY', 'BLACKOUT'
+  const [timeLeft, setTimeLeft] = useState(8.0);
+  const [gameState, setGameState] = useState('PLAYING'); // 'PLAYING', 'VICTORY', 'VICTORY_MARGINAL', 'BLACKOUT'
   const [selectedAction, setSelectedAction] = useState(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const timerRef = useRef(null);
 
-  useEffect(() => {
-    if (!isOpen) {
-      setGameState('PLAYING');
-      setTimeLeft(5.0);
-      setSelectedAction(null);
-      if (timerRef.current) clearInterval(timerRef.current);
-      return;
-    }
-
+  const startTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    setTimeLeft(8.0);
     setGameState('PLAYING');
-    setTimeLeft(5.0);
     setSelectedAction(null);
 
-    const intervalMs = 100;
+    if (soundEnabled) {
+      playTone(440, 0.15, 'sawtooth', 0.1);
+      setTimeout(() => playTone(880, 0.2, 'sawtooth', 0.1), 180);
+    }
+
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 0.1) {
           clearInterval(timerRef.current);
           setGameState('BLACKOUT');
+          if (soundEnabled) {
+            playTone(150, 0.6, 'sawtooth', 0.25);
+            setTimeout(() => playTone(90, 0.8, 'square', 0.3), 300);
+          }
           return 0;
         }
         return Number((prev - 0.1).toFixed(1));
       });
-    }, intervalMs);
+    }, 100);
+  };
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setGameState('PLAYING');
+      setTimeLeft(8.0);
+      setSelectedAction(null);
+      return;
+    }
+
+    startTimer();
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const handleAction = (actionKey) => {
@@ -58,19 +99,34 @@ export default function GridDefenderModal({
 
     if (actionKey === 'DISCHARGE_BATTERY') {
       setGameState('VICTORY');
+      if (soundEnabled) {
+        playTone(523.25, 0.15, 'triangle', 0.2);
+        setTimeout(() => playTone(659.25, 0.15, 'triangle', 0.2), 120);
+        setTimeout(() => playTone(783.99, 0.3, 'sine', 0.25), 240);
+      }
     } else if (actionKey === 'BUY_GRID') {
       setGameState('BLACKOUT');
+      if (soundEnabled) {
+        playTone(180, 0.4, 'sawtooth', 0.3);
+        setTimeout(() => playTone(80, 0.8, 'square', 0.35), 250);
+      }
     } else if (actionKey === 'LOAD_SHED') {
       setGameState('VICTORY_MARGINAL');
+      if (soundEnabled) {
+        playTone(440, 0.2, 'sine', 0.2);
+        setTimeout(() => playTone(550, 0.25, 'triangle', 0.2), 150);
+      }
     }
   };
 
   const handleReboot = () => {
-    setGameState('PLAYING');
-    setTimeLeft(5.0);
-    setSelectedAction(null);
+    if (timerRef.current) clearInterval(timerRef.current);
     onClose();
     if (onResumeSimulation) onResumeSimulation();
+  };
+
+  const handlePlayAgain = () => {
+    startTimer();
   };
 
   if (!isOpen) return null;
@@ -89,17 +145,26 @@ export default function GridDefenderModal({
           <p className="text-rose-200 text-sm max-w-lg mb-4">
             Substation transformers exceeded critical thermal thresholds. Generator frequency dropped below 47.5 Hz causing complete island trip and regional outage.
           </p>
-          <div className="bg-rose-950/80 border border-rose-600 px-4 py-2 rounded-xl text-xs font-mono text-rose-300 mb-8">
+          <div className="bg-rose-950/80 border border-rose-600 px-4 py-2 rounded-xl text-xs font-mono text-rose-300 mb-6">
             ACTION FAILED: {selectedAction === 'BUY_GRID' ? 'Overloaded Transmission Lines' : 'Tactical Response Time Expired (0.0s)'}
           </div>
-          <button
-            type="button"
-            onClick={handleReboot}
-            className="px-8 py-3.5 rounded-xl font-black text-sm tracking-wide text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 shadow-2xl shadow-cyan-500/40 border border-cyan-400/40 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Black Start Auxiliary Reboot</span>
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={handlePlayAgain}
+              className="px-6 py-3 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 shadow-xl cursor-pointer flex items-center gap-2"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Retry Tactical Drill</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleReboot}
+              className="px-6 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-slate-300 bg-slate-800 hover:bg-slate-700 border border-white/10 cursor-pointer"
+            >
+              Dismiss Blackout
+            </button>
+          </div>
         </div>
       )}
 
@@ -116,16 +181,32 @@ export default function GridDefenderModal({
             </div>
             <div>
               <span className="text-[10px] font-mono uppercase tracking-widest text-rose-400 font-bold block">
-                Tactical Decision Protocol
+                Tactical Decision Protocol &bull; Mini-Game
               </span>
               <h3 className="text-lg sm:text-xl font-black tracking-tight text-white font-mono">
                 🚨 GRID IMMINENT FAILURE
               </h3>
             </div>
           </div>
-          <div className="text-right font-mono">
-            <span className="text-[10px] text-slate-400 block">Surge Load:</span>
-            <span className="text-sm font-bold text-rose-400">{overloadDemand} kW</span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSoundEnabled((prev) => !prev)}
+              title={soundEnabled ? 'Mute Game FX' : 'Enable Game FX'}
+              className="p-2 rounded-lg bg-slate-900 border border-white/10 text-slate-400 hover:text-white cursor-pointer"
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4 text-cyan-400" /> : <VolumeX className="w-4 h-4" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close Defender Drill"
+              className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-400 hover:text-white cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
@@ -144,13 +225,18 @@ export default function GridDefenderModal({
               <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-rose-500/40">
                 <div
                   className="h-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-100 ease-linear"
-                  style={{ width: `${(timeLeft / 5.0) * 100}%` }}
+                  style={{ width: `${(timeLeft / 8.0) * 100}%` }}
                 />
               </div>
             </div>
 
-            <p className="text-xs text-slate-300">
-              Demand has surged dangerously past safety limits. Generator frequency is decaying rapidly. Select the correct mitigation procedure within <strong>5 seconds</strong> to stabilize the grid:
+            <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-800/60 flex items-center justify-between text-xs font-mono">
+              <span className="text-slate-300">Overload Load Spike:</span>
+              <span className="font-extrabold text-rose-400 text-sm">{overloadDemand} kW</span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Demand has surged dangerously past safety limits. Generator frequency is decaying rapidly. Select the correct mitigation procedure within <strong>8 seconds</strong> to stabilize the grid:
             </p>
 
             {/* Tactical Choice Buttons */}
@@ -236,17 +322,38 @@ export default function GridDefenderModal({
               </span>
             </div>
 
-            <div className="pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handlePlayAgain}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 shadow-lg shadow-emerald-950/60 cursor-pointer flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Play Again</span>
+              </button>
               <button
                 type="button"
                 onClick={handleReboot}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 shadow-lg shadow-emerald-950/60 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-white/10 cursor-pointer"
               >
                 Resume Grid Stream
               </button>
             </div>
           </div>
         )}
+
+        {/* Footer Link to Dedicated Gamer Arena Page */}
+        <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
+          <span className="text-slate-400 font-mono text-[11px]">Grid Defender Drill v3.0</span>
+          <Link
+            to="/defender"
+            onClick={onClose}
+            className="text-cyan-400 hover:text-cyan-300 font-bold flex items-center gap-1.5 transition-colors"
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            <span>Open Full-Screen Gamer Arena &rarr;</span>
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -38,16 +38,17 @@ export default function Settings() {
     peakWindowStart: settings.peakWindowStart,
     peakWindowEnd: settings.peakWindowEnd,
     streamingInterval: settings.streamingInterval,
+    enableGridDefender: Boolean(settings.enableGridDefender),
   });
 
   const [savedToast, setSavedToast] = useState(false);
   const [injectedToast, setInjectedToast] = useState(null);
 
   const handleChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? Number(value) : value,
+      [name]: type === 'checkbox' ? checked : type === 'number' ? Number(value) : value,
     }));
   };
 
@@ -579,6 +580,34 @@ export default function Settings() {
               <p className="text-[11px] text-slate-400 mt-1.5">
                 Delay between consecutive hourly dispatches during simulation (Default: 1500 ms).
               </p>
+            </div>
+
+            {/* Feature: Enable Grid Defender Mini-Game Toggle */}
+            <div className="pt-3 border-t border-white/10">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <label
+                    htmlFor="enableGridDefender"
+                    className="text-xs font-semibold text-slate-200 block"
+                  >
+                    Enable Grid Defender Game
+                  </label>
+                  <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    When enabled, severe overload (&gt;200kW) interrupts the view with the interactive blackout defender drill. When disabled (default), only the red Alert Banner is shown so simulations proceed uninterrupted.
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    id="enableGridDefender"
+                    type="checkbox"
+                    name="enableGridDefender"
+                    checked={Boolean(formData.enableGridDefender)}
+                    onChange={handleChange}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                </label>
+              </div>
             </div>
           </div>
         </div>

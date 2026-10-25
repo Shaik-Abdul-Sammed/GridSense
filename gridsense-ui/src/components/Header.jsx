@@ -1,15 +1,14 @@
+import { Link } from 'react-router-dom';
 import {
   Zap,
   Activity,
-  Sun,
-  Moon,
   TrendingUp,
   ShieldAlert,
   DollarSign,
   Volume2,
   VolumeX,
+  Settings as SettingsIcon,
 } from 'lucide-react';
-import { useTheme } from '../context/ThemeContext';
 
 export default function Header({
   lastUpdated,
@@ -20,8 +19,35 @@ export default function Header({
   onTriggerCyberattack,
   isVoiceMuted = false,
   onToggleVoiceMute,
+  ambientTemp = 26.5,
+  humidityPct = 55,
+  solarIrradiance = 350,
 }) {
-  const { isDark, toggleTheme } = useTheme();
+  // Accurate Weather Status with Degrees
+  const tempNum = Number(ambientTemp);
+  const formattedTemp = Number.isFinite(tempNum) ? tempNum.toFixed(1) : '26.0';
+  const solarNum = Number(solarIrradiance) || 0;
+  const humNum = Number(humidityPct) || 55;
+
+  let weatherIcon = '☀️';
+  let weatherCondition = 'Clear Sky';
+
+  if (humNum > 82) {
+    weatherIcon = '🌧️';
+    weatherCondition = 'Humid / Rain Risk';
+  } else if (solarNum > 600) {
+    weatherIcon = '☀️';
+    weatherCondition = 'Sunny & Clear';
+  } else if (solarNum > 250) {
+    weatherIcon = '🌤️';
+    weatherCondition = 'Partly Cloudy';
+  } else if (solarNum > 10) {
+    weatherIcon = '⛅';
+    weatherCondition = 'Overcast Day';
+  } else {
+    weatherIcon = '🌙';
+    weatherCondition = 'Clear Night';
+  }
 
   // Feature 4: Dynamic Pricing Engine (Tariff Ticker)
   // Formula: price = 0.10 + (currentDemand / 1000) * 5 ($/kWh)
@@ -66,6 +92,25 @@ export default function Header({
 
       {/* Tickers & Real-time Gauges */}
       <div className="flex flex-wrap items-center gap-2.5 self-stretch xl:self-auto justify-between xl:justify-end">
+        {/* Real-time Ambient Weather Status with Degrees */}
+        <div
+          title={`Substation Microclimate: ${formattedTemp}°C | ${weatherCondition} | Humidity: ${humNum}% | Solar DNI: ${solarNum} W/m²`}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all bg-slate-900/80 border-white/10 text-amber-300"
+        >
+          <span className="text-base select-none leading-none">{weatherIcon}</span>
+          <div className="flex items-center gap-1.5">
+            <span className="font-extrabold text-sm text-amber-400">
+              {formattedTemp}°C
+            </span>
+            <span className="text-[10px] text-slate-300 hidden sm:inline">
+              {weatherCondition}
+            </span>
+            <span className="text-[10px] text-cyan-400 font-mono hidden md:inline border-l border-white/10 pl-1.5">
+              💧 {humNum}%
+            </span>
+          </div>
+        </div>
+
         {/* Feature 4: Live Dynamic Tariff Ticker */}
         <div
           title={
@@ -184,20 +229,15 @@ export default function Header({
           </button>
         )}
 
-        {/* Theme Toggle Button */}
-        <button
-          type="button"
-          onClick={toggleTheme}
-          title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-          className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer select-none"
-          aria-label="Toggle theme mode"
+        {/* Quick Grid Settings Navigation Shortcut */}
+        <Link
+          to="/settings"
+          title="Grid Configuration & Threshold Rules"
+          className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-cyan-300 hover:text-white transition-all select-none cursor-pointer flex items-center justify-center"
+          aria-label="Open Grid Configuration"
         >
-          {isDark ? (
-            <Sun className="w-4 h-4 text-amber-300" />
-          ) : (
-            <Moon className="w-4 h-4 text-cyan-300" />
-          )}
-        </button>
+          <SettingsIcon className="w-4 h-4" />
+        </Link>
 
         {lastUpdated && (
           <div className="text-xs text-slate-400 font-mono bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10 hidden md:block">

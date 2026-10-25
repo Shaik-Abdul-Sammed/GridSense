@@ -5,6 +5,11 @@ import Analytics from './pages/Analytics';
 import History from './pages/History';
 import Settings from './pages/Settings';
 import Marketplace from './pages/Marketplace';
+import GamerDemo from './pages/GamerDemo';
+import DigitalTwinPage from './pages/DigitalTwinPage';
+import DroneFleetPage from './pages/DroneFleetPage';
+import FieldTechARPage from './pages/FieldTechARPage';
+import WeatherSyncPage from './pages/WeatherSyncPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SettingsProvider } from './context/SettingsContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -22,6 +27,17 @@ export default function App() {
                 <Route path="history" element={<History />} />
                 <Route path="marketplace" element={<Marketplace />} />
                 <Route path="settings" element={<Settings />} />
+
+                {/* Hackathon Interactive Features & Gamer Demo Routes */}
+                <Route path="defender" element={<GamerDemo />} />
+                <Route path="game" element={<GamerDemo />} />
+                <Route path="gamer" element={<GamerDemo />} />
+                <Route path="twin" element={<DigitalTwinPage />} />
+                <Route path="substation3d" element={<DigitalTwinPage />} />
+                <Route path="drones" element={<DroneFleetPage />} />
+                <Route path="ar" element={<FieldTechARPage />} />
+                <Route path="weather" element={<WeatherSyncPage />} />
+
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>

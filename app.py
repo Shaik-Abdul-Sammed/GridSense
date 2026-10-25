@@ -1,7 +1,7 @@
 import os
 import math
 import requests
-from flask import Flask, request, g, jsonify
+from flask import Flask, request, g, jsonify, current_app
 
 try:
     from flask_cors import CORS
@@ -28,13 +28,12 @@ else:
         return response
 
 # QuickML Endpoint & Authentication Configuration
-QUICKML_ENDPOINT_URL = os.environ.get(
-    "QUICKML_ENDPOINT_URL",
-    "https://api.catalyst.zoho.in/baas/v1/project/89804000000013023/ml/model/predict"
-)
+QUICKML_ENDPOINT_KEY = "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
+QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
+QUICKML_REST_URL = f"https://api.catalyst.zoho.in/baas/v1/project/{QUICKML_PROJECT_ID}/ml/{QUICKML_ENDPOINT_KEY}/predict"
 
 QUICKML_HEADERS = {
-    "X-QUICKML-ENDPOINT-KEY": "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54",
+    "X-QUICKML-ENDPOINT-KEY": QUICKML_ENDPOINT_KEY,
     "CATALYST-ORG": "60093168651",
     "Environment": "Development",
     "Content-Type": "application/json",
@@ -61,17 +60,17 @@ def fallback_simulation(features_dict, hour):
         temp = 25.0
 
     # Base diurnal consumption curve (trough at 04:00, peak in evening)
-    base_load = 120.0 + 30.0 * math.sin(2 * math.pi * (hour - 6) / 24)
-    # Cooling degree load when temperature exceeds 24°C
-    cooling_load = max(0.0, temp - 24.0) * 8.5
+    base_load = 110.0 + 30.0 * math.sin(2 * math.pi * (hour - 6) / 24)
+    # Cooling degree load when temperature exceeds 24°C (compounds during heatwaves)
+    cooling_load = max(0.0, temp - 24.0) * 4.5
 
     return round(float(base_load + cooling_load), 1)
 
 
 def call_quickml_api(features_dict):
     """
-    Invokes the Zoho Catalyst QuickML API endpoint.
-    Includes a robust fallback to prevent frontend crashes on network timeouts or API errors.
+    Invokes the Zoho Catalyst QuickML API endpoint via Zoho Catalyst Python SDK
+    with automatic REST fallback and physics-grounded diurnal fallback.
     """
     timestamp_str = str(features_dict.get("timestamp", "2024-10-24 12:00:00"))
     try:
@@ -80,45 +79,77 @@ def call_quickml_api(features_dict):
         hour = 12
 
     try:
-        # Standardize feature vector for QuickML regression model
         ambient_temp = float(features_dict.get("ambient_temp_c", features_dict.get("temperature_2m", 25.0)))
+    except (ValueError, TypeError):
+        ambient_temp = 25.0
+
+    try:
         humidity = float(features_dict.get("humidity_pct", features_dict.get("relative_humidity_2m", 60.0)))
+    except (ValueError, TypeError):
+        humidity = 60.0
+
+    try:
         solar = float(features_dict.get("solar_irradiance_wm2", features_dict.get("shortwave_radiation", 0.0)))
+    except (ValueError, TypeError):
+        solar = 0.0
 
-        payload = {
-            "data": [
-                {
-                    "timestamp": timestamp_str,
-                    "ambient_temp_c": ambient_temp,
-                    "humidity_pct": humidity,
-                    "solar_irradiance_wm2": solar,
-                }
-            ]
-        }
+    payload = {
+        "data": [
+            {
+                "timestamp": timestamp_str,
+                "ambient_temp_c": ambient_temp,
+                "humidity_pct": humidity,
+                "solar_irradiance_wm2": solar,
+            }
+        ]
+    }
 
+    # Approach 1: Official Zoho Catalyst Python SDK (AppSail runtime)
+    if HAS_ZCATALYST_SDK and getattr(g, "zc_app", None):
+        try:
+            quickml = g.zc_app.quick_ml()
+            result = quickml.predict(QUICKML_ENDPOINT_KEY, payload)
+            if isinstance(result, dict):
+                if "predictions" in result and len(result["predictions"]) > 0:
+                    return float(result["predictions"][0])
+                elif "data" in result and len(result["data"]) > 0:
+                    item = result["data"][0]
+                    if isinstance(item, dict):
+                        return float(item.get("predicted_demand_kw", item.get("prediction", 165.0)))
+                    return float(item)
+                elif "prediction" in result:
+                    return float(result["prediction"])
+            elif isinstance(result, list) and len(result) > 0:
+                return float(result[0])
+            elif isinstance(result, (int, float)):
+                return float(result)
+        except Exception as sdk_err:
+            print(f"[QuickML Catalyst SDK Notice] {sdk_err}. Trying REST fallback...")
+
+    # Approach 2: Direct REST call with corrected endpoint URL for local / non-AppSail environments
+    try:
         response = requests.post(
-            QUICKML_ENDPOINT_URL,
+            QUICKML_REST_URL,
             json=payload,
             headers=QUICKML_HEADERS,
-            timeout=5.0  # 5-second timeout to maintain real-time streaming responsiveness
+            timeout=5.0
         )
 
         if response.status_code == 200:
             result = response.json()
-            # Parse QuickML prediction schema variations safely
             if "predictions" in result and len(result["predictions"]) > 0:
                 return float(result["predictions"][0])
             elif "data" in result and len(result["data"]) > 0:
                 first_item = result["data"][0]
                 if isinstance(first_item, dict):
-                    return float(first_item.get("predicted_demand_kw", first_item.get("prediction", 175.0)))
+                    return float(first_item.get("predicted_demand_kw", first_item.get("prediction", 165.0)))
                 return float(first_item)
             elif "prediction" in result:
                 return float(result["prediction"])
             elif isinstance(result, list) and len(result) > 0:
                 return float(result[0])
 
-        print(f"[QuickML API Warning] HTTP {response.status_code}: {response.text[:200]}. Using fallback model.")
+        print(f"[QuickML REST Warning] HTTP {response.status_code}: {response.text[:200]}. Engaging fallback model.")
     except Exception as e:
         print(f"[QuickML Fallback Engaged] API request failed: {e}. Executing resilient local model.")
 
@@ -143,7 +174,7 @@ def forecast():
 
     data = request.get_json(silent=True) or {}
 
-    # Extract the hour from the timestamp (e.g., "2024-10-24 19:00:00" -> 19)
+    # Extract timestamp or default to current simulation slot
     timestamp_str = str(data.get("timestamp", "2024-10-24 12:00:00"))
     try:
         hour = int(timestamp_str.split(" ")[1].split(":")[0])

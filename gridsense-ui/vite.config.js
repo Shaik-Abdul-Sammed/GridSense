@@ -29,7 +29,7 @@ export default defineConfig({
               return 'ocr';
             }
             // PDF report generation in separate chunk
-            if (id.includes('jspdf') || id.includes('html2canvas')) {
+            if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('html2canvas-pro')) {
               return 'pdf';
             }
             // Core React runtime & routing

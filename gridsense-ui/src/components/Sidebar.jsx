@@ -10,6 +10,11 @@ import {
   Server,
   Cpu,
   Coins,
+  Gamepad2,
+  Box,
+  Plane,
+  Camera,
+  CloudSun,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -18,6 +23,37 @@ const NAV_ITEMS = [
     label: 'Live Dashboard',
     subtitle: 'Real-time telemetry',
     icon: Activity,
+  },
+  {
+    to: '/defender',
+    label: 'Gamer Demo',
+    subtitle: 'Blackout defense drill',
+    icon: Gamepad2,
+    badge: 'PLAY',
+  },
+  {
+    to: '/twin',
+    label: '3D Digital Twin',
+    subtitle: 'Spatial WebGL scene',
+    icon: Box,
+  },
+  {
+    to: '/drones',
+    label: 'Drone Fleet',
+    subtitle: 'Aerial inspection mesh',
+    icon: Plane,
+  },
+  {
+    to: '/ar',
+    label: 'AR Diagnostics',
+    subtitle: 'FLIR thermal camera',
+    icon: Camera,
+  },
+  {
+    to: '/weather',
+    label: 'Satellite Weather',
+    subtitle: 'GPS Open-Meteo sync',
+    icon: CloudSun,
   },
   {
     to: '/analytics',
@@ -119,11 +155,16 @@ export default function Sidebar({ isOpen, onClose }) {
                       </div>
                       <div>
                         <div
-                          className={`font-semibold ${
+                          className={`font-semibold flex items-center gap-1.5 ${
                             isActive ? 'text-white font-bold' : 'text-slate-300'
                           }`}
                         >
-                          {item.label}
+                          <span>{item.label}</span>
+                          {item.badge && (
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-black bg-amber-500 text-slate-950 animate-pulse">
+                              {item.badge}
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-slate-500">
                           {item.subtitle}

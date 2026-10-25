@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Menu, Zap } from 'lucide-react';
+import { Menu, Zap, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const PAGE_TITLES = {
   '/': 'Real-Time Grid Telemetry & 3D Digital Twin',
@@ -9,16 +10,23 @@ const PAGE_TITLES = {
   '/history': 'Dispatch Decision Log & Audit Trail',
   '/marketplace': 'Peer-to-Peer (P2P) Energy Marketplace Ledger',
   '/settings': 'Grid Transition Controller Rules & Thresholds',
+  '/defender': 'Grid Defender Tactical Blackout Defense Arena',
+  '/game': 'Grid Defender Tactical Blackout Defense Arena',
+  '/twin': '3D Digital Twin Microgrid Spatial Explorer',
+  '/drones': 'Autonomous Drone Fleet & Aerial Telemetry',
+  '/ar': 'AR Field Tech FLIR Thermal Diagnostic Scanner',
+  '/weather': 'Satellite GPS Weather Ingestion & Forecast',
 };
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const { isDark, toggleTheme } = useTheme();
 
   const currentTitle = PAGE_TITLES[location.pathname] || 'GridSense Command Center';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white font-sans selection:bg-cyan-500 selection:text-white flex flex-col lg:flex-row relative overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white font-sans selection:bg-cyan-500 selection:text-white flex flex-col lg:flex-row relative overflow-x-hidden transition-colors duration-200">
       {/* Background Ambient Glow Orbs */}
       <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none z-0" />
       <div className="fixed bottom-10 right-1/4 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none z-0" />
@@ -30,7 +38,7 @@ export default function Layout() {
       {/* Main Content Viewport */}
       <div className="flex-1 lg:pl-72 flex flex-col min-h-screen relative z-10">
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 bg-slate-950/70 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 py-3.5 flex items-center justify-between">
+        <header className="sticky top-0 z-30 bg-slate-950/70 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 py-3.5 flex items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
             {/* Mobile Sidebar Hamburger Toggle */}
             <button
@@ -56,7 +64,32 @@ export default function Layout() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {/* Theme Toggle Button in Global Top Bar */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer select-none"
+              aria-label="Toggle theme mode"
+            >
+              {isDark ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-cyan-400" />
+              )}
+            </button>
+
+            {/* Global Settings Navigation Shortcut */}
+            <Link
+              to="/settings"
+              title="Grid Transition Rules & Developer Settings"
+              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-cyan-300 hover:text-white transition-all cursor-pointer select-none flex items-center justify-center"
+              aria-label="Open Settings"
+            >
+              <SettingsIcon className="w-4 h-4" />
+            </Link>
+
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
