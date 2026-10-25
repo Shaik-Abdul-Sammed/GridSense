@@ -156,18 +156,21 @@ async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
 const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-forecast-btn',
-    badge: 'QuickML v2.4',
+    placement: 'top',
+    spotlightPadding: 12,
+    badge: 'QuickML AI',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
-          <span className="text-cyan-400">⚡</span> AI 24-Hour Demand Forecaster
+          <span className="text-cyan-400">⚡</span> 1. AI Demand Forecaster &amp; Dispatch
         </h4>
         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          Streams real-time hourly load predictions powered by <strong className="text-cyan-300 font-semibold">Zoho Catalyst QuickML</strong>. Calculates dynamic grid operating modes and initiates automated peak-shaving dispatch.
+          This button sends live ambient weather (temperature, humidity, solar irradiance) to our <strong className="text-cyan-300 font-semibold">Zoho Catalyst QuickML</strong> neural engine. It forecasts the 24-hour demand curve so the grid can pre-charge batteries before peak hours.
         </p>
-        <div className="pt-1 flex items-center gap-2 text-[11px] text-cyan-400 font-medium font-mono">
+        <div className="pt-1.5 flex items-center gap-2 text-[11px] text-cyan-300 font-medium font-mono">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-          Click &ldquo;Generate Forecast&rdquo; to trigger real-time inference
+          Target: Highlighted Dispatch button below
         </div>
       </div>
     ),
@@ -175,60 +178,84 @@ const DASHBOARD_TOUR_STEPS = [
   },
   {
     target: '#tour-ocr-scanner',
-    badge: 'Tesseract WASM',
+    placement: 'bottom',
+    spotlightPadding: 10,
+    badge: 'Analog Meter OCR',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
-          <span className="text-purple-400">📷</span> Optical Meter Ingestion (OCR)
+          <span className="text-purple-400">📷</span> 2. Optical Meter Ingestion (OCR)
         </h4>
         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          Bridges legacy grid hardware with modern AI. Over <strong className="text-purple-300 font-semibold">40% of global substations</strong> still rely on analog dial meters; our client-side Tesseract OCR digitizes camera feeds directly into live telemetry.
+          Over 40% of global substations still use analog dial meters without digital telemetry. Upload a photo or scan with camera &mdash; our client-side Tesseract OCR instantly reads the dial needles and digitizes them into live grid telemetry.
         </p>
+        <div className="pt-1.5 flex items-center gap-2 text-[11px] text-purple-300 font-medium">
+          <span>Hardware Retrofit:</span> Zero expensive sensor replacements required
+        </div>
       </div>
     ),
     disableBeacon: true,
   },
   {
     target: '#tour-failure-gauge',
-    badge: 'IEEE C57.91',
+    placement: 'bottom',
+    spotlightPadding: 10,
+    badge: 'Predictive RUL',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
-          <span className="text-emerald-400">🛡️</span> Predictive Failure &amp; RUL Gauge
+          <span className="text-emerald-400">🛡️</span> 3. Transformer Health &amp; RUL Forecaster
         </h4>
         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          Continuous <strong className="text-emerald-300 font-semibold">IEC 60076-7 thermal aging model</strong> predicting Remaining Useful Life (RUL) and winding hot-spot temperatures to prevent catastrophic blackouts before they occur.
+          This 4-metric deck implements the <strong className="text-emerald-300 font-semibold">IEC 60076-7 thermal aging standard</strong>. It continuously calculates winding hot-spot temperatures and remaining useful life (RUL) to prevent catastrophic blackouts before they happen.
         </p>
+        <div className="pt-1.5 flex items-center gap-2 text-[11px] text-emerald-300 font-medium">
+          <span>Early Warning:</span> Triggers autonomous battery peak-shaving before overload
+        </div>
       </div>
     ),
     disableBeacon: true,
   },
   {
     target: '#tour-3d-twin',
+    placement: 'top',
+    spotlightPadding: 10,
     badge: 'Three.js WebGL',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
-          <span className="text-blue-400">🌐</span> 3D WebGL Digital Twin
+          <span className="text-blue-400">🌐</span> 4. Interactive 3D Digital Twin
         </h4>
         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          Spatial Three.js substation twin mapping real-time power vector lines between Main Grid, BESS battery storage, and smart microgrid loads to drastically reduce operator cognitive fatigue during crises.
+          Live 3D spatial twin of the substation rendered with Three.js. Real-time animated vector lines show energy flowing between the main utility grid, battery storage, and microgrid loads. You can orbit, rotate, and zoom into individual transformers.
         </p>
+        <div className="pt-1.5 flex items-center gap-2 text-[11px] text-blue-300 font-medium">
+          <span>Spatial Awareness:</span> Eliminates operator confusion during critical outages
+        </div>
       </div>
     ),
     disableBeacon: true,
   },
   {
     target: '#tour-load-curve',
+    placement: 'top',
+    spotlightPadding: 10,
     badge: '24-Hour Recharts',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
-          <span className="text-rose-400">📈</span> 24-Hour Load Curve &amp; Peak Window
+          <span className="text-rose-400">📈</span> 5. 24-Hour Load Curve &amp; Peak Window
         </h4>
         <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-          Visualizes continuous diurnal demand. The <strong className="text-rose-400 font-semibold">red shaded area (18:00–22:00)</strong> indicates the critical peak-demand window where transformer strain peaks and automated battery discharge is prioritized.
+          Interactive diurnal load graph. The <strong className="text-rose-400 font-semibold">red shaded area (18:00–22:00)</strong> indicates the critical peak-demand window where transformer stress peaks and GridSense automatically discharges batteries to shave peak demand by 34.8%.
         </p>
+        <div className="pt-1.5 flex items-center gap-2 text-[11px] text-rose-300 font-medium">
+          <span>Automated Arbitrage:</span> Buys energy off-peak, discharges during peak
+        </div>
       </div>
     ),
     disableBeacon: true,
@@ -240,6 +267,16 @@ export default function Dashboard() {
 
   const [runTour, setRunTour] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
+
+  // Synchronous fail-safe: immediately kill Joyride when custom exit event fires
+  useEffect(() => {
+    const handleForceClose = () => {
+      setRunTour(false);
+      setTourStepIndex(0);
+    };
+    window.addEventListener('gridsense:close-tour', handleForceClose);
+    return () => window.removeEventListener('gridsense:close-tour', handleForceClose);
+  }, []);
 
   const handleStartTour = useCallback(() => {
     // Single-click clean start: reset any prior state before mounting tour
@@ -1009,6 +1046,8 @@ export default function Dashboard() {
           continuous
           showProgress
           showSkipButton
+          scrollToFirstStep
+          scrollOffset={100}
           disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}
@@ -1017,7 +1056,7 @@ export default function Dashboard() {
             options: {
               arrowColor: '#030712',
               backgroundColor: '#030712',
-              overlayColor: 'rgba(2, 6, 23, 0.85)',
+              overlayColor: 'rgba(2, 6, 23, 0.65)',
               primaryColor: '#06b6d4',
               textColor: '#f8fafc',
               zIndex: 10000,

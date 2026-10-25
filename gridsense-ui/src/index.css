@@ -160,6 +160,8 @@ html:not(.dark) .bg-amber-950 {
   background-color: #030712 !important;
   color: #f8fafc !important;
   border-radius: 20px !important;
+  border: 1px solid rgba(6, 182, 212, 0.5) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(6, 182, 212, 0.3) !important;
 }
 
 .__floater__arrow polygon,
@@ -167,8 +169,15 @@ html:not(.dark) .bg-amber-950 {
   fill: #030712 !important;
 }
 
-.react-joyride__overlay {
-  backdrop-filter: blur(4px) !important;
+/* Ensure Joyride primary button is always glowing cyan/emerald, never black */
+.react-joyride__tooltip button[data-action="primary"],
+button[data-action="primary"] {
+  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%) !important;
+  color: #020617 !important;
+  font-weight: 800 !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.5) !important;
 }
 
 /* Thin Custom Scrollbar for Sleek Sidebar */

@@ -102,6 +102,7 @@ const GAME_TOUR_STEPS = [
   {
     target: '#tour-game-objective',
     badge: 'SCADA TELEMETRY',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-bold text-white text-base flex items-center gap-1.5">
@@ -121,6 +122,7 @@ const GAME_TOUR_STEPS = [
   {
     target: '#tour-game-discharge',
     badge: 'BESS FAST INJECT',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-bold text-cyan-300 text-base flex items-center gap-1.5">
@@ -139,6 +141,7 @@ const GAME_TOUR_STEPS = [
   {
     target: '#tour-game-grid',
     badge: 'GRID TIE-LINE',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-bold text-emerald-300 text-base flex items-center gap-1.5">
@@ -157,6 +160,7 @@ const GAME_TOUR_STEPS = [
   {
     target: '#tour-game-loadshed',
     badge: 'LOAD SHEDDING',
+    tooltipComponent: TourTooltip,
     content: (
       <div className="space-y-2">
         <h4 className="font-bold text-amber-300 text-base flex items-center gap-1.5">
@@ -197,6 +201,16 @@ export default function GamerDemo() {
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const runTourRef = useRef(false);
   runTourRef.current = runTour;
+
+  // Synchronous fail-safe: immediately kill Joyride when custom exit event fires
+  useEffect(() => {
+    const handleForceClose = () => {
+      setRunTour(false);
+      setTourStepIndex(0);
+    };
+    window.addEventListener('gridsense:close-tour', handleForceClose);
+    return () => window.removeEventListener('gridsense:close-tour', handleForceClose);
+  }, []);
 
   const handleStartTour = () => {
     if (gameState !== 'PLAYING') {
@@ -357,6 +371,8 @@ export default function GamerDemo() {
           continuous
           showProgress
           showSkipButton
+          scrollToFirstStep
+          scrollOffset={100}
           disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}
@@ -365,7 +381,7 @@ export default function GamerDemo() {
             options: {
               arrowColor: '#030712',
               backgroundColor: '#030712',
-              overlayColor: 'rgba(2, 6, 23, 0.85)',
+              overlayColor: 'rgba(2, 6, 23, 0.65)',
               primaryColor: '#06b6d4',
               textColor: '#f8fafc',
               zIndex: 10000,
