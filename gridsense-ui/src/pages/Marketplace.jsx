@@ -320,15 +320,15 @@ export default function Marketplace() {
                     <span className="text-[10px] text-slate-500 block">{tx.timestamp}</span>
                   </td>
                   <td className="py-2.5 px-3 font-sans">
-                    <div className="flex items-center gap-1.5 text-slate-200">
+                    <div className="flex items-center gap-1.5 text-slate-200" title={tx.seller}>
                       <Home className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span className="truncate max-w-[180px]">{tx.seller}</span>
+                      <span className="truncate max-w-[220px]">{tx.seller}</span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3 font-sans">
-                    <div className="flex items-center gap-1.5 text-slate-200">
+                    <div className="flex items-center gap-1.5 text-slate-200" title={tx.buyer}>
                       <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                      <span className="truncate max-w-[180px]">{tx.buyer}</span>
+                      <span className="truncate max-w-[220px]">{tx.buyer}</span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3 text-right font-bold text-cyan-300">

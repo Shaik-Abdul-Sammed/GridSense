@@ -597,16 +597,16 @@ export default function DroneFleet({
               </span>
             </div>
 
-            <div className="space-y-1 text-[11px] text-slate-300">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Assigned Sector:</span>
-                <span className="truncate max-w-[170px] text-right font-bold" style={{ color: activeDrone.color }}>
+            <div className="space-y-1.5 text-[11px] text-slate-300">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-slate-400 shrink-0">Assigned Sector:</span>
+                <span className="text-right font-bold break-words flex-1 leading-snug" style={{ color: activeDrone.color }}>
                   {activeDrone.sector.replace('SECTOR: ', '')}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Mission:</span>
-                <span className="truncate max-w-[170px] text-right">{activeDrone.mission}</span>
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-slate-400 shrink-0">Mission:</span>
+                <span className="text-right text-slate-200 flex-1 break-words leading-snug">{activeDrone.mission}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Flight Altitude:</span>

@@ -26,7 +26,7 @@ export default function AlertBanner({ criticalHours = [], maxDemand = 0 }) {
             </div>
             <p className="text-xs md:text-sm text-red-100 font-semibold mt-1">
               Severe grid stress forecasted in{' '}
-              <span className="font-extrabold text-white underline underline-offset-4 decoration-amber-300">
+              <span className="font-extrabold text-white px-2 py-0.5 rounded-md bg-black/40 border border-white/20">
                 {criticalHours.length} hour{criticalHours.length > 1 ? 's' : ''}
               </span>{' '}
               ({criticalHours.slice(0, 6).join(', ')}{criticalHours.length > 6 ? ` +${criticalHours.length - 6} more` : ''}). Peak projected:{' '}

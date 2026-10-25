@@ -169,7 +169,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         >
                           <span>{item.label}</span>
                           {item.badge && (
-                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-black bg-amber-500 text-slate-950 animate-pulse">
+                            <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-black bg-amber-500 text-slate-950 animate-pulse leading-none">
                               {item.badge}
                             </span>
                           )}
@@ -247,7 +247,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 <p className="text-xs font-bold text-white truncate">
                   Samm
                 </p>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-950/80 text-cyan-300 font-mono border border-cyan-800/40">
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 font-mono border border-cyan-800/40 leading-none">
                   ADMIN
                 </span>
               </div>

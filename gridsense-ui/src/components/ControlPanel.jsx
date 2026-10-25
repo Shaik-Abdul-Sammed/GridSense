@@ -388,8 +388,11 @@ export default function ControlPanel({
             <div>
               <p className="text-xs font-bold text-white">
                 {loadedCsvName ? (
-                  <span className="text-emerald-300">
-                    Active Dataset: <strong className="underline">{loadedCsvName}</strong>
+                  <span className="text-emerald-300 flex items-center gap-1.5 flex-wrap">
+                    <span>Active Dataset:</span>
+                    <span className="font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/60 font-semibold text-[11px]">
+                      {loadedCsvName}
+                    </span>
                   </span>
                 ) : (
                   'Drag & Drop CSV here or click to browse'

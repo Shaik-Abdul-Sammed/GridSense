@@ -166,7 +166,7 @@ export default function HourlyTable({ forecastData = [] }) {
                       <td className="py-2 px-3 font-bold text-white flex items-center gap-1.5">
                         {row.hour}
                         {isPeak && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded font-sans font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 leading-none">
                             PEAK
                           </span>
                         )}

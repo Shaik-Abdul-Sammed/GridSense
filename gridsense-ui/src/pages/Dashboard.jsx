@@ -156,10 +156,18 @@ const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-forecast-btn',
     content: (
-      <div className="space-y-1.5 text-left">
-        <h4 className="font-bold text-cyan-400 text-sm">⚡ 1. AI 24-Hour Demand Forecaster</h4>
+      <div className="space-y-2 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
+            STEP 1 OF 5 &bull; SCADA PREDICTOR
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">QuickML v2.4</span>
+        </div>
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+          <span className="text-cyan-400">⚡</span> AI 24-Hour Demand Forecaster
+        </h4>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Streams real-time hourly load predictions powered by Zoho Catalyst QuickML. Calculates dynamic grid modes and triggers automated peak shaving.
+          Streams real-time hourly load predictions powered by <strong className="text-cyan-300 font-semibold">Zoho Catalyst QuickML</strong>. Calculates dynamic grid operating modes and initiates automated peak-shaving dispatch.
         </p>
       </div>
     ),
@@ -168,10 +176,18 @@ const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-ocr-scanner',
     content: (
-      <div className="space-y-1.5 text-left">
-        <h4 className="font-bold text-cyan-400 text-sm">📷 2. Optical Meter Ingestion (OCR)</h4>
+      <div className="space-y-2 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800">
+            STEP 2 OF 5 &bull; HARDWARE RETROFIT
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">Tesseract WASM</span>
+        </div>
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+          <span className="text-purple-400">📷</span> Optical Meter Ingestion (OCR)
+        </h4>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Bridges legacy grid hardware with modern AI. Over 40% of global substations still rely on analog dial meters; our client-side Tesseract OCR digitizes camera feeds directly into live telemetry.
+          Bridges legacy grid hardware with modern AI. Over <strong className="text-purple-300 font-semibold">40% of global substations</strong> still rely on analog dial meters; our client-side Tesseract OCR digitizes camera feeds directly into live telemetry.
         </p>
       </div>
     ),
@@ -180,10 +196,18 @@ const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-failure-gauge',
     content: (
-      <div className="space-y-1.5 text-left">
-        <h4 className="font-bold text-cyan-400 text-sm">🛡️ 3. Predictive Failure &amp; RUL Gauge</h4>
+      <div className="space-y-2 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+            STEP 3 OF 5 &bull; PREDICTIVE MAINTENANCE
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">IEEE C57.91</span>
+        </div>
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+          <span className="text-emerald-400">🛡️</span> Predictive Failure &amp; RUL Gauge
+        </h4>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Continuous IEC 60076-7 thermal aging model predicting Remaining Useful Life (RUL) and winding hot-spot temperatures to prevent catastrophic blackouts before they occur.
+          Continuous <strong className="text-emerald-300 font-semibold">IEC 60076-7 thermal aging model</strong> predicting Remaining Useful Life (RUL) and winding hot-spot temperatures to prevent catastrophic blackouts before they occur.
         </p>
       </div>
     ),
@@ -192,10 +216,18 @@ const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-3d-twin',
     content: (
-      <div className="space-y-1.5 text-left">
-        <h4 className="font-bold text-cyan-400 text-sm">🌐 4. 3D WebGL Digital Twin</h4>
+      <div className="space-y-2 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-blue-400 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-800">
+            STEP 4 OF 5 &bull; SPATIAL DIGITAL TWIN
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">Three.js WebGL</span>
+        </div>
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+          <span className="text-blue-400">🌐</span> 3D WebGL Digital Twin
+        </h4>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Spatial Three.js substation twin mapping real-time power vector lines between Main Grid, BESS battery storage, and smart microgrid loads to reduce operator cognitive fatigue during crises.
+          Spatial Three.js substation twin mapping real-time power vector lines between Main Grid, BESS battery storage, and smart microgrid loads to drastically reduce operator cognitive fatigue during crises.
         </p>
       </div>
     ),
@@ -204,10 +236,18 @@ const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-load-curve',
     content: (
-      <div className="space-y-1.5 text-left">
-        <h4 className="font-bold text-cyan-400 text-sm">📈 5. 24-Hour Load Curve &amp; Peak Window</h4>
+      <div className="space-y-2 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800">
+            STEP 5 OF 5 &bull; DIURNAL LOAD CURVE
+          </span>
+          <span className="text-[10px] font-mono text-slate-400">24-Hour Recharts</span>
+        </div>
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+          <span className="text-rose-400">📈</span> 24-Hour Load Curve &amp; Peak Window
+        </h4>
         <p className="text-xs text-slate-300 leading-relaxed">
-          Visualizes continuous diurnal demand. The <strong className="text-rose-400">red shaded area (18:00–22:00)</strong> indicates the critical peak-demand window where transformer strain peaks and battery discharge is prioritized.
+          Visualizes continuous diurnal demand. The <strong className="text-rose-400 font-semibold">red shaded area (18:00–22:00)</strong> indicates the critical peak-demand window where transformer strain peaks and automated battery discharge is prioritized.
         </p>
       </div>
     ),
@@ -976,37 +1016,50 @@ export default function Dashboard() {
           callback={handleTourCallback}
           styles={{
             options: {
-              arrowColor: '#0f172a',
-              backgroundColor: '#0f172a',
-              overlayColor: 'rgba(2, 6, 23, 0.75)',
+              arrowColor: '#030712',
+              backgroundColor: '#030712',
+              overlayColor: 'rgba(2, 6, 23, 0.85)',
               primaryColor: '#06b6d4',
               textColor: '#f8fafc',
-              width: 380,
+              width: 420,
               zIndex: 10000,
             },
             tooltip: {
-              borderRadius: '16px',
-              border: '1px solid rgba(6, 182, 212, 0.4)',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 0 15px rgba(6, 182, 212, 0.25)',
-              backdropFilter: 'blur(16px)',
-              padding: '16px',
+              borderRadius: '20px',
+              border: '1.5px solid rgba(6, 182, 212, 0.6)',
+              boxShadow: '0 0 35px rgba(6, 182, 212, 0.3), 0 25px 60px -15px rgba(0, 0, 0, 0.95)',
+              backdropFilter: 'blur(20px)',
+              padding: '20px 22px',
             },
             buttonNext: {
-              backgroundColor: '#06b6d4',
+              background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
               color: '#020617',
-              borderRadius: '10px',
-              fontWeight: 'bold',
+              borderRadius: '12px',
+              fontWeight: 800,
               fontSize: '12px',
-              padding: '8px 14px',
+              padding: '9px 18px',
+              boxShadow: '0 4px 14px rgba(6, 182, 212, 0.4)',
+              cursor: 'pointer',
+              border: 'none',
+              transition: 'all 0.2s ease',
             },
             buttonBack: {
               color: '#94a3b8',
-              marginRight: '8px',
+              marginRight: '12px',
               fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
             },
             buttonSkip: {
               color: '#64748b',
               fontSize: '12px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            },
+            buttonClose: {
+              color: '#94a3b8',
+              top: '16px',
+              right: '16px',
             },
           }}
         />

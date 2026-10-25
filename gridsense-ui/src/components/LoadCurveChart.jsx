@@ -188,10 +188,10 @@ export default function LoadCurveChart({
                 strokeWidth={1.5}
                 label={{
                   value: `${criticalThreshold} kW Overload Threshold`,
-                  fill: '#f87171',
-                  position: 'insideTopRight',
+                  fill: '#fca5a5',
+                  position: 'insideTopLeft',
                   fontSize: 11,
-                  offset: 10,
+                  offset: 8,
                 }}
               />
 

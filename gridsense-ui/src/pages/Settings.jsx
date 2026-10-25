@@ -134,7 +134,7 @@ export default function Settings() {
                   <FileText className="w-3.5 h-3.5 text-cyan-400" />
                   test_normal_day.csv
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-emerald-950 text-emerald-300 border border-emerald-800">
                   BASELINE
                 </span>
               </div>
@@ -165,7 +165,7 @@ export default function Settings() {
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-400" />
                   test_cyberattack.json
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-rose-950 text-rose-300 border border-rose-800">
                   FAULT SCADA
                 </span>
               </div>
@@ -196,7 +196,7 @@ export default function Settings() {
                   <Flame className="w-3.5 h-3.5 text-amber-400" />
                   test_peak_surge.csv
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-amber-950 text-amber-300 border border-amber-800">
                   OVERLOAD
                 </span>
               </div>
@@ -227,7 +227,7 @@ export default function Settings() {
                   <Coins className="w-3.5 h-3.5 text-purple-400" />
                   test_p2p_market.json
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-purple-950 text-purple-300 border border-purple-800">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-purple-950 text-purple-300 border border-purple-800">
                   LEDGER
                 </span>
               </div>
@@ -258,7 +258,7 @@ export default function Settings() {
                   <Moon className="w-3.5 h-3.5 text-slate-400" />
                   test_zero_solar.csv
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-slate-800 text-slate-300 border border-slate-700">
                   NIGHTTIME
                 </span>
               </div>
@@ -289,7 +289,7 @@ export default function Settings() {
                   <Activity className="w-3.5 h-3.5 text-rose-400" />
                   test_stress_failure.csv
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-rose-950 text-rose-300 border border-rose-800">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-rose-950 text-rose-300 border border-rose-800">
                   RUL DECAY
                 </span>
               </div>
@@ -320,7 +320,7 @@ export default function Settings() {
                   <ThermometerSnowflake className="w-3.5 h-3.5 text-amber-400" />
                   test_climate_heatwave.json
                 </span>
-                <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-amber-950 text-amber-300 border border-amber-800">
+                <span className="text-[9px] font-mono px-1.5 py-0.5 leading-none rounded bg-amber-950 text-amber-300 border border-amber-800">
                   CLIMATE +4.5&deg;C
                 </span>
               </div>
