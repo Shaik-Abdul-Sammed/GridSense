@@ -30,7 +30,7 @@ else:
 # QuickML Endpoint & Authentication Configuration
 QUICKML_ENDPOINT_KEY = "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
 QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
-QUICKML_REST_URL = f"https://api.catalyst.zoho.in/baas/v1/project/{QUICKML_PROJECT_ID}/ml/{QUICKML_ENDPOINT_KEY}/predict"
+QUICKML_ENDPOINT_URL = f"https://api.catalyst.zoho.in/baas/v1/project/{QUICKML_PROJECT_ID}/ml/execution/{QUICKML_ENDPOINT_KEY}"
 
 QUICKML_HEADERS = {
     "X-QUICKML-ENDPOINT-KEY": QUICKML_ENDPOINT_KEY,
@@ -127,9 +127,10 @@ def call_quickml_api(features_dict):
             print(f"[QuickML Catalyst SDK Notice] {sdk_err}. Trying REST fallback...")
 
     # Approach 2: Direct REST call with corrected endpoint URL for local / non-AppSail environments
+    QUICKML_ENDPOINT_URL = "https://api.catalyst.zoho.in/baas/v1/project/89804000000013023/ml/execution/f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
     try:
         response = requests.post(
-            QUICKML_REST_URL,
+            QUICKML_ENDPOINT_URL,
             json=payload,
             headers=QUICKML_HEADERS,
             timeout=5.0
