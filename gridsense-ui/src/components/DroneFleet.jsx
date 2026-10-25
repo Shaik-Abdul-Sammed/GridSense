@@ -4,13 +4,19 @@ import {
   Radio,
   Plane,
   AlertTriangle,
+  Crosshair,
+  Compass,
 } from 'lucide-react';
 
 const INITIAL_DRONES = [
   {
     id: 'DRONE-ALPHA',
     callsign: 'Alpha Patrol',
-    mission: 'Sector 4 66kV Transmission Line Inspection',
+    sector: 'SECTOR: ALPHA-1 TRANSMISSION CORRIDOR',
+    ceiling: '120m',
+    heading: '042° NE',
+    coords: '37.7749°N, 122.4194°W',
+    mission: 'Sector 1 66kV Transmission Line Inspection',
     altitude: '42m',
     battery: '88%',
     speed: '28 km/h',
@@ -21,6 +27,10 @@ const INITIAL_DRONES = [
   {
     id: 'DRONE-BETA',
     callsign: 'Beta Thermal',
+    sector: 'SECTOR: BETA-2 SUBSTATION TRANSFORMER AIRSPACE',
+    ceiling: '80m',
+    heading: '185° S',
+    coords: '37.7735°N, 122.4210°W',
     mission: 'Substation Transformer T-2 IR Thermography',
     altitude: '25m',
     battery: '74%',
@@ -32,7 +42,11 @@ const INITIAL_DRONES = [
   {
     id: 'DRONE-GAMMA',
     callsign: 'Gamma Perimeter',
-    mission: 'BESS 500kWh Container Cooling Inspection',
+    sector: 'SECTOR: GAMMA-3 BESS & MICROGRID PERIMETER',
+    ceiling: '100m',
+    heading: '315° NW',
+    coords: '37.7762°N, 122.4175°W',
+    mission: 'BESS 500kWh Container Cooling & Feeder Inspection',
     altitude: '35m',
     battery: '92%',
     speed: '22 km/h',
@@ -48,7 +62,7 @@ export default function DroneFleet({
   transformerHealth = 85,
 }) {
   const [drones, setDrones] = useState(INITIAL_DRONES);
-  const [selectedDroneId, setSelectedDroneId] = useState('DRONE-BETA');
+  const [selectedDroneId, setSelectedDroneId] = useState('DRONE-GAMMA');
 
   // Reactive state triggers
   const isOverloadedOrIslanded = currentDemand > 200 || gridMode === 'ISLANDED_MODE';
@@ -87,12 +101,14 @@ export default function DroneFleet({
   const activeDrone = drones.find((d) => d.id === selectedDroneId) || drones[0];
 
   return (
-    <div className={`backdrop-blur-xl border shadow-2xl rounded-2xl p-5 space-y-4 transition-all duration-300 ${
-      isOverloadedOrIslanded
-        ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/30'
-        : 'bg-slate-900/50 border-white/10'
-    }`}>
-      {/* Dynamic Keyframes for reactive drone path speed */}
+    <div
+      className={`backdrop-blur-xl border shadow-2xl rounded-2xl p-5 space-y-4 transition-all duration-300 ${
+        isOverloadedOrIslanded
+          ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/30'
+          : 'bg-slate-900/50 border-white/10'
+      }`}
+    >
+      {/* Dynamic Keyframes for reactive drone path speed & radar sweep */}
       <style>{`
         @keyframes droneFlightAlpha {
           0% { transform: translate(100px, 160px); }
@@ -108,16 +124,22 @@ export default function DroneFleet({
           from { transform: rotate(0deg); transform-origin: 300px 160px; }
           to { transform: rotate(360deg); transform-origin: 300px 160px; }
         }
+        @keyframes reticlePulse {
+          0%, 100% { transform: scale(1); opacity: 0.8; }
+          50% { transform: scale(1.15); opacity: 0.3; }
+        }
       `}</style>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className={`p-2 rounded-xl border ${
-            isOverloadedOrIslanded
-              ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-bounce'
-              : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
-          }`}>
+          <div
+            className={`p-2 rounded-xl border transition-colors ${
+              isOverloadedOrIslanded
+                ? 'bg-rose-500/20 text-rose-400 border-rose-500/40 animate-bounce'
+                : 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30'
+            }`}
+          >
             <Plane className="w-5 h-5 animate-pulse" />
           </div>
           <div>
@@ -125,11 +147,13 @@ export default function DroneFleet({
               <h3 className="text-sm font-bold text-white tracking-tight font-mono uppercase">
                 Autonomous Drone Fleet &bull; Aerial Telemetry
               </h3>
-              <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border ${
-                isOverloadedOrIslanded
-                  ? 'bg-rose-950 text-rose-300 border-rose-700 animate-pulse'
-                  : 'bg-cyan-950 text-cyan-300 border-cyan-800'
-              }`}>
+              <span
+                className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold border transition-colors ${
+                  isOverloadedOrIslanded
+                    ? 'bg-rose-950 text-rose-300 border-rose-700 animate-pulse'
+                    : 'bg-cyan-950 text-cyan-300 border-cyan-800'
+                }`}
+              >
                 {isOverloadedOrIslanded ? 'EMERGENCY SCRAMBLE' : '3 UAVs ACTIVE'}
               </span>
             </div>
@@ -139,11 +163,13 @@ export default function DroneFleet({
           </div>
         </div>
 
-        <div className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-xl border ${
-          isOverloadedOrIslanded
-            ? 'text-rose-400 bg-rose-950/80 border-rose-700 animate-pulse'
-            : 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60'
-        }`}>
+        <div
+          className={`flex items-center gap-2 text-xs font-mono px-3 py-1.5 rounded-xl border transition-colors ${
+            isOverloadedOrIslanded
+              ? 'text-rose-400 bg-rose-950/80 border-rose-700 animate-pulse'
+              : 'text-emerald-400 bg-emerald-950/60 border-emerald-800/60'
+          }`}
+        >
           {isOverloadedOrIslanded ? (
             <AlertTriangle className="w-3.5 h-3.5 animate-bounce" />
           ) : (
@@ -156,32 +182,34 @@ export default function DroneFleet({
       {/* Grid: 2D SVG Spatial Map + Right Telemetry Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left: 2D SVG Interactive Spatial Aerial Map */}
-        <div className={`lg:col-span-2 relative h-72 sm:h-80 rounded-2xl border overflow-hidden flex items-center justify-center transition-colors ${
-          isOverloadedOrIslanded
-            ? 'bg-slate-950/95 border-rose-500/50 shadow-inner'
-            : 'bg-slate-950/90 border-white/10'
-        }`}>
+        <div
+          className={`lg:col-span-2 relative h-72 sm:h-84 rounded-2xl border overflow-hidden flex items-center justify-center transition-colors ${
+            isOverloadedOrIslanded
+              ? 'bg-slate-950/95 border-rose-500/50 shadow-inner'
+              : 'bg-slate-950/90 border-white/10'
+          }`}
+        >
           {/* Cybernetic Radial Map Grid */}
-          <svg className="w-full h-full absolute inset-0" viewBox="0 0 600 320">
+          <svg className="w-full h-full absolute inset-0 select-none" viewBox="0 0 600 320">
             <defs>
               <radialGradient id="mapGlow" cx="50%" cy="50%" r="50%">
                 <stop
                   offset="0%"
-                  stopColor={isOverloadedOrIslanded ? '#ef4444' : '#0891b2'}
-                  stopOpacity={isOverloadedOrIslanded ? '0.35' : '0.15'}
+                  stopColor={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+                  stopOpacity={isOverloadedOrIslanded ? '0.35' : '0.18'}
                 />
-                <stop offset="100%" stopColor="#020617" stopOpacity="0.85" />
+                <stop offset="100%" stopColor="#020617" stopOpacity="0.88" />
               </radialGradient>
               <linearGradient id="flightPathCyan" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop
                   offset="0%"
                   stopColor={isOverloadedOrIslanded ? '#ef4444' : '#06b6d4'}
-                  stopOpacity="0.6"
+                  stopOpacity="0.7"
                 />
                 <stop
                   offset="100%"
                   stopColor={isOverloadedOrIslanded ? '#b91c1c' : '#3b82f6'}
-                  stopOpacity="0.2"
+                  stopOpacity="0.25"
                 />
               </linearGradient>
             </defs>
@@ -189,60 +217,141 @@ export default function DroneFleet({
             {/* Background Grid Lines */}
             <rect width="600" height="320" fill="url(#mapGlow)" />
             {[40, 80, 120, 160, 200, 240, 280].map((y) => (
-              <line key={y} x1="0" y1={y} x2="600" y2={y} stroke={isOverloadedOrIslanded ? '#450a0a' : '#1e293b'} strokeWidth="0.5" />
+              <line
+                key={y}
+                x1="0"
+                y1={y}
+                x2="600"
+                y2={y}
+                stroke={isOverloadedOrIslanded ? '#450a0a' : '#1e293b'}
+                strokeWidth="0.5"
+              />
             ))}
             {[60, 120, 180, 240, 300, 360, 420, 480, 540].map((x) => (
-              <line key={x} x1={x} y1="0" x2={x} y2="320" stroke={isOverloadedOrIslanded ? '#450a0a' : '#1e293b'} strokeWidth="0.5" />
+              <line
+                key={x}
+                x1={x}
+                y1="0"
+                x2={x}
+                y2="320"
+                stroke={isOverloadedOrIslanded ? '#450a0a' : '#1e293b'}
+                strokeWidth="0.5"
+              />
             ))}
 
-            {/* Radar Sweep Circles (Reacts Red on Overload/Islanding) */}
+            {/* Radar Sweep Circles */}
             <circle
               cx="300"
               cy="160"
               r="70"
               fill="none"
-              stroke={isOverloadedOrIslanded ? '#ef4444' : '#06b6d4'}
-              strokeWidth={isOverloadedOrIslanded ? '1.5' : '0.75'}
+              stroke={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+              strokeWidth={isOverloadedOrIslanded ? '1.5' : '0.85'}
               strokeDasharray="3 3"
-              opacity={isOverloadedOrIslanded ? '0.75' : '0.4'}
+              opacity={isOverloadedOrIslanded ? '0.75' : '0.45'}
             />
             <circle
               cx="300"
               cy="160"
               r="130"
               fill="none"
-              stroke={isOverloadedOrIslanded ? '#ef4444' : '#06b6d4'}
-              strokeWidth={isOverloadedOrIslanded ? '1.5' : '0.75'}
-              opacity={isOverloadedOrIslanded ? '0.6' : '0.2'}
+              stroke={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+              strokeWidth={isOverloadedOrIslanded ? '1.5' : '0.85'}
+              opacity={isOverloadedOrIslanded ? '0.6' : '0.25'}
             />
 
-            {/* Radar Sweep Beam Line */}
+            {/* Rotating Radar Sweep Beam Line */}
             <line
               x1="300"
               y1="160"
               x2="430"
               y2="160"
-              stroke={isOverloadedOrIslanded ? '#ef4444' : '#06b6d4'}
-              strokeWidth={isOverloadedOrIslanded ? '2' : '1'}
-              opacity={isOverloadedOrIslanded ? '0.85' : '0.5'}
+              stroke={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+              strokeWidth={isOverloadedOrIslanded ? '2' : '1.2'}
+              opacity={isOverloadedOrIslanded ? '0.85' : '0.6'}
               style={{
                 animation: `radarSweepSpin ${isOverloadedOrIslanded ? '1.8s' : '4.5s'} linear infinite`,
               }}
             />
 
-            {/* Power Line Interconnect Vectors */}
+            {/* Dynamic Active Sector Highlight Corridors based on Selected Drone */}
+            {selectedDroneId === 'DRONE-ALPHA' && (
+              <g className="transition-all duration-500">
+                <line
+                  x1="100"
+                  y1="160"
+                  x2="300"
+                  y2="80"
+                  stroke="#06b6d4"
+                  strokeWidth="3.5"
+                  strokeDasharray="8 4"
+                  className="animate-flow-dash"
+                  style={{ filter: 'drop-shadow(0 0 8px #06b6d4)' }}
+                />
+                <circle cx="200" cy="120" r="28" fill="#06b6d4" opacity="0.08" className="animate-pulse" />
+              </g>
+            )}
+
+            {selectedDroneId === 'DRONE-BETA' && (
+              <g className="transition-all duration-500">
+                <circle
+                  cx="100"
+                  cy="160"
+                  r="46"
+                  fill="#f43f5e"
+                  opacity="0.12"
+                  stroke="#f43f5e"
+                  strokeWidth="2"
+                  strokeDasharray="4 4"
+                  className="animate-pulse"
+                />
+                <line
+                  x1="100"
+                  y1="160"
+                  x2="110"
+                  y2="140"
+                  stroke="#f43f5e"
+                  strokeWidth="2"
+                  strokeDasharray="3 3"
+                />
+              </g>
+            )}
+
+            {selectedDroneId === 'DRONE-GAMMA' && (
+              <g className="transition-all duration-500">
+                <line
+                  x1="300"
+                  y1="80"
+                  x2="480"
+                  y2="200"
+                  stroke="#10b981"
+                  strokeWidth="3.5"
+                  strokeDasharray="8 4"
+                  className="animate-flow-dash"
+                  style={{ filter: 'drop-shadow(0 0 8px #10b981)' }}
+                />
+                <circle cx="390" cy="140" r="28" fill="#10b981" opacity="0.08" className="animate-pulse" />
+              </g>
+            )}
+
+            {/* Power Line Interconnect Vectors (Baseline Topology) */}
             <path
               d="M 100 160 L 300 80 L 480 200 Z"
               fill="none"
               stroke="url(#flightPathCyan)"
               strokeWidth={isOverloadedOrIslanded ? '2' : '1.5'}
               strokeDasharray="5 5"
+              opacity="0.6"
             />
             <path d="M 300 80 L 300 240" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="2 2" />
 
-            {/* Static Ground Nodes */}
-            {/* Node 1: Main Substation Grid Tower - Glows Bright Red on Overload / Islanding */}
-            <g transform="translate(100, 160)">
+            {/* Static Ground Nodes (Clickable to switch aerial focus) */}
+            {/* Node 1: Main Substation Grid Tower */}
+            <g
+              transform="translate(100, 160)"
+              className="cursor-pointer group"
+              onClick={() => setSelectedDroneId('DRONE-BETA')}
+            >
               {isOverloadedOrIslanded && (
                 <circle r="30" fill="#ef4444" opacity="0.45" className="animate-ping" />
               )}
@@ -270,25 +379,49 @@ export default function DroneFleet({
             </g>
 
             {/* Node 2: Central BESS Battery Storage */}
-            <g transform="translate(300, 80)">
+            <g
+              transform="translate(300, 80)"
+              className="cursor-pointer"
+              onClick={() => setSelectedDroneId('DRONE-ALPHA')}
+            >
               <circle r="18" fill="#1e293b" stroke="#06b6d4" strokeWidth="2" />
               <circle r="6" fill="#06b6d4" />
-              <text x="0" y="-24" fill="#e2e8f0" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+              <text
+                x="0"
+                y="-24"
+                fill="#e2e8f0"
+                fontSize="10"
+                fontFamily="monospace"
+                textAnchor="middle"
+                fontWeight="bold"
+              >
                 BESS STORAGE
               </text>
             </g>
 
             {/* Node 3: Microgrid Smart Houses */}
-            <g transform="translate(480, 200)">
+            <g
+              transform="translate(480, 200)"
+              className="cursor-pointer"
+              onClick={() => setSelectedDroneId('DRONE-GAMMA')}
+            >
               <circle r="18" fill="#1e293b" stroke="#3b82f6" strokeWidth="2" />
               <circle r="6" fill="#3b82f6" />
-              <text x="0" y="32" fill="#e2e8f0" fontSize="10" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+              <text
+                x="0"
+                y="32"
+                fill="#e2e8f0"
+                fontSize="10"
+                fontFamily="monospace"
+                textAnchor="middle"
+                fontWeight="bold"
+              >
                 SMART LOADS
               </text>
             </g>
 
-            {/* Animated Drone Waypoint Flights (CSS Motion with Speedup on Overload) */}
-            {/* Drone Alpha (Patrolling Grid -> BESS, speeded up under emergency) */}
+            {/* Animated Drone Waypoint Flights */}
+            {/* Drone Alpha (UAV-α) */}
             <g
               style={{
                 animation: `droneFlightAlpha ${isOverloadedOrIslanded ? '2.5s' : '9s'} ease-in-out infinite`,
@@ -296,6 +429,15 @@ export default function DroneFleet({
               className="cursor-pointer"
               onClick={() => setSelectedDroneId('DRONE-ALPHA')}
             >
+              {selectedDroneId === 'DRONE-ALPHA' && (
+                <>
+                  <circle r="22" fill="#06b6d4" opacity="0.18" className="animate-ping" />
+                  <circle r="18" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3 3" />
+                  <text x="14" y="-8" fill="#06b6d4" fontSize="8" fontFamily="monospace" fontWeight="bold">
+                    [TRACKING]
+                  </text>
+                </>
+              )}
               <circle r="10" fill={isOverloadedOrIslanded ? '#ef4444' : '#0891b2'} opacity="0.3" className="animate-ping" />
               <circle r="6" fill={isOverloadedOrIslanded ? '#ef4444' : '#06b6d4'} />
               <polygon points="-5,-4 6,0 -5,4" fill="#ffffff" />
@@ -304,21 +446,37 @@ export default function DroneFleet({
               </text>
             </g>
 
-            {/* Drone Beta (Thermal hotspot inspection hovering over Substation) */}
+            {/* Drone Beta (UAV-β) */}
             <g
               transform={isAnomalyActive ? 'translate(110, 140)' : 'translate(210, 120)'}
               className="cursor-pointer transition-all duration-700"
               onClick={() => setSelectedDroneId('DRONE-BETA')}
             >
+              {selectedDroneId === 'DRONE-BETA' && (
+                <>
+                  <circle r="22" fill="#f43f5e" opacity="0.2" className="animate-ping" />
+                  <circle r="18" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeDasharray="3 3" />
+                  <text x="14" y="-8" fill="#f43f5e" fontSize="8" fontFamily="monospace" fontWeight="bold">
+                    [TRACKING]
+                  </text>
+                </>
+              )}
               <circle r="12" fill={isAnomalyActive ? '#ef4444' : '#f43f5e'} opacity="0.45" className="animate-ping" />
               <circle r="7" fill={isAnomalyActive ? '#ef4444' : '#f43f5e'} />
               <polygon points="-5,-4 6,0 -5,4" fill="#ffffff" />
-              <text x="14" y="4" fill={isAnomalyActive ? '#ef4444' : '#f43f5e'} fontSize="9" fontFamily="monospace" fontWeight="bold">
+              <text
+                x="14"
+                y="4"
+                fill={isAnomalyActive ? '#ef4444' : '#f43f5e'}
+                fontSize="9"
+                fontFamily="monospace"
+                fontWeight="bold"
+              >
                 UAV-β {isAnomalyActive ? '[HOTSPOT]' : ''}
               </text>
             </g>
 
-            {/* Drone Gamma (Perimeter inspection towards houses, speeded up under emergency) */}
+            {/* Drone Gamma (UAV-γ) */}
             <g
               style={{
                 animation: `droneFlightGamma ${isOverloadedOrIslanded ? '2.2s' : '8s'} ease-in-out infinite`,
@@ -326,6 +484,15 @@ export default function DroneFleet({
               className="cursor-pointer"
               onClick={() => setSelectedDroneId('DRONE-GAMMA')}
             >
+              {selectedDroneId === 'DRONE-GAMMA' && (
+                <>
+                  <circle r="22" fill="#10b981" opacity="0.18" className="animate-ping" />
+                  <circle r="18" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="3 3" />
+                  <text x="14" y="-8" fill="#10b981" fontSize="8" fontFamily="monospace" fontWeight="bold">
+                    [TRACKING]
+                  </text>
+                </>
+              )}
               <circle r="10" fill={isOverloadedOrIslanded ? '#ef4444' : '#10b981'} opacity="0.3" className="animate-ping" />
               <circle r="6" fill={isOverloadedOrIslanded ? '#ef4444' : '#10b981'} />
               <polygon points="-5,-4 6,0 -5,4" fill="#ffffff" />
@@ -335,15 +502,38 @@ export default function DroneFleet({
             </g>
           </svg>
 
-          {/* Map Overlay HUD Callout */}
-          <div className={`absolute top-3 left-3 px-3 py-1.5 rounded-xl border text-[10px] font-mono transition-colors ${
-            isOverloadedOrIslanded
-              ? 'bg-rose-950/90 border-rose-500 text-rose-300 font-bold animate-pulse'
-              : 'bg-slate-950/80 border-white/10 text-slate-300'
-          }`}>
-            {isOverloadedOrIslanded
-              ? '⚠️ SECTOR: EMERGENCY TACTICAL SCRAMBLE • RUNAWAY ALERT'
-              : 'SECTOR: ALPHA-1 AIRSPACE • CEILING: 120m'}
+          {/* Map Overlay HUD Callout with DYNAMIC SECTOR NAME & LIVE GPS TELEMETRY */}
+          <div
+            className={`absolute top-3 left-3 px-3 py-2 rounded-xl border text-[10px] font-mono transition-all backdrop-blur-md shadow-lg ${
+              isOverloadedOrIslanded
+                ? 'bg-rose-950/90 border-rose-500 text-rose-300 font-bold animate-pulse'
+                : 'bg-slate-950/85 border-white/10 text-slate-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="w-2.5 h-2.5 rounded-full animate-ping shrink-0"
+                style={{ backgroundColor: activeDrone.color }}
+              />
+              <span className="font-extrabold text-white tracking-wide">
+                {isOverloadedOrIslanded
+                  ? '⚠️ SECTOR: EMERGENCY TACTICAL SCRAMBLE • RUNAWAY ALERT'
+                  : `${activeDrone.sector} • CEILING: ${activeDrone.ceiling}`}
+              </span>
+            </div>
+            <div className="text-[9px] text-slate-400 mt-1 flex flex-wrap items-center gap-2">
+              <span className="text-white font-bold flex items-center gap-1">
+                <Crosshair className="w-3 h-3 text-cyan-400" />
+                LOCKED: {activeDrone.callsign.toUpperCase()}
+              </span>
+              <span>&bull;</span>
+              <span className="text-cyan-300">{activeDrone.coords}</span>
+              <span>&bull;</span>
+              <span className="text-amber-300 flex items-center gap-1">
+                <Compass className="w-3 h-3" />
+                HDG: {activeDrone.heading}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -354,29 +544,36 @@ export default function DroneFleet({
               Select Aerial Unit:
             </span>
             <div className="grid grid-cols-3 gap-2">
-              {drones.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setSelectedDroneId(d.id)}
-                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    selectedDroneId === d.id
-                      ? 'bg-slate-800 border-cyan-500 shadow-md ring-1 ring-cyan-400'
-                      : 'bg-slate-950/70 border-white/5 hover:border-white/20 text-slate-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[11px] font-bold text-white font-mono">
-                    <span>{d.callsign.split(' ')[0]}</span>
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: d.color }}
-                    />
-                  </div>
-                  <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                    {d.battery} Batt
-                  </span>
-                </button>
-              ))}
+              {drones.map((d) => {
+                const isSelected = selectedDroneId === d.id;
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => setSelectedDroneId(d.id)}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-slate-800 shadow-md ring-2'
+                        : 'bg-slate-950/70 border-white/5 hover:border-white/20 text-slate-400'
+                    }`}
+                    style={{
+                      borderColor: isSelected ? d.color : undefined,
+                      boxShadow: isSelected ? `0 0 12px ${d.color}40` : undefined,
+                    }}
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-bold text-white font-mono">
+                      <span>{d.callsign.split(' ')[0]}</span>
+                      <span
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: d.color }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
+                      {d.battery} Batt
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -384,12 +581,14 @@ export default function DroneFleet({
           <div className="p-4 rounded-xl bg-slate-950/80 border border-white/10 space-y-2.5 font-mono text-xs">
             <div className="flex items-center justify-between pb-2 border-b border-white/5">
               <span className="font-bold text-white flex items-center gap-1.5">
-                <Navigation className="w-3.5 h-3.5 text-cyan-400" />
-                {activeDrone.callsign}
+                <Navigation className="w-3.5 h-3.5" style={{ color: activeDrone.color }} />
+                <span>{activeDrone.callsign}</span>
               </span>
               <span
                 className={`text-[9px] px-2 py-0.5 rounded font-bold ${
-                  isOverloadedOrIslanded || activeDrone.status.includes('HOTSPOT') || activeDrone.status.includes('CRITICAL')
+                  isOverloadedOrIslanded ||
+                  activeDrone.status.includes('HOTSPOT') ||
+                  activeDrone.status.includes('CRITICAL')
                     ? 'bg-rose-950 text-rose-300 border border-rose-800 animate-pulse'
                     : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                 }`}
@@ -399,6 +598,12 @@ export default function DroneFleet({
             </div>
 
             <div className="space-y-1 text-[11px] text-slate-300">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Assigned Sector:</span>
+                <span className="truncate max-w-[170px] text-right font-bold" style={{ color: activeDrone.color }}>
+                  {activeDrone.sector.replace('SECTOR: ', '')}
+                </span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Mission:</span>
                 <span className="truncate max-w-[170px] text-right">{activeDrone.mission}</span>
