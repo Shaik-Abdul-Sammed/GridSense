@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
+export function useVoiceCommands({ onStartSimulation, onStopSimulation, onStartTour }) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [feedback, setFeedback] = useState(null);
@@ -26,7 +26,7 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
 
     recognition.onstart = () => {
       setIsListening(true);
-      setFeedback('Listening for voice commands...');
+      setFeedback('🎙️ Listening... (Say: "Start tour", "Simulate grid", "Play game", "Show 3D", "Impact")');
     };
 
     recognition.onresult = (event) => {
@@ -34,7 +34,10 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
       setTranscript(text);
 
       // Voice Command Routing Logic
-      if (text.includes('start forecast') || text.includes('simulate grid') || text.includes('run forecast')) {
+      if (text.includes('tour') || text.includes('guide') || text.includes('walkthrough')) {
+        setFeedback('Command Recognized: Launching Guided UI Tour');
+        if (onStartTour) onStartTour();
+      } else if (text.includes('start forecast') || text.includes('simulate grid') || text.includes('run forecast') || text.includes('forecast')) {
         setFeedback('Command Recognized: Starting 24h simulation');
         if (onStartSimulation) onStartSimulation();
       } else if (text.includes('stop forecast') || text.includes('stop simulation') || text.includes('halt')) {
@@ -43,6 +46,9 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
       } else if (text.includes('play game') || text.includes('open game') || text.includes('defender') || text.includes('gamer')) {
         setFeedback('Command Recognized: Launching Gamer Defender Arena');
         navigate('/defender');
+      } else if (text.includes('impact') || text.includes('pitch') || text.includes('innovation') || text.includes('roadmap')) {
+        setFeedback('Command Recognized: Opening Impact & Innovation Pitch Deck');
+        navigate('/impact');
       } else if (text.includes('show twin') || text.includes('3d') || text.includes('digital twin')) {
         setFeedback('Command Recognized: Opening 3D Digital Twin');
         navigate('/twin');
@@ -71,7 +77,7 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
         setFeedback('Command Recognized: Navigating to Live Dashboard');
         navigate('/');
       } else {
-        setFeedback(`Heard: "${text}" (Say "Start forecast", "Play game", "Show 3D", or "Go to settings")`);
+        setFeedback(`Heard: "${text}" (Say "Start tour", "Simulate grid", "Play game", or "Impact")`);
       }
 
       setTimeout(() => setFeedback(null), 4000);
@@ -80,8 +86,12 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
     recognition.onerror = (event) => {
       console.warn('Speech recognition error:', event.error);
       setIsListening(false);
-      setFeedback(`Voice error: ${event.error}`);
-      setTimeout(() => setFeedback(null), 3000);
+      if (event.error === 'not-allowed') {
+        setFeedback('Microphone permission blocked. Please allow microphone in browser.');
+      } else {
+        setFeedback(`Voice error: ${event.error}`);
+      }
+      setTimeout(() => setFeedback(null), 3500);
     };
 
     recognition.onend = () => {
@@ -95,7 +105,7 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
         recognitionRef.current.abort();
       }
     };
-  }, [navigate, onStartSimulation, onStopSimulation]);
+  }, [navigate, onStartSimulation, onStopSimulation, onStartTour]);
 
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) {
@@ -112,6 +122,8 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation }) {
         recognitionRef.current.start();
       } catch (err) {
         console.warn('Recognition start error:', err);
+        setFeedback('Voice listening error. Click again.');
+        setTimeout(() => setFeedback(null), 2500);
       }
     }
   }, [isListening]);

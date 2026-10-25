@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Joyride, STATUS } from 'react-joyride';
 import {
   Gamepad2,
   ShieldAlert,
@@ -96,6 +97,57 @@ const WAVES = [
   },
 ];
 
+const GAME_TOUR_STEPS = [
+  {
+    target: '#tour-game-objective',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">🎯 Mission Objective &amp; Telemetry</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Monitor the live surge load, generator frequency (nominal 50.0 Hz), and transformer core temperature. You must dispatch the correct SCADA emergency protocol before the countdown expires to prevent a cascaded blackout!
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-game-discharge',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">🔋 1. Discharge Battery (BESS)</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Injects 150 kW of stored electrochemical power instantly to counter demand spikes and stabilize frequency without shedding loads.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-game-grid',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-emerald-400 text-sm">🌐 2. Buy from Main Grid / Engage Islanding</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Controls tie-line interaction with the bulk utility grid. Either import emergency spinning reserves or sever connection to protect against cyber penetration and external faults.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-game-loadshed',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-amber-400 text-sm">✂️ 3. Selective Load Shedding</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Detaches non-essential loads (EV chargers, heavy commercial HVAC) in milliseconds, immediately rescuing the transformer from thermal runaway.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+];
+
 export default function GamerDemo() {
   const [currentWaveIndex, setCurrentWaveIndex] = useState(0);
   const [gameState, setGameState] = useState('IDLE'); // 'IDLE', 'PLAYING', 'VICTORY', 'BLACKOUT', 'GAME_OVER'
@@ -113,6 +165,34 @@ export default function GamerDemo() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [difficulty, setDifficulty] = useState('NORMAL'); // 'EASY' (+3s), 'NORMAL', 'HARD' (-2s)
   const timerRef = useRef(null);
+
+  // Guided UI Tour State
+  const [runTour, setRunTour] = useState(false);
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+  const runTourRef = useRef(false);
+  runTourRef.current = runTour;
+
+  const handleStartTour = () => {
+    if (gameState !== 'PLAYING') {
+      startWave(0);
+    }
+    setTourStepIndex(0);
+    setRunTour(true);
+  };
+
+  const handleTourCallback = (data) => {
+    const { action, index, status, type } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+      setTourStepIndex(0);
+    } else if (type === 'step:after' || action === 'next') {
+      setTourStepIndex(index + 1);
+    } else if (action === 'prev') {
+      setTourStepIndex(Math.max(0, index - 1));
+    } else if (type === 'error:target_not_found') {
+      setTourStepIndex(index + 1);
+    }
+  };
 
   const currentWave = WAVES[currentWaveIndex] || WAVES[0];
 
@@ -139,6 +219,9 @@ export default function GamerDemo() {
 
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => {
+        // Freeze countdown timer while Joyride tour guide is active
+        if (runTourRef.current) return prev;
+
         if (prev <= 0.1) {
           clearInterval(timerRef.current);
           setGameState('BLACKOUT');
@@ -222,6 +305,56 @@ export default function GamerDemo() {
 
   return (
     <div className="space-y-6">
+      {/* Guided UI Tour (react-joyride) - Mounted strictly on demand */}
+      {runTour && (
+        <Joyride
+          steps={GAME_TOUR_STEPS}
+          run={runTour}
+          stepIndex={tourStepIndex}
+          continuous
+          showProgress
+          showSkipButton
+          disableOverlayClose
+          spotlightClicks={false}
+          callback={handleTourCallback}
+          styles={{
+            options: {
+              arrowColor: '#0f172a',
+              backgroundColor: '#0f172a',
+              overlayColor: 'rgba(2, 6, 23, 0.75)',
+              primaryColor: '#06b6d4',
+              textColor: '#f8fafc',
+              width: 380,
+              zIndex: 10000,
+            },
+            tooltip: {
+              borderRadius: '16px',
+              border: '1px solid rgba(6, 182, 212, 0.4)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 0 15px rgba(6, 182, 212, 0.25)',
+              backdropFilter: 'blur(16px)',
+              padding: '16px',
+            },
+            buttonNext: {
+              backgroundColor: '#06b6d4',
+              color: '#020617',
+              borderRadius: '10px',
+              fontWeight: 'bold',
+              fontSize: '12px',
+              padding: '8px 14px',
+            },
+            buttonBack: {
+              color: '#94a3b8',
+              marginRight: '8px',
+              fontSize: '12px',
+            },
+            buttonSkip: {
+              color: '#64748b',
+              fontSize: '12px',
+            },
+          }}
+        />
+      )}
+
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-black border border-white/10 p-6 rounded-2xl shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -281,6 +414,16 @@ export default function GamerDemo() {
 
             <button
               type="button"
+              onClick={handleStartTour}
+              title="Start Interactive Game UI Tour"
+              className="px-3 py-1.5 rounded-xl font-bold text-xs bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-mono shadow-md border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer transition-all"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-slate-950 animate-spin" />
+              <span>How to Play (Tour)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setSoundEnabled((s) => !s)}
               title={soundEnabled ? 'Mute Game FX' : 'Enable Game FX'}
               className="p-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-white/10 text-slate-300 hover:text-white cursor-pointer select-none"
@@ -307,78 +450,91 @@ export default function GamerDemo() {
                 As Chief Substation Operator, you must counter 5 consecutive grid emergency waves. Choose the optimal SCADA dispatch before the generator frequency decays into regional blackout!
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => startWave(0)}
-              className="px-8 py-3.5 rounded-xl font-black text-sm uppercase tracking-wider text-white bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:scale-105 shadow-xl shadow-cyan-500/40 cursor-pointer transition-all flex items-center gap-2"
-            >
-              <Zap className="w-4 h-4 fill-white" />
-              <span>Launch Wave 1 Drill</span>
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => startWave(0)}
+                className="px-8 py-3.5 rounded-xl font-black text-sm uppercase tracking-wider text-white bg-gradient-to-r from-cyan-500 via-blue-600 to-cyan-500 hover:scale-105 shadow-xl shadow-cyan-500/40 cursor-pointer transition-all flex items-center gap-2"
+              >
+                <Zap className="w-4 h-4 fill-white" />
+                <span>Launch Wave 1 Drill</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleStartTour}
+                className="px-6 py-3.5 rounded-xl font-bold text-sm text-cyan-300 bg-slate-900/90 hover:bg-slate-800 border border-cyan-500/40 hover:border-cyan-400 cursor-pointer transition-all flex items-center gap-2"
+              >
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+                <span>How to Play (Tour)</span>
+              </button>
+            </div>
           </div>
         )}
 
         {/* State: PLAYING */}
         {gameState === 'PLAYING' && (
           <div className="space-y-6">
-            {/* Wave Title & Countdown Timer */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
-                  DEFCON 1 ACTIVE SCENARIO
-                </span>
-                <h3 className="text-lg sm:text-xl font-black text-white font-mono">
-                  {currentWave.title}
-                </h3>
-              </div>
-
-              <div className="flex items-center gap-4 text-xs font-mono">
-                <span className="text-slate-400">Wave {currentWaveIndex + 1} of {WAVES.length}</span>
-                <span className="px-3 py-1 rounded-lg bg-rose-950/80 border border-rose-600/80 text-rose-300 font-black text-sm flex items-center gap-1.5 animate-pulse">
-                  <Flame className="w-4 h-4 text-rose-500" />
-                  {timeLeft.toFixed(1)}s
-                </span>
-              </div>
-            </div>
-
-            {/* Linear Countdown Progress Bar */}
-            <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-white/10">
-              <div
-                className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 transition-all duration-100 ease-linear"
-                style={{ width: `${timeProgressPct}%` }}
-              />
-            </div>
-
-            {/* Real-Time Telemetry Metrics Gauges */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-rose-500/40 flex items-center justify-between font-mono">
+            {/* Objective & Wave Telemetry Container */}
+            <div id="tour-game-objective" className="space-y-4">
+              {/* Wave Title & Countdown Timer */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-white/10">
                 <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Surge Load</span>
-                  <span className="text-xl font-black text-rose-400">{currentWave.demandKw} kW</span>
+                  <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400 font-bold block">
+                    DEFCON 1 ACTIVE SCENARIO
+                  </span>
+                  <h3 className="text-lg sm:text-xl font-black text-white font-mono">
+                    {currentWave.title}
+                  </h3>
                 </div>
-                <Activity className="w-6 h-6 text-rose-500 animate-pulse" />
+
+                <div className="flex items-center gap-4 text-xs font-mono">
+                  <span className="text-slate-400">Wave {currentWaveIndex + 1} of {WAVES.length}</span>
+                  <span className="px-3 py-1 rounded-lg bg-rose-950/80 border border-rose-600/80 text-rose-300 font-black text-sm flex items-center gap-1.5 animate-pulse">
+                    <Flame className="w-4 h-4 text-rose-500" />
+                    {timeLeft.toFixed(1)}s
+                  </span>
+                </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-amber-500/40 flex items-center justify-between font-mono">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Grid Frequency</span>
-                  <span className="text-xl font-black text-amber-300">{currentWave.initialFreq} Hz</span>
-                </div>
-                <Radio className="w-6 h-6 text-amber-500" />
+              {/* Linear Countdown Progress Bar */}
+              <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-white/10">
+                <div
+                  className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 transition-all duration-100 ease-linear"
+                  style={{ width: `${timeProgressPct}%` }}
+                />
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-900/80 border border-cyan-500/40 flex items-center justify-between font-mono">
-                <div>
-                  <span className="text-[10px] text-slate-400 block uppercase">Transformer Core Temp</span>
-                  <span className="text-xl font-black text-cyan-300">{currentWave.transformerTemp}°C</span>
+              {/* Real-Time Telemetry Metrics Gauges */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-4 rounded-xl bg-slate-900/80 border border-rose-500/40 flex items-center justify-between font-mono">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Surge Load</span>
+                    <span className="text-xl font-black text-rose-400">{currentWave.demandKw} kW</span>
+                  </div>
+                  <Activity className="w-6 h-6 text-rose-500 animate-pulse" />
                 </div>
-                <Flame className="w-6 h-6 text-cyan-500" />
+
+                <div className="p-4 rounded-xl bg-slate-900/80 border border-amber-500/40 flex items-center justify-between font-mono">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Grid Frequency</span>
+                    <span className="text-xl font-black text-amber-300">{currentWave.initialFreq} Hz</span>
+                  </div>
+                  <Radio className="w-6 h-6 text-amber-500" />
+                </div>
+
+                <div className="p-4 rounded-xl bg-slate-900/80 border border-cyan-500/40 flex items-center justify-between font-mono">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block uppercase">Transformer Core Temp</span>
+                    <span className="text-xl font-black text-cyan-300">{currentWave.transformerTemp}°C</span>
+                  </div>
+                  <Flame className="w-6 h-6 text-cyan-500" />
+                </div>
               </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900/50 p-3 rounded-xl border border-white/5">
+                ⚠️ {currentWave.description}
+              </p>
             </div>
-
-            <p className="text-xs text-slate-300 leading-relaxed font-sans bg-slate-900/50 p-3 rounded-xl border border-white/5">
-              ⚠️ {currentWave.description}
-            </p>
 
             {/* Tactical Action Dispatch Buttons */}
             <div>
@@ -387,13 +543,14 @@ export default function GamerDemo() {
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <button
+                  id="tour-game-discharge"
                   type="button"
                   onClick={() => handleAction('DISCHARGE_BESS')}
                   className="p-4 rounded-xl bg-gradient-to-b from-cyan-950/80 to-slate-900 border border-cyan-500/50 hover:border-cyan-400 text-left transition-all hover:scale-[1.02] cursor-pointer group shadow-lg"
                 >
                   <div className="flex items-center gap-2 mb-1.5 text-cyan-400 font-bold text-xs font-mono">
                     <BatteryCharging className="w-4 h-4" />
-                    <span>Discharge BESS</span>
+                    <span>Discharge Battery (BESS)</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-tight">
                     Inject 150 kW electrochemical battery storage to absorb peak surge.
@@ -401,13 +558,29 @@ export default function GamerDemo() {
                 </button>
 
                 <button
+                  id="tour-game-grid"
+                  type="button"
+                  onClick={() => handleAction('EMERGENCY_ISLAND')}
+                  className="p-4 rounded-xl bg-gradient-to-b from-emerald-950/70 to-slate-900 border border-emerald-500/50 hover:border-emerald-400 text-left transition-all hover:scale-[1.02] cursor-pointer group shadow-lg"
+                >
+                  <div className="flex items-center gap-2 mb-1.5 text-emerald-400 font-bold text-xs font-mono">
+                    <ShieldAlert className="w-4 h-4" />
+                    <span>Buy from Main Grid / Island</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 leading-tight">
+                    Sever tie-line from compromised utility or negotiate emergency bulk reserves.
+                  </p>
+                </button>
+
+                <button
+                  id="tour-game-loadshed"
                   type="button"
                   onClick={() => handleAction('LOAD_SHED')}
                   className="p-4 rounded-xl bg-gradient-to-b from-amber-950/70 to-slate-900 border border-amber-500/50 hover:border-amber-400 text-left transition-all hover:scale-[1.02] cursor-pointer group shadow-lg"
                 >
                   <div className="flex items-center gap-2 mb-1.5 text-amber-400 font-bold text-xs font-mono">
                     <PowerOff className="w-4 h-4" />
-                    <span>Selective Load Shed</span>
+                    <span>Selective Load Shedding</span>
                   </div>
                   <p className="text-[11px] text-slate-400 leading-tight">
                     Detach non-essential EV chargers &amp; HVAC to protect grid backbone.
@@ -415,20 +588,7 @@ export default function GamerDemo() {
                 </button>
 
                 <button
-                  type="button"
-                  onClick={() => handleAction('EMERGENCY_ISLAND')}
-                  className="p-4 rounded-xl bg-gradient-to-b from-emerald-950/70 to-slate-900 border border-emerald-500/50 hover:border-emerald-400 text-left transition-all hover:scale-[1.02] cursor-pointer group shadow-lg"
-                >
-                  <div className="flex items-center gap-2 mb-1.5 text-emerald-400 font-bold text-xs font-mono">
-                    <ShieldAlert className="w-4 h-4" />
-                    <span>Engage Islanding Mode</span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-tight">
-                    Sever tie-line from compromised utility and run 100% microgrid autonomous.
-                  </p>
-                </button>
-
-                <button
+                  id="tour-game-var"
                   type="button"
                   onClick={() => handleAction('VAR_COMPENSATION')}
                   className="p-4 rounded-xl bg-gradient-to-b from-blue-950/70 to-slate-900 border border-blue-500/50 hover:border-blue-400 text-left transition-all hover:scale-[1.02] cursor-pointer group shadow-lg"

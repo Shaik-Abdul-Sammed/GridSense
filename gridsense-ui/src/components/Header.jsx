@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import {
   Zap,
   Activity,
@@ -7,7 +6,7 @@ import {
   DollarSign,
   Volume2,
   VolumeX,
-  Settings as SettingsIcon,
+  Compass,
 } from 'lucide-react';
 
 export default function Header({
@@ -22,6 +21,7 @@ export default function Header({
   ambientTemp = 26.5,
   humidityPct = 55,
   solarIrradiance = 350,
+  onStartTour,
 }) {
   // Accurate Weather Status with Degrees
   const tempNum = Number(ambientTemp);
@@ -229,15 +229,18 @@ export default function Header({
           </button>
         )}
 
-        {/* Quick Grid Settings Navigation Shortcut */}
-        <Link
-          to="/settings"
-          title="Grid Configuration & Threshold Rules"
-          className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-white/10 text-cyan-300 hover:text-white transition-all select-none cursor-pointer flex items-center justify-center"
-          aria-label="Open Grid Configuration"
-        >
-          <SettingsIcon className="w-4 h-4" />
-        </Link>
+        {/* Hackathon Guided UI Tour */}
+        {onStartTour && (
+          <button
+            type="button"
+            onClick={onStartTour}
+            title="Start Interactive Hackathon UI Tour"
+            className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 hover:text-black shadow-lg shadow-cyan-500/25 border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer select-none transition-all"
+          >
+            <Compass className="w-3.5 h-3.5 text-slate-950 animate-spin" />
+            <span>Start Guided Tour</span>
+          </button>
+        )}
 
         {lastUpdated && (
           <div className="text-xs text-slate-400 font-mono bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10 hidden md:block">

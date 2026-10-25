@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { Joyride, STATUS } from 'react-joyride';
 import {
   Mic,
   MicOff,
@@ -151,9 +152,93 @@ async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
   }
 }
 
+const DASHBOARD_TOUR_STEPS = [
+  {
+    target: '#tour-forecast-btn',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">⚡ 1. AI 24-Hour Demand Forecaster</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Streams real-time hourly load predictions powered by Zoho Catalyst QuickML. Calculates dynamic grid modes and triggers automated peak shaving.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-ocr-scanner',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">📷 2. Optical Meter Ingestion (OCR)</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Bridges legacy grid hardware with modern AI. Over 40% of global substations still rely on analog dial meters; our client-side Tesseract OCR digitizes camera feeds directly into live telemetry.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-failure-gauge',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">🛡️ 3. Predictive Failure &amp; RUL Gauge</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Continuous IEC 60076-7 thermal aging model predicting Remaining Useful Life (RUL) and winding hot-spot temperatures to prevent catastrophic blackouts before they occur.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-3d-twin',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">🌐 4. 3D WebGL Digital Twin</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Spatial Three.js substation twin mapping real-time power vector lines between Main Grid, BESS battery storage, and smart microgrid loads to reduce operator cognitive fatigue during crises.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+  {
+    target: '#tour-load-curve',
+    content: (
+      <div className="space-y-1.5 text-left">
+        <h4 className="font-bold text-cyan-400 text-sm">📈 5. 24-Hour Load Curve &amp; Peak Window</h4>
+        <p className="text-xs text-slate-300 leading-relaxed">
+          Visualizes continuous diurnal demand. The <strong className="text-rose-400">red shaded area (18:00–22:00)</strong> indicates the critical peak-demand window where transformer strain peaks and battery discharge is prioritized.
+        </p>
+      </div>
+    ),
+    disableBeacon: true,
+  },
+];
+
 export default function Dashboard() {
   const { settings } = useSettings();
 
+  const [runTour, setRunTour] = useState(false);
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+
+  const handleStartTour = useCallback(() => {
+    setTourStepIndex(0);
+    setRunTour(true);
+  }, []);
+
+  const handleTourCallback = useCallback((data) => {
+    const { action, index, status, type } = data;
+    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+      setRunTour(false);
+      setTourStepIndex(0);
+    } else if (type === 'step:after' || action === 'next') {
+      setTourStepIndex(index + 1);
+    } else if (action === 'prev') {
+      setTourStepIndex(Math.max(0, index - 1));
+    } else if (type === 'error:target_not_found') {
+      setTourStepIndex(index + 1);
+    }
+  }, []);
   const [forecastData, setForecastData] = useState([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -412,6 +497,7 @@ export default function Dashboard() {
   const { isListening, feedback, isSupported, toggleListening } = useVoiceCommands({
     onStartSimulation: handleStartSimulation,
     onStopSimulation: handleStopSimulation,
+    onStartTour: handleStartTour,
   });
 
   const handleFastForward = () => {
@@ -876,6 +962,56 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Guided UI Tour (react-joyride) - Mounted strictly on demand */}
+      {runTour && (
+        <Joyride
+          steps={DASHBOARD_TOUR_STEPS}
+          run={runTour}
+          stepIndex={tourStepIndex}
+          continuous
+          showProgress
+          showSkipButton
+          disableOverlayClose
+          spotlightClicks={false}
+          callback={handleTourCallback}
+          styles={{
+            options: {
+              arrowColor: '#0f172a',
+              backgroundColor: '#0f172a',
+              overlayColor: 'rgba(2, 6, 23, 0.75)',
+              primaryColor: '#06b6d4',
+              textColor: '#f8fafc',
+              width: 380,
+              zIndex: 10000,
+            },
+            tooltip: {
+              borderRadius: '16px',
+              border: '1px solid rgba(6, 182, 212, 0.4)',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 0 15px rgba(6, 182, 212, 0.25)',
+              backdropFilter: 'blur(16px)',
+              padding: '16px',
+            },
+            buttonNext: {
+              backgroundColor: '#06b6d4',
+              color: '#020617',
+              borderRadius: '10px',
+              fontWeight: 'bold',
+              fontSize: '12px',
+              padding: '8px 14px',
+            },
+            buttonBack: {
+              color: '#94a3b8',
+              marginRight: '8px',
+              fontSize: '12px',
+            },
+            buttonSkip: {
+              color: '#64748b',
+              fontSize: '12px',
+            },
+          }}
+        />
+      )}
+
       {/* Header Section with Grid Frequency, Theme Toggle, Voice Mute & Cyberattack button */}
       <Header
         lastUpdated={lastUpdated}
@@ -889,6 +1025,7 @@ export default function Dashboard() {
         ambientTemp={latestPrediction?.ambient_temp_c ?? 26.5}
         humidityPct={latestPrediction?.humidity_pct ?? 55}
         solarIrradiance={latestPrediction?.solar_irradiance_wm2 ?? 350}
+        onStartTour={handleStartTour}
       />
 
       {/* Feature 2: "What-If" Climate Simulator Interactive Slider Bar */}
@@ -968,12 +1105,14 @@ export default function Dashboard() {
       />
 
       {/* Optical Meter Ingestion (OCR) Component */}
-      <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
-        <MeterScanner
-          onOverrideLoad={handleOverrideLoad}
-          currentLoad={latestPrediction?.predicted_demand_kw}
-        />
-      </Suspense>
+      <div id="tour-ocr-scanner">
+        <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+          <MeterScanner
+            onOverrideLoad={handleOverrideLoad}
+            currentLoad={latestPrediction?.predicted_demand_kw}
+          />
+        </Suspense>
+      </div>
 
       {/* Printable Report Canvas Container */}
       <div id="dashboard-report-content" className="space-y-6 rounded-2xl bg-slate-950/60 p-2 sm:p-4">
@@ -983,7 +1122,7 @@ export default function Dashboard() {
         )}
 
         {/* Feature 1: Transformer Health Visual Gauge Banner */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div id="tour-failure-gauge" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Health Score Gauge */}
           <div
             className={`p-4 rounded-2xl border backdrop-blur-xl transition-all flex flex-col justify-between ${
@@ -1108,7 +1247,7 @@ export default function Dashboard() {
         </Suspense>
 
         {/* Digital Twin Microgrid Visualization (3D WebGL vs 2D Schematic) */}
-        <div className="space-y-3">
+        <div id="tour-3d-twin" className="space-y-3">
           <div className="flex items-center justify-between pb-1">
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase font-bold tracking-wider text-slate-400">
@@ -1180,7 +1319,7 @@ export default function Dashboard() {
 
         {/* Main Grid: Recharts Load Curve + Battery Gauge & Hourly Scrubber */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
+          <div id="tour-load-curve" className="lg:col-span-2">
             <LoadCurveChart
               data={forecastData}
               isLoading={isStreaming && forecastData.length === 0}

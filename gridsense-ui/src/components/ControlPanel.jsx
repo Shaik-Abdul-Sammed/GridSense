@@ -251,6 +251,7 @@ export default function ControlPanel({
 
           {/* Main Simulation / Stop Button */}
           <button
+            id="tour-forecast-btn"
             onClick={isStreaming ? onStopSimulation : onStartSimulation}
             className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm tracking-wide text-white transition-all shadow-xl cursor-pointer select-none ${
               isStreaming

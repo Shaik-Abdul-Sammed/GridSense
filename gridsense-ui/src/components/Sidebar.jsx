@@ -15,6 +15,7 @@ import {
   Plane,
   Camera,
   CloudSun,
+  Award,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -23,6 +24,13 @@ const NAV_ITEMS = [
     label: 'Live Dashboard',
     subtitle: 'Real-time telemetry',
     icon: Activity,
+  },
+  {
+    to: '/impact',
+    label: 'Impact & Innovation',
+    subtitle: 'Pitch deck & ESG metrics',
+    icon: Award,
+    badge: 'PITCH',
   },
   {
     to: '/defender',

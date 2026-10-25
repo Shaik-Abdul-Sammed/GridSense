@@ -6,6 +6,7 @@ import History from './pages/History';
 import Settings from './pages/Settings';
 import Marketplace from './pages/Marketplace';
 import GamerDemo from './pages/GamerDemo';
+import ImpactPage from './pages/ImpactPage';
 import DigitalTwinPage from './pages/DigitalTwinPage';
 import DroneFleetPage from './pages/DroneFleetPage';
 import FieldTechARPage from './pages/FieldTechARPage';
@@ -29,6 +30,9 @@ export default function App() {
                 <Route path="settings" element={<Settings />} />
 
                 {/* Hackathon Interactive Features & Gamer Demo Routes */}
+                <Route path="impact" element={<ImpactPage />} />
+                <Route path="pitch" element={<ImpactPage />} />
+                <Route path="innovation" element={<ImpactPage />} />
                 <Route path="defender" element={<GamerDemo />} />
                 <Route path="game" element={<GamerDemo />} />
                 <Route path="gamer" element={<GamerDemo />} />
