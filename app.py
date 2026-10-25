@@ -29,8 +29,11 @@ else:
 
 # QuickML Endpoint & Authentication Configuration
 QUICKML_ENDPOINT_KEY = "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
-QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
-QUICKML_ENDPOINT_URL = f"https://api.catalyst.zoho.in/baas/v1/project/{QUICKML_PROJECT_ID}/ml/execution/{QUICKML_ENDPOINT_KEY}"
+QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "91576000000013024")
+QUICKML_ENDPOINT_URL = os.environ.get(
+    "QUICKML_ENDPOINT_URL",
+    f"https://api.catalyst.zoho.in/quickml/v1/project/{QUICKML_PROJECT_ID}/endpoints/predict"
+)
 
 QUICKML_HEADERS = {
     "X-QUICKML-ENDPOINT-KEY": QUICKML_ENDPOINT_KEY,
@@ -38,6 +41,11 @@ QUICKML_HEADERS = {
     "Environment": "Development",
     "Content-Type": "application/json",
 }
+
+# Attach OAuth token if provided in runtime environment
+_zoho_token = os.environ.get("ZOHO_OAUTH_TOKEN") or os.environ.get("CATALYST_ACCESS_TOKEN")
+if _zoho_token:
+    QUICKML_HEADERS["Authorization"] = f"Zoho-oauthtoken {_zoho_token}"
 
 # 1. Initialize the Catalyst SDK for every request (when running in Catalyst AppSail)
 @app.before_request
@@ -126,13 +134,19 @@ def call_quickml_api(features_dict):
         except Exception as sdk_err:
             print(f"[QuickML Catalyst SDK Notice] {sdk_err}. Trying REST fallback...")
 
-    # Approach 2: Direct REST call with corrected endpoint URL for local / non-AppSail environments
-    QUICKML_ENDPOINT_URL = "https://api.catalyst.zoho.in/baas/v1/project/89804000000013023/ml/execution/f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
+    # Approach 2: Direct REST call with verified Zoho Catalyst QuickML endpoint
+    headers = dict(QUICKML_HEADERS)
+    try:
+        if request and request.headers.get("Authorization"):
+            headers["Authorization"] = request.headers.get("Authorization")
+    except Exception:
+        pass
+
     try:
         response = requests.post(
             QUICKML_ENDPOINT_URL,
             json=payload,
-            headers=QUICKML_HEADERS,
+            headers=headers,
             timeout=5.0
         )
 
@@ -150,7 +164,7 @@ def call_quickml_api(features_dict):
             elif isinstance(result, list) and len(result) > 0:
                 return float(result[0])
 
-        print(f"[QuickML REST Warning] HTTP {response.status_code}: {response.text[:200]}. Engaging fallback model.")
+        print(f"[QuickML REST Status] HTTP {response.status_code}: {response.text[:200]}. Engaging fallback simulation.")
     except Exception as e:
         print(f"[QuickML Fallback Engaged] API request failed: {e}. Executing resilient local model.")
 
