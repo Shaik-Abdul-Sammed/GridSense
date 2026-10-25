@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Joyride, STATUS } from 'react-joyride';
+import TourTooltip from '../components/TourTooltip';
 import {
   Gamepad2,
   ShieldAlert,
@@ -100,18 +101,14 @@ const WAVES = [
 const GAME_TOUR_STEPS = [
   {
     target: '#tour-game-objective',
+    badge: 'SCADA TELEMETRY',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wider font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-            STEP 1 OF 4 • SCADA TELEMETRY
-          </span>
-        </div>
+      <div className="space-y-2">
         <h4 className="font-bold text-white text-base flex items-center gap-1.5">
           <span>🎯</span> Mission Objective &amp; Live Feeder Vitals
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
-          Monitor real-time demand surge, grid frequency (nominal <strong className="text-cyan-300">50.0 Hz</strong>), and core temperature. You must dispatch the correct emergency protocol before the timer hits 0.0s!
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          Monitor real-time demand surge, grid frequency (nominal <strong className="text-cyan-300">50.0 Hz</strong>), and core temperature. You must dispatch the correct emergency protocol before the countdown expires!
         </p>
         <div className="pt-1 flex items-center gap-2 text-[11px] text-cyan-400 font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -123,17 +120,13 @@ const GAME_TOUR_STEPS = [
   },
   {
     target: '#tour-game-discharge',
+    badge: 'BESS FAST INJECT',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wider font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
-            STEP 2 OF 4 • FAST BESS DISPATCH
-          </span>
-        </div>
+      <div className="space-y-2">
         <h4 className="font-bold text-cyan-300 text-base flex items-center gap-1.5">
           <span>🔋</span> 1. Discharge Battery (BESS)
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Dispatches <strong className="text-cyan-300">150 kW</strong> of stored electrochemical energy in under 20ms to arrest frequency decay and damp high-frequency transients.
         </p>
         <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-400 font-mono">
@@ -145,17 +138,13 @@ const GAME_TOUR_STEPS = [
   },
   {
     target: '#tour-game-grid',
+    badge: 'GRID TIE-LINE',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wider font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-            STEP 3 OF 4 • TIE-LINE &amp; ISLANDING
-          </span>
-        </div>
+      <div className="space-y-2">
         <h4 className="font-bold text-emerald-300 text-base flex items-center gap-1.5">
           <span>🌐</span> 2. Main Grid Tie-Line / Islanding
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Commands physical tie-line breakers. Imports spinning reserves during normal surges or engages <strong className="text-emerald-300">emergency microgrid islanding</strong> to protect against external cyber intrusions.
         </p>
         <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-400 font-mono">
@@ -167,17 +156,13 @@ const GAME_TOUR_STEPS = [
   },
   {
     target: '#tour-game-loadshed',
+    badge: 'LOAD SHEDDING',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tracking-wider font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-            STEP 4 OF 4 • SELECTIVE LOAD SHEDDING
-          </span>
-        </div>
+      <div className="space-y-2">
         <h4 className="font-bold text-amber-300 text-base flex items-center gap-1.5">
           <span>✂️</span> 3. Selective Feeder Load Shedding
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Gracefully sheds non-essential smart loads (EV superchargers, commercial chillers) while keeping hospitals and critical nodes energised.
         </p>
         <div className="pt-1 flex items-center gap-2 text-[11px] text-slate-400 font-mono">
@@ -217,16 +202,33 @@ export default function GamerDemo() {
     if (gameState !== 'PLAYING') {
       startWave(0);
     }
+    // Single-click clean start: reset state then launch
+    setRunTour(false);
     setTourStepIndex(0);
-    setRunTour(true);
+    setTimeout(() => {
+      setRunTour(true);
+    }, 40);
   };
 
   const handleTourCallback = (data) => {
     const { action, index, status, type } = data;
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+
+    // Immediately unmount Joyride and clear dimming overlay on ANY exit trigger
+    if (
+      status === STATUS.FINISHED ||
+      status === STATUS.SKIPPED ||
+      action === 'close' ||
+      action === 'skip' ||
+      action === 'stop' ||
+      action === 'reset' ||
+      type === 'tour:end'
+    ) {
       setRunTour(false);
       setTourStepIndex(0);
-    } else if (type === 'step:after' || action === 'next') {
+      return;
+    }
+
+    if (type === 'step:after' || (action === 'next' && type === 'tooltip')) {
       setTourStepIndex(index + 1);
     } else if (action === 'prev') {
       setTourStepIndex(Math.max(0, index - 1));
@@ -355,57 +357,18 @@ export default function GamerDemo() {
           continuous
           showProgress
           showSkipButton
-          disableOverlayClose
+          disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}
+          tooltipComponent={TourTooltip}
           styles={{
             options: {
               arrowColor: '#030712',
               backgroundColor: '#030712',
-              overlayColor: 'rgba(2, 6, 23, 0.82)',
+              overlayColor: 'rgba(2, 6, 23, 0.85)',
               primaryColor: '#06b6d4',
               textColor: '#f8fafc',
-              width: 420,
               zIndex: 10000,
-            },
-            tooltip: {
-              borderRadius: '20px',
-              border: '1.5px solid rgba(6, 182, 212, 0.6)',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 35px rgba(6, 182, 212, 0.35)',
-              backdropFilter: 'blur(24px)',
-              padding: '20px 22px',
-            },
-            tooltipContainer: {
-              textAlign: 'left',
-            },
-            tooltipTitle: {
-              fontSize: '15px',
-              fontWeight: 'bold',
-            },
-            buttonNext: {
-              background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
-              color: '#020617',
-              borderRadius: '12px',
-              fontWeight: '800',
-              fontSize: '12px',
-              letterSpacing: '0.04em',
-              padding: '9px 18px',
-              boxShadow: '0 0 15px rgba(6, 182, 212, 0.5)',
-              border: 'none',
-              cursor: 'pointer',
-            },
-            buttonBack: {
-              color: '#94a3b8',
-              marginRight: '10px',
-              fontSize: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-            },
-            buttonSkip: {
-              color: '#64748b',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer',
             },
           }}
         />

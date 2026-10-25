@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
+import TourTooltip from '../components/TourTooltip';
 import PowerFlowDiagram from '../components/PowerFlowDiagram';
 import BatteryGauge from '../components/BatteryGauge';
 import LoadCurveChart from '../components/LoadCurveChart';
@@ -155,38 +156,32 @@ async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
 const DASHBOARD_TOUR_STEPS = [
   {
     target: '#tour-forecast-btn',
+    badge: 'QuickML v2.4',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-cyan-400 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">
-            STEP 1 OF 5 &bull; SCADA PREDICTOR
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">QuickML v2.4</span>
-        </div>
-        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+      <div className="space-y-2">
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
           <span className="text-cyan-400">⚡</span> AI 24-Hour Demand Forecaster
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Streams real-time hourly load predictions powered by <strong className="text-cyan-300 font-semibold">Zoho Catalyst QuickML</strong>. Calculates dynamic grid operating modes and initiates automated peak-shaving dispatch.
         </p>
+        <div className="pt-1 flex items-center gap-2 text-[11px] text-cyan-400 font-medium font-mono">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
+          Click &ldquo;Generate Forecast&rdquo; to trigger real-time inference
+        </div>
       </div>
     ),
     disableBeacon: true,
   },
   {
     target: '#tour-ocr-scanner',
+    badge: 'Tesseract WASM',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-purple-400 bg-purple-950/80 px-2 py-0.5 rounded border border-purple-800">
-            STEP 2 OF 5 &bull; HARDWARE RETROFIT
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">Tesseract WASM</span>
-        </div>
-        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+      <div className="space-y-2">
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
           <span className="text-purple-400">📷</span> Optical Meter Ingestion (OCR)
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Bridges legacy grid hardware with modern AI. Over <strong className="text-purple-300 font-semibold">40% of global substations</strong> still rely on analog dial meters; our client-side Tesseract OCR digitizes camera feeds directly into live telemetry.
         </p>
       </div>
@@ -195,18 +190,13 @@ const DASHBOARD_TOUR_STEPS = [
   },
   {
     target: '#tour-failure-gauge',
+    badge: 'IEEE C57.91',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
-            STEP 3 OF 5 &bull; PREDICTIVE MAINTENANCE
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">IEEE C57.91</span>
-        </div>
-        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+      <div className="space-y-2">
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
           <span className="text-emerald-400">🛡️</span> Predictive Failure &amp; RUL Gauge
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Continuous <strong className="text-emerald-300 font-semibold">IEC 60076-7 thermal aging model</strong> predicting Remaining Useful Life (RUL) and winding hot-spot temperatures to prevent catastrophic blackouts before they occur.
         </p>
       </div>
@@ -215,18 +205,13 @@ const DASHBOARD_TOUR_STEPS = [
   },
   {
     target: '#tour-3d-twin',
+    badge: 'Three.js WebGL',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-blue-400 bg-blue-950/80 px-2 py-0.5 rounded border border-blue-800">
-            STEP 4 OF 5 &bull; SPATIAL DIGITAL TWIN
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">Three.js WebGL</span>
-        </div>
-        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+      <div className="space-y-2">
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
           <span className="text-blue-400">🌐</span> 3D WebGL Digital Twin
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Spatial Three.js substation twin mapping real-time power vector lines between Main Grid, BESS battery storage, and smart microgrid loads to drastically reduce operator cognitive fatigue during crises.
         </p>
       </div>
@@ -235,18 +220,13 @@ const DASHBOARD_TOUR_STEPS = [
   },
   {
     target: '#tour-load-curve',
+    badge: '24-Hour Recharts',
     content: (
-      <div className="space-y-2 text-left">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono font-black uppercase tracking-wider text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800">
-            STEP 5 OF 5 &bull; DIURNAL LOAD CURVE
-          </span>
-          <span className="text-[10px] font-mono text-slate-400">24-Hour Recharts</span>
-        </div>
-        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-1.5">
+      <div className="space-y-2">
+        <h4 className="font-extrabold text-white text-base tracking-tight flex items-center gap-2">
           <span className="text-rose-400">📈</span> 24-Hour Load Curve &amp; Peak Window
         </h4>
-        <p className="text-xs text-slate-300 leading-relaxed">
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
           Visualizes continuous diurnal demand. The <strong className="text-rose-400 font-semibold">red shaded area (18:00–22:00)</strong> indicates the critical peak-demand window where transformer strain peaks and automated battery discharge is prioritized.
         </p>
       </div>
@@ -262,16 +242,34 @@ export default function Dashboard() {
   const [tourStepIndex, setTourStepIndex] = useState(0);
 
   const handleStartTour = useCallback(() => {
+    // Single-click clean start: reset any prior state before mounting tour
+    setRunTour(false);
     setTourStepIndex(0);
-    setRunTour(true);
+    setTimeout(() => {
+      setRunTour(true);
+    }, 40);
   }, []);
 
   const handleTourCallback = useCallback((data) => {
     const { action, index, status, type } = data;
-    if (status === STATUS.FINISHED || status === STATUS.SKIPPED) {
+
+    // Immediately unmount Joyride and clear dimming overlay on ANY exit trigger:
+    // Finished, Skipped, Closed via 'X', Esc pressed, stopped, or background overlay clicked
+    if (
+      status === STATUS.FINISHED ||
+      status === STATUS.SKIPPED ||
+      action === 'close' ||
+      action === 'skip' ||
+      action === 'stop' ||
+      action === 'reset' ||
+      type === 'tour:end'
+    ) {
       setRunTour(false);
       setTourStepIndex(0);
-    } else if (type === 'step:after' || action === 'next') {
+      return;
+    }
+
+    if (type === 'step:after' || (action === 'next' && type === 'tooltip')) {
       setTourStepIndex(index + 1);
     } else if (action === 'prev') {
       setTourStepIndex(Math.max(0, index - 1));
@@ -1011,9 +1009,10 @@ export default function Dashboard() {
           continuous
           showProgress
           showSkipButton
-          disableOverlayClose
+          disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}
+          tooltipComponent={TourTooltip}
           styles={{
             options: {
               arrowColor: '#030712',
@@ -1021,45 +1020,7 @@ export default function Dashboard() {
               overlayColor: 'rgba(2, 6, 23, 0.85)',
               primaryColor: '#06b6d4',
               textColor: '#f8fafc',
-              width: 420,
               zIndex: 10000,
-            },
-            tooltip: {
-              borderRadius: '20px',
-              border: '1.5px solid rgba(6, 182, 212, 0.6)',
-              boxShadow: '0 0 35px rgba(6, 182, 212, 0.3), 0 25px 60px -15px rgba(0, 0, 0, 0.95)',
-              backdropFilter: 'blur(20px)',
-              padding: '20px 22px',
-            },
-            buttonNext: {
-              background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
-              color: '#020617',
-              borderRadius: '12px',
-              fontWeight: 800,
-              fontSize: '12px',
-              padding: '9px 18px',
-              boxShadow: '0 4px 14px rgba(6, 182, 212, 0.4)',
-              cursor: 'pointer',
-              border: 'none',
-              transition: 'all 0.2s ease',
-            },
-            buttonBack: {
-              color: '#94a3b8',
-              marginRight: '12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            },
-            buttonSkip: {
-              color: '#64748b',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-            },
-            buttonClose: {
-              color: '#94a3b8',
-              top: '16px',
-              right: '16px',
             },
           }}
         />
@@ -1092,8 +1053,8 @@ export default function Dashboard() {
               <h3 className="text-sm font-bold text-white tracking-tight font-mono uppercase">
                 &ldquo;What-If&rdquo; Climate Simulator
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800">
-                ANTHROPOGENIC FORCING
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800 shrink-0">
+                HEATWAVE STRESS TEST
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">

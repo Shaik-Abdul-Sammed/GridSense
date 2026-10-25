@@ -344,7 +344,7 @@ export default function GridDefenderModal({
 
         {/* Footer Link to Dedicated Gamer Arena Page */}
         <div className="pt-4 border-t border-white/10 flex items-center justify-between text-xs">
-          <span className="text-slate-400 font-mono text-[11px]">Grid Defender Drill v3.0</span>
+          <span className="text-slate-400 font-mono text-[11px]">SCADA Defense Simulator</span>
           <Link
             to="/defender"
             onClick={onClose}

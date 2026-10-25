@@ -76,16 +76,17 @@ export default function Header({
           <Zap className="w-8 h-8" />
         </div>
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white whitespace-nowrap">
               GridSense Dashboard
             </h1>
-            <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-mono">
-              v3.0 Sci-Fi Twin
+            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 whitespace-nowrap shadow-xs shrink-0">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              v3.0 DIGITAL TWIN
             </span>
           </div>
-          <p className="text-sm text-slate-400">
-            Autonomous Digital Twin, P2P Energy Marketplace &amp; Neural Fault Controller
+          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+            Autonomous Digital Twin &bull; P2P Energy Marketplace &bull; Neural SCADA Controller
           </p>
         </div>
       </div>
@@ -235,9 +236,9 @@ export default function Header({
             type="button"
             onClick={onStartTour}
             title="Start Interactive Hackathon UI Tour"
-            className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 hover:text-black shadow-lg shadow-cyan-500/25 border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer select-none transition-all"
+            className="group px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 hover:text-black shadow-lg shadow-cyan-500/25 border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer select-none transition-all"
           >
-            <Compass className="w-3.5 h-3.5 text-slate-950 animate-spin" />
+            <Compass className="w-3.5 h-3.5 text-slate-950 transition-transform group-hover:rotate-45" />
             <span>Start Guided Tour</span>
           </button>
         )}
