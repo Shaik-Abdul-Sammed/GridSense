@@ -81,7 +81,7 @@ export function formatCoordinates(lat, lon) {
 
 /**
  * Encodes a latitude/longitude pair into a Google Open Location Code (Plus Code).
- * Format: 849VQHFJ+X6 (Base-20 alphanumeric grid addressing).
+ * Format: 849VQHFJ+X6 (Base-20 alphanumeric grid addressing, ~13.7m precision).
  */
 const PLUS_CODE_ALPHABET = '23456789CFGHJMPQRVWX';
 export function encodePlusCode(latitude, longitude) {
@@ -122,7 +122,7 @@ export function getGoogleMapsUrl(lat, lon) {
 /**
  * Multi-Tier High-Precision Reverse Geocoding:
  * Tier 1: Google Maps Geocoding API (if VITE_GOOGLE_MAPS_API_KEY is configured).
- * Tier 2: BigDataCloud Reverse Geocode Client (CORS supported, returns locality & plusCode).
+ * Tier 2: BigDataCloud Reverse Geocode Client (CORS supported, neighborhood & plusCode).
  * Tier 3: OpenStreetMap Nominatim reverse geocoding fallback.
  * Tier 4: Formatted coordinate representation.
  */
@@ -130,7 +130,7 @@ export async function reverseGeocode(lat, lon) {
   const plusCodeDefault = encodePlusCode(lat, lon);
   const googleKey = typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY;
 
-  // Tier 1: Google Maps Geocoding API (if configured)
+  // Tier 1: Google Maps Geocoding API (if key is configured)
   if (googleKey) {
     try {
       const controller = new AbortController();
@@ -161,7 +161,7 @@ export async function reverseGeocode(lat, lon) {
     }
   }
 
-  // Tier 2: BigDataCloud Reverse Geocoding with Google Plus Code
+  // Tier 2: BigDataCloud Reverse Geocoding with Neighborhood & Google Plus Code
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
@@ -172,16 +172,23 @@ export async function reverseGeocode(lat, lon) {
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
-      const city = data.city || data.locality;
+      const locality = data.locality;
+      const city = data.city;
       const state = data.principalSubdivision;
       const country = data.countryName;
-      const parts = [city, state, country].filter(Boolean);
+      const parts = [];
+      if (locality && locality !== city) parts.push(locality);
+      if (city) parts.push(city);
+      if (state) parts.push(state);
+      if (country) parts.push(country);
+
       const resolvedCode = data.plusCode || plusCodeDefault;
       if (parts.length > 0) {
         const placeName = parts.join(', ');
         return {
           placeName,
           plusCode: resolvedCode,
+          locality,
           city,
           state,
           country,
@@ -201,22 +208,22 @@ export async function reverseGeocode(lat, lon) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`,
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`,
       { signal: controller.signal }
     );
     clearTimeout(timeoutId);
     if (res.ok) {
       const data = await res.json();
       if (data?.address) {
+        const neighborhood = data.address.neighbourhood || data.address.suburb;
         const city =
           data.address.city ||
           data.address.town ||
           data.address.village ||
-          data.address.suburb ||
           data.address.county;
         const state = data.address.state;
         const country = data.address.country;
-        const parts = [city, state, country].filter(Boolean);
+        const parts = [neighborhood, city, state, country].filter(Boolean);
         if (parts.length > 0) {
           const placeName = parts.join(', ');
           return {
@@ -238,8 +245,8 @@ export async function reverseGeocode(lat, lon) {
   }
 
   // Tier 4: Coordinate fallback
-  const latStr = lat >= 0 ? `${lat.toFixed(2)}°N` : `${Math.abs(lat).toFixed(2)}°S`;
-  const lonStr = lon >= 0 ? `${lon.toFixed(2)}°E` : `${Math.abs(lon).toFixed(2)}°W`;
+  const latStr = lat >= 0 ? `${lat.toFixed(4)}°N` : `${Math.abs(lat).toFixed(4)}°S`;
+  const lonStr = lon >= 0 ? `${lon.toFixed(4)}°E` : `${Math.abs(lon).toFixed(4)}°W`;
   const fallbackPlace = `Station (${latStr}, ${lonStr})`;
   return {
     placeName: fallbackPlace,
@@ -252,8 +259,8 @@ export async function reverseGeocode(lat, lon) {
 }
 
 /**
- * Searches places, substations, cities, or landmarks worldwide.
- * Uses high-speed Geocoding API with Google Plus Code calculation.
+ * Searches places, substations, cities, coordinates, or landmarks worldwide.
+ * Supports direct GPS coordinate parsing (e.g. "37.7749, -122.4194") or query search.
  */
 export async function searchPlaces(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) {
@@ -261,11 +268,39 @@ export async function searchPlaces(query) {
   }
   const cleanQuery = query.trim();
 
+  // Mode 1: Direct Latitude & Longitude coordinate matching
+  const coordMatch = cleanQuery.match(
+    /^([-+]?\d{1,2}(?:\.\d+)?)[,\s]+([-+]?\d{1,3}(?:\.\d+)?)$/
+  );
+  if (coordMatch) {
+    const lat = parseFloat(coordMatch[1]);
+    const lon = parseFloat(coordMatch[2]);
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      const pCode = encodePlusCode(lat, lon);
+      const latFormatted = `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}`;
+      const lonFormatted = `${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`;
+      return [
+        {
+          id: `COORD_${lat.toFixed(4)}_${lon.toFixed(4)}`,
+          name: `Pin (${latFormatted}, ${lonFormatted})`,
+          displayName: `Exact GNSS Coordinates (${latFormatted}, ${lonFormatted})`,
+          lat: Number(lat.toFixed(5)),
+          lon: Number(lon.toFixed(5)),
+          country: 'Pinpoint Location',
+          admin1: '',
+          plusCode: pCode,
+          tag: 'Exact Geographic Coordinates',
+        },
+      ];
+    }
+  }
+
+  // Mode 2: High-speed global geocoding search
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
     const res = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanQuery)}&count=5&language=en&format=json`,
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanQuery)}&count=6&language=en&format=json`,
       { signal: controller.signal }
     );
     clearTimeout(timeoutId);
@@ -279,8 +314,8 @@ export async function searchPlaces(query) {
             id: `PLACE_${r.id}`,
             name: r.name,
             displayName,
-            lat: Number(r.latitude.toFixed(4)),
-            lon: Number(r.longitude.toFixed(4)),
+            lat: Number(r.latitude.toFixed(5)),
+            lon: Number(r.longitude.toFixed(5)),
             country: r.country || '',
             admin1: r.admin1 || '',
             plusCode: encodePlusCode(r.latitude, r.longitude),

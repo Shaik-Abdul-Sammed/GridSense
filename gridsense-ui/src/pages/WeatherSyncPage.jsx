@@ -105,10 +105,13 @@ export default function WeatherSyncPage() {
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-amber-300 font-bold">
               <Zap className="w-3.5 h-3.5" />
-              <span>Solar Capacity Factor: {Math.min(100, Math.round((weatherMeta.peakSolar / 1000) * 100))}%</span>
+              <span>
+                Live DNI: {weatherMeta.liveSolarDni ?? 0} W/m&sup2; &bull; Cap:{' '}
+                {Math.min(100, Math.round(((weatherMeta.liveSolarDni || weatherMeta.peakSolar) / 1000) * 100))}%
+              </span>
             </div>
             <p className="text-[10px] text-slate-400 leading-relaxed pt-1 border-t border-white/5">
-              UV Index {weatherMeta.maxUv}. High photovoltaic irradiance enables aggressive BESS battery charging.
+              Live UV index {weatherMeta.liveUv || weatherMeta.maxUv} (Max: {weatherMeta.maxUv}). Real-time direct solar flux informs BESS battery charging dispatch.
             </p>
           </div>
 
@@ -162,10 +165,20 @@ export default function WeatherSyncPage() {
               </span>
               <span className="text-slate-400 text-[11px]">({sourceLabel})</span>
             </div>
-            <div className="flex items-center gap-3 text-[11px]">
+            <div className="flex flex-wrap items-center gap-2.5 text-[11px]">
+              {weatherMeta?.plusCode && (
+                <span className="px-2 py-0.5 rounded bg-indigo-950/70 text-indigo-300 border border-indigo-800/60 font-bold hidden md:inline">
+                  Plus Code: {weatherMeta.plusCode}
+                </span>
+              )}
+              {weatherMeta?.accuracyRadius != null && (
+                <span className="px-2 py-0.5 rounded bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 font-bold hidden sm:inline">
+                  &plusmn;{weatherMeta.accuracyRadius}m Fix
+                </span>
+              )}
               <span className="text-emerald-400 font-bold flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                {syncedData.length} Hourly Intervals Synced
+                {syncedData.length} Intervals Synced
               </span>
             </div>
           </div>

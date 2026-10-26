@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Crosshair,
   Globe,
+  Radio,
 } from 'lucide-react';
 import {
   getWeatherInterpretation,
@@ -89,6 +90,7 @@ const REGIONAL_SUBSTATIONS = [
 
 export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isAcquiringGnss, setIsAcquiringGnss] = useState(false);
   const [activeStationId, setActiveStationId] = useState('SUB_SF');
   const [resolvedPlaceName, setResolvedPlaceName] = useState('San Francisco, California, United States');
   const [activePlusCode, setActivePlusCode] = useState('849VQHFJ+X6');
@@ -105,11 +107,24 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchDropdownRef = useRef(null);
 
+  // GNSS Watcher reference for cleanup
+  const gnssWatchIdRef = useRef(null);
+  const bestGnssFixRef = useRef(null);
+
   // Store onWeatherLoaded in a ref to avoid infinite re-render loops
   const onWeatherLoadedRef = useRef(onWeatherLoaded);
   useEffect(() => {
     onWeatherLoadedRef.current = onWeatherLoaded;
   }, [onWeatherLoaded]);
+
+  // Clean up any active GNSS watcher on unmount
+  useEffect(() => {
+    return () => {
+      if (gnssWatchIdRef.current != null && typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+      }
+    };
+  }, []);
 
   // Handle outside clicks to close search dropdown
   useEffect(() => {
@@ -140,7 +155,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       } finally {
         setIsSearching(false);
       }
-    }, 300);
+    }, 280);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -175,8 +190,8 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       const coordsHtml = formatCoordinates(lat, lon);
       setCoordinatesLabel(coordsHtml);
 
-      // Step 2: Query high-precision satellite telemetry
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,weather_code,surface_pressure,wind_speed_10m,shortwave_radiation,direct_normal_irradiance&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=3`;
+      // Step 2: Query high-precision satellite telemetry including real-time solar irradiance & UV
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,uv_index,shortwave_radiation,direct_normal_irradiance&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m,shortwave_radiation,direct_normal_irradiance,diffuse_radiation&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=3`;
 
       const res = await fetch(url, { method: 'GET' });
       if (!res.ok) {
@@ -199,8 +214,15 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       const wCodes = data.hourly.weather_code || [];
       const pressures = data.hourly.surface_pressure || [];
 
-      // Generate 24h normalized dataset
-      const formatted24h = times.slice(0, 24).map((rawTime, idx) => {
+      // Step 3: Rolling 24-hour forward operational window aligned to current hour
+      const currentPrefix = String(data.current?.time || '').slice(0, 13);
+      let startIdx = times.findIndex((t) => t.startsWith(currentPrefix));
+      if (startIdx < 0 || startIdx > times.length - 24) {
+        startIdx = 0;
+      }
+
+      const formatted24h = times.slice(startIdx, startIdx + 24).map((rawTime, offset) => {
+        const idx = startIdx + offset;
         const formattedTimestamp = String(rawTime).replace('T', ' ') + ':00';
         return {
           timestamp: formattedTimestamp,
@@ -216,35 +238,38 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         };
       });
 
-      // Step 3: Parse accurate real-time statistics
+      // Step 4: Parse accurate real-time statistics
       const currentData = data.current || {};
       const dailyData = data.daily || {};
 
-      const currentTemp = Number((currentData.temperature_2m ?? temps[0] ?? 25.0).toFixed(1));
+      const currentTemp = Number((currentData.temperature_2m ?? temps[startIdx] ?? 25.0).toFixed(1));
       const feelsLike = Number((currentData.apparent_temperature ?? currentTemp).toFixed(1));
-      const currentHumidity = Number((currentData.relative_humidity_2m ?? humidities[0] ?? 60).toFixed(0));
+      const currentHumidity = Number((currentData.relative_humidity_2m ?? humidities[startIdx] ?? 60).toFixed(0));
       const currentPressure = Number((currentData.surface_pressure ?? 1013.2).toFixed(0));
-      const currentWindSpeed = Number((currentData.wind_speed_10m ?? winds[0] ?? 10.0).toFixed(1));
+      const currentWindSpeed = Number((currentData.wind_speed_10m ?? winds[startIdx] ?? 10.0).toFixed(1));
       const currentWindDeg = currentData.wind_direction_10m ?? 180;
       const currentWindDir = getWindCompassDirection(currentWindDeg);
       const currentWeatherCode = currentData.weather_code ?? 0;
       const currentIsDay = currentData.is_day ?? 1;
       const condition = getWeatherInterpretation(currentWeatherCode, currentIsDay);
 
-      const validTemps = temps.slice(0, 24).filter((t) => typeof t === 'number');
+      const validTemps = temps.slice(startIdx, startIdx + 24).filter((t) => typeof t === 'number');
       const avgTemp = (validTemps.reduce((a, b) => a + b, 0) / (validTemps.length || 1)).toFixed(1);
 
-      const validHum = humidities.slice(0, 24).filter((h) => typeof h === 'number');
+      const validHum = humidities.slice(startIdx, startIdx + 24).filter((h) => typeof h === 'number');
       const avgHumidity = (validHum.reduce((a, b) => a + b, 0) / (validHum.length || 1)).toFixed(0);
 
-      const validSolars = solars.slice(0, 24).filter((s) => typeof s === 'number');
+      const validSolars = solars.slice(startIdx, startIdx + 24).filter((s) => typeof s === 'number');
       const peakSolar = (validSolars.length ? Math.max(...validSolars) : 800).toFixed(0);
+      const liveSolarDni = Number((currentData.direct_normal_irradiance ?? 0).toFixed(0));
+      const liveGhi = Number((currentData.shortwave_radiation ?? 0).toFixed(0));
 
       const todayMax = Number((dailyData.temperature_2m_max?.[0] ?? Math.max(...validTemps)).toFixed(1));
       const todayMin = Number((dailyData.temperature_2m_min?.[0] ?? Math.min(...validTemps)).toFixed(1));
       const sunriseTime = dailyData.sunrise?.[0]?.split('T')?.[1] || '06:30';
       const sunsetTime = dailyData.sunset?.[0]?.split('T')?.[1] || '18:30';
-      const maxUv = Number(dailyData.uv_index_max?.[0] ?? 5.5).toFixed(1);
+      const maxUv = Number(dailyData.uv_index_max?.[0] ?? currentData.uv_index ?? 5.5).toFixed(1);
+      const liveUv = Number(currentData.uv_index ?? 0).toFixed(1);
 
       const fullMeta = {
         stationId: stationId || 'CUSTOM',
@@ -267,11 +292,14 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         avgTemp,
         avgHumidity,
         peakSolar,
+        liveSolarDni,
+        liveGhi,
         todayMax,
         todayMin,
         sunriseTime,
         sunsetTime,
         maxUv,
+        liveUv,
         dailyForecast: dailyData,
         elevation: data.elevation ?? 18,
         timezone: data.timezone || 'UTC',
@@ -329,11 +357,14 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         avgTemp: '24.5',
         avgHumidity: '58',
         peakSolar: '750',
+        liveSolarDni: 750,
+        liveGhi: 680,
         todayMax: 28.5,
         todayMin: 18.2,
         sunriseTime: '06:45',
         sunsetTime: '18:20',
         maxUv: '5.8',
+        liveUv: '4.2',
         elevation: 18,
         timezone: 'UTC',
       };
@@ -348,46 +379,123 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       }
     } finally {
       setIsLoading(false);
+      setIsAcquiringGnss(false);
     }
   };
 
   // Substation Preset Button Click Handler
   const handleSelectSubstation = (station) => {
+    if (gnssWatchIdRef.current != null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+      gnssWatchIdRef.current = null;
+    }
+    setIsAcquiringGnss(false);
     fetchWeather(station.lat, station.lon, `${station.name} (${station.tag})`, station.id, null);
   };
 
-  // High-Accuracy GPS Device Sync Button Click Handler
+  // Multi-Sample Hardware GNSS Fix Acquisition (Progressive Satellite Locking)
   const handleGpsSync = () => {
     setError(null);
     setIsLoading(true);
+    setIsAcquiringGnss(true);
+    bestGnssFixRef.current = null;
 
     if (typeof window === 'undefined' || !navigator?.geolocation) {
+      setIsAcquiringGnss(false);
       setError('Hardware geolocation not supported by this browser. Defaulting to Substation Alpha-1.');
       const def = REGIONAL_SUBSTATIONS[0];
       fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        // High-precision coordinates (5 decimal places = ~1m resolution)
-        const lat = Number(pos.coords.latitude.toFixed(5));
-        const lon = Number(pos.coords.longitude.toFixed(5));
-        const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-        fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
-      },
-      (err) => {
-        console.warn('Geolocation permission prompt denied or timed out:', err.message);
-        setError('Location permission was not granted or signal timed out. Defaulting to Substation Alpha-1 (San Francisco, USA).');
-        const def = REGIONAL_SUBSTATIONS[0];
-        fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 0, // Guarantees fresh hardware GNSS/Wi-Fi fix instead of stale cache
-        timeout: 10000,
+    // Safety timeout: Lock with the best acquired fix within 4.5 seconds
+    const safetyTimer = setTimeout(() => {
+      if (gnssWatchIdRef.current != null) {
+        navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+        gnssWatchIdRef.current = null;
       }
-    );
+      setIsAcquiringGnss(false);
+
+      if (bestGnssFixRef.current) {
+        const { lat, lon, accuracy } = bestGnssFixRef.current;
+        fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
+      } else {
+        // Fallback to one-shot getCurrentPosition
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = Number(pos.coords.latitude.toFixed(5));
+            const lon = Number(pos.coords.longitude.toFixed(5));
+            const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+            fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
+          },
+          () => {
+            setError('GNSS acquisition timed out. Defaulting to Substation Alpha-1 (San Francisco, USA).');
+            const def = REGIONAL_SUBSTATIONS[0];
+            fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
+          },
+          { enableHighAccuracy: true, timeout: 5000 }
+        );
+      }
+    }, 4500);
+
+    // Progressive GNSS watch: captures increasingly accurate satellite readings
+    try {
+      gnssWatchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const lat = Number(pos.coords.latitude.toFixed(5));
+          const lon = Number(pos.coords.longitude.toFixed(5));
+          const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+
+          if (
+            bestGnssFixRef.current == null ||
+            (acc != null && acc < (bestGnssFixRef.current.accuracy || 9999))
+          ) {
+            bestGnssFixRef.current = { lat, lon, accuracy: acc };
+            setGpsAccuracy(acc);
+          }
+
+          // If accuracy is high-precision (<= 15 meters), lock in immediately!
+          if (acc != null && acc <= 15) {
+            clearTimeout(safetyTimer);
+            if (gnssWatchIdRef.current != null) {
+              navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+              gnssWatchIdRef.current = null;
+            }
+            setIsAcquiringGnss(false);
+            fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
+          }
+        },
+        (err) => {
+          console.warn('GNSS watcher error:', err.message);
+          clearTimeout(safetyTimer);
+          if (gnssWatchIdRef.current != null) {
+            navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+            gnssWatchIdRef.current = null;
+          }
+          setIsAcquiringGnss(false);
+
+          if (bestGnssFixRef.current) {
+            const { lat, lon, accuracy } = bestGnssFixRef.current;
+            fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
+          } else {
+            setError('GNSS signal unavailable or permission denied. Defaulting to Substation Alpha-1.');
+            const def = REGIONAL_SUBSTATIONS[0];
+            fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0, // Guarantees fresh hardware GNSS/Wi-Fi fix instead of stale cache
+          timeout: 8000,
+        }
+      );
+    } catch (e) {
+      clearTimeout(safetyTimer);
+      setIsAcquiringGnss(false);
+      console.warn('Geolocation invocation exception:', e);
+      const def = REGIONAL_SUBSTATIONS[0];
+      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
+    }
   };
 
   // Mount-only initialization (Run strictly once to avoid re-render loops)
@@ -453,7 +561,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
               {/* Hardware GNSS Accuracy Pill */}
               {gpsAccuracy != null && activeStationId === 'LIVE_GPS' && (
                 <span
-                  className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold shrink-0 border ${
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold shrink-0 border flex items-center gap-1 ${
                     gpsAccuracy <= 20
                       ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
                       : gpsAccuracy <= 100
@@ -462,6 +570,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
                   }`}
                   title="Physical horizontal accuracy radius from GNSS/Wi-Fi receiver"
                 >
+                  <Radio className="w-2.5 h-2.5 animate-pulse" />
                   &plusmn;{gpsAccuracy}m Accuracy
                 </span>
               )}
@@ -470,7 +579,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
               {activePlusCode && (
                 <div
                   className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/80 shadow-xs shrink-0"
-                  title="Google Open Location Code (Plus Code)"
+                  title="Google Open Location Code (Plus Code) for precise substation micro-location"
                 >
                   <Crosshair className="w-3 h-3 text-indigo-400" />
                   <span>{activePlusCode}</span>
@@ -503,7 +612,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
             <ExternalLink className="w-3 h-3 text-cyan-400/80" />
           </a>
 
-          {/* High-Accuracy GPS Sync Trigger */}
+          {/* High-Accuracy Multi-Sample GPS Sync Trigger */}
           <button
             type="button"
             onClick={handleGpsSync}
@@ -512,10 +621,17 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
               isLoading || isStreaming ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {isLoading && activeStationId === 'LIVE_GPS' ? (
+            {isAcquiringGnss ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Acquiring Fix...</span>
+                <span>
+                  {gpsAccuracy ? `Locking Satellites (±${gpsAccuracy}m)...` : 'Acquiring GNSS...'}
+                </span>
+              </>
+            ) : isLoading && activeStationId === 'LIVE_GPS' ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Ingesting Telemetry...</span>
               </>
             ) : (
               <>
@@ -556,7 +672,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           })}
         </div>
 
-        {/* Global Place & Substation Search Autocomplete */}
+        {/* Global Place, Substation & Coordinate Search Autocomplete */}
         <div ref={searchDropdownRef} className="relative flex-1 max-w-md">
           <div className="relative">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -568,7 +684,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
                 setIsSearchOpen(true);
               }}
               onFocus={() => setIsSearchOpen(true)}
-              placeholder="Search any city, substation, or grid location..."
+              placeholder="Search city, substation, or coordinates (e.g. 37.77, -122.41)..."
               className="w-full pl-9 pr-8 py-1.5 bg-slate-950/80 border border-white/10 rounded-xl text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/80 focus:ring-1 focus:ring-amber-400/50"
             />
             {isSearching ? (
@@ -665,15 +781,15 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           {/* Card 3: Solar Radiation GHI / DNI */}
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-white/10 space-y-1 shadow-md">
             <div className="flex items-center justify-between text-slate-400 text-[10px] uppercase font-bold">
-              <span>Peak Solar DNI</span>
+              <span>Solar Irradiance</span>
               <Sun className="w-3.5 h-3.5 text-amber-400" />
             </div>
             <div className="text-xl sm:text-2xl font-black text-amber-400">
               {weatherDetails.peakSolar}
-              <span className="text-xs font-normal text-slate-400 ml-1">W/m&sup2;</span>
+              <span className="text-xs font-normal text-slate-400 ml-1">W/m&sup2; Max</span>
             </div>
             <div className="text-[10px] text-amber-300">
-              UV Index: {weatherDetails.maxUv} (Max)
+              Live DNI: {weatherDetails.liveSolarDni || 0} W/m&sup2; &bull; UV {weatherDetails.liveUv}
             </div>
           </div>
 
