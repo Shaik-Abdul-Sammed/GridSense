@@ -10,8 +10,6 @@ import {
   Layers,
   Flame,
   Camera,
-  Maximize2,
-  Minimize2,
 } from 'lucide-react';
 
 const INITIAL_DRONES = [
@@ -70,24 +68,10 @@ export default function DroneFleet({
   const [drones, setDrones] = useState(INITIAL_DRONES);
   const [selectedDroneId, setSelectedDroneId] = useState('DRONE-GAMMA');
   const [sensorMode, setSensorMode] = useState('LIDAR'); // 'LIDAR', 'FLIR', 'OPTICAL'
-  const [viewPerspective, setViewPerspective] = useState('SECTOR_ZOOM'); // 'SECTOR_ZOOM', 'FULL_GRID'
 
   // Reactive state triggers
   const isOverloadedOrIslanded = currentDemand > 200 || gridMode === 'ISLANDED_MODE';
   const isAnomalyActive = transformerHealth < 60 || isOverloadedOrIslanded;
-
-  const getDynamicViewBox = () => {
-    if (viewPerspective === 'FULL_GRID') {
-      return '0 0 600 320';
-    }
-    if (selectedDroneId === 'DRONE-ALPHA') {
-      return '40 20 360 210';
-    }
-    if (selectedDroneId === 'DRONE-BETA') {
-      return '0 70 320 200';
-    }
-    return '200 40 380 230';
-  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -200,108 +184,178 @@ export default function DroneFleet({
         </div>
       </div>
 
-      {/* Aerial View & Sensor Mode Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-1">
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-white/10 text-xs font-mono">
-          <span className="text-[10px] text-slate-400 uppercase font-bold px-2">Aerial Sensor:</span>
+      {/* Dedicated Sector Status & Aerial Sensor Command Bar */}
+      <div className="p-3.5 rounded-2xl bg-slate-950/90 border border-white/10 shadow-xl backdrop-blur-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span
+            className="w-3.5 h-3.5 rounded-full animate-ping shrink-0"
+            style={{ backgroundColor: activeDrone.color }}
+          />
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className="text-xs sm:text-sm font-extrabold tracking-wide font-mono"
+                style={{ color: activeDrone.color }}
+              >
+                {activeDrone.sector}
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-slate-900 text-slate-300 border border-white/10">
+                CEILING: {activeDrone.ceiling}
+              </span>
+              {isOverloadedOrIslanded && (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-rose-950 text-rose-300 border border-rose-600 animate-pulse">
+                  OVERLOAD SCRAMBLE
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-slate-400 font-mono mt-0.5 flex flex-wrap items-center gap-2">
+              <span className="text-white font-bold flex items-center gap-1">
+                <Crosshair className="w-3 h-3 text-cyan-400" />
+                LOCKED: {activeDrone.callsign.toUpperCase()}
+              </span>
+              <span>&bull;</span>
+              <span className="text-cyan-300">{activeDrone.coords}</span>
+              <span>&bull;</span>
+              <span className="text-amber-300 flex items-center gap-1">
+                <Compass className="w-3 h-3" />
+                HDG: {activeDrone.heading}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Aerial Sensor Filter Modes */}
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-900 border border-white/10 text-xs font-mono self-stretch sm:self-auto justify-between sm:justify-start">
+          <span className="text-[10px] text-slate-400 uppercase font-bold px-1.5 hidden lg:inline">Filter:</span>
           <button
             type="button"
             onClick={() => setSensorMode('LIDAR')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               sensorMode === 'LIDAR'
-                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-bold shadow-xs'
+                ? 'bg-cyan-500/25 text-cyan-300 border border-cyan-400 font-bold shadow-md shadow-cyan-950/50'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Layers className="w-3 h-3 text-cyan-400" />
+            <Layers className="w-3.5 h-3.5 text-cyan-400" />
             <span>LiDAR Cloud</span>
           </button>
           <button
             type="button"
             onClick={() => setSensorMode('FLIR')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               sensorMode === 'FLIR'
-                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold shadow-xs'
+                ? 'bg-rose-500/25 text-rose-300 border border-rose-500 font-bold shadow-md shadow-rose-950/50'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Flame className="w-3 h-3 text-rose-400" />
+            <Flame className="w-3.5 h-3.5 text-rose-400" />
             <span>FLIR Thermal</span>
           </button>
           <button
             type="button"
             onClick={() => setSensorMode('OPTICAL')}
-            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
               sensorMode === 'OPTICAL'
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold shadow-xs'
+                ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-400 font-bold shadow-md shadow-emerald-950/50'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Camera className="w-3 h-3 text-emerald-400" />
+            <Camera className="w-3.5 h-3.5 text-emerald-400" />
             <span>4K Optical</span>
-          </button>
-        </div>
-
-        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-white/10 text-xs font-mono">
-          <button
-            type="button"
-            onClick={() => setViewPerspective((prev) => (prev === 'SECTOR_ZOOM' ? 'FULL_GRID' : 'SECTOR_ZOOM'))}
-            className="px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-cyan-300 hover:text-white"
-          >
-            {viewPerspective === 'SECTOR_ZOOM' ? (
-              <>
-                <Minimize2 className="w-3 h-3 text-cyan-400" />
-                <span>Sector Focus</span>
-              </>
-            ) : (
-              <>
-                <Maximize2 className="w-3 h-3 text-emerald-400" />
-                <span>Full Grid Wide</span>
-              </>
-            )}
           </button>
         </div>
       </div>
 
       {/* Grid: 2D SVG Spatial Map + Right Telemetry Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left: 2D SVG Interactive Spatial Aerial Map */}
+        {/* Left: 2D SVG Interactive Spatial Aerial Map with Filter Transformations */}
         <div
-          className={`lg:col-span-2 relative h-72 sm:h-84 rounded-2xl border overflow-hidden flex items-center justify-center transition-colors ${
-            isOverloadedOrIslanded
-              ? 'bg-slate-950/95 border-rose-500/50 shadow-inner'
-              : 'bg-slate-950/90 border-white/10'
+          className={`lg:col-span-2 relative h-72 sm:h-88 rounded-2xl border overflow-hidden flex items-center justify-center transition-all duration-500 ${
+            sensorMode === 'FLIR'
+              ? 'bg-[#0d0724] border-purple-500/50 shadow-[inset_0_0_40px_rgba(168,85,247,0.2)]'
+              : sensorMode === 'OPTICAL'
+              ? 'bg-[#080d1a] border-slate-700 shadow-inner'
+              : isOverloadedOrIslanded
+              ? 'bg-slate-950 border-rose-500/50 shadow-inner'
+              : 'bg-slate-950 border-white/10'
           }`}
         >
-          {/* Cybernetic Radial Map Grid with dynamic ViewBox */}
-          <svg
-            className="w-full h-full absolute inset-0 select-none transition-all duration-700 ease-in-out"
-            viewBox={getDynamicViewBox()}
-          >
+          {/* Cybernetic Radial Map Grid with High-Legibility Standard ViewBox */}
+          <svg className="w-full h-full absolute inset-0 select-none" viewBox="0 0 600 320">
             <defs>
+              {/* FLIR Thermal Ironbow Gradient */}
+              <radialGradient id="substationThermal" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
+                <stop offset="25%" stopColor="#fde047" stopOpacity="0.85" />
+                <stop offset="50%" stopColor="#f97316" stopOpacity="0.65" />
+                <stop offset="75%" stopColor="#e11d48" stopOpacity="0.4" />
+                <stop offset="100%" stopColor="#581c87" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="bessThermal" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#fed7aa" stopOpacity="0.8" />
+                <stop offset="40%" stopColor="#f97316" stopOpacity="0.5" />
+                <stop offset="80%" stopColor="#c026d3" stopOpacity="0.25" />
+                <stop offset="100%" stopColor="#312e81" stopOpacity="0" />
+              </radialGradient>
+              <radialGradient id="loadThermal" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.7" />
+                <stop offset="60%" stopColor="#6366f1" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#1e1b4b" stopOpacity="0" />
+              </radialGradient>
+
+              {/* Standard Map Gradients */}
               <radialGradient id="mapGlow" cx="50%" cy="50%" r="50%">
                 <stop
                   offset="0%"
-                  stopColor={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
-                  stopOpacity={isOverloadedOrIslanded ? '0.35' : '0.18'}
-                />
-                <stop offset="100%" stopColor="#020617" stopOpacity="0.88" />
-              </radialGradient>
-              <linearGradient id="flightPathCyan" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop
-                  offset="0%"
-                  stopColor={isOverloadedOrIslanded ? '#ef4444' : '#06b6d4'}
-                  stopOpacity="0.7"
+                  stopColor={
+                    sensorMode === 'FLIR'
+                      ? '#7c3aed'
+                      : sensorMode === 'OPTICAL'
+                      ? '#1e293b'
+                      : isOverloadedOrIslanded
+                      ? '#ef4444'
+                      : activeDrone.color
+                  }
+                  stopOpacity={sensorMode === 'FLIR' ? '0.3' : isOverloadedOrIslanded ? '0.35' : '0.18'}
                 />
                 <stop
                   offset="100%"
-                  stopColor={isOverloadedOrIslanded ? '#b91c1c' : '#3b82f6'}
-                  stopOpacity="0.25"
+                  stopColor={sensorMode === 'FLIR' ? '#0d0724' : '#020617'}
+                  stopOpacity="0.92"
+                />
+              </radialGradient>
+
+              <linearGradient id="flightPathCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop
+                  offset="0%"
+                  stopColor={
+                    sensorMode === 'FLIR'
+                      ? '#f43f5e'
+                      : sensorMode === 'OPTICAL'
+                      ? '#94a3b8'
+                      : isOverloadedOrIslanded
+                      ? '#ef4444'
+                      : '#06b6d4'
+                  }
+                  stopOpacity="0.8"
+                />
+                <stop
+                  offset="100%"
+                  stopColor={
+                    sensorMode === 'FLIR'
+                      ? '#e11d48'
+                      : sensorMode === 'OPTICAL'
+                      ? '#475569'
+                      : isOverloadedOrIslanded
+                      ? '#b91c1c'
+                      : '#3b82f6'
+                  }
+                  stopOpacity="0.3"
                 />
               </linearGradient>
             </defs>
 
-            {/* Background Grid Lines */}
+            {/* Background Grid Lines & Texture */}
             <rect width="600" height="320" fill="url(#mapGlow)" />
             {[40, 80, 120, 160, 200, 240, 280].map((y) => (
               <line
@@ -310,7 +364,15 @@ export default function DroneFleet({
                 y1={y}
                 x2="600"
                 y2={y}
-                stroke={isOverloadedOrIslanded ? '#450a0a' : '#1e293b'}
+                stroke={
+                  sensorMode === 'FLIR'
+                    ? '#27184a'
+                    : sensorMode === 'OPTICAL'
+                    ? '#1e293b'
+                    : isOverloadedOrIslanded
+                    ? '#450a0a'
+                    : '#1e293b'
+                }
                 strokeWidth="0.5"
               />
             ))}
@@ -321,10 +383,112 @@ export default function DroneFleet({
                 y1="0"
                 x2={x}
                 y2="320"
-                stroke={isOverloadedOrIslanded ? '#450a0a' : '#1e293b'}
+                stroke={
+                  sensorMode === 'FLIR'
+                    ? '#27184a'
+                    : sensorMode === 'OPTICAL'
+                    ? '#1e293b'
+                    : isOverloadedOrIslanded
+                    ? '#450a0a'
+                    : '#1e293b'
+                }
                 strokeWidth="0.5"
               />
             ))}
+
+            {/* FILTER SPECIFIC VISUAL LAYERS */}
+            {/* 1. LiDAR Point Cloud Elevation Matrix */}
+            {sensorMode === 'LIDAR' && (
+              <g className="transition-opacity duration-500">
+                {/* 30+ 3D Point Cloud elevation dots along corridor terrain */}
+                {[
+                  [120, 140], [150, 130], [180, 110], [210, 100], [240, 95], [270, 88],
+                  [320, 90], [350, 115], [380, 135], [410, 155], [440, 175], [460, 190],
+                  [140, 165], [200, 145], [260, 125], [340, 140], [420, 185],
+                  [110, 120], [160, 95], [230, 75], [310, 65], [430, 130],
+                ].map(([px, py], i) => (
+                  <circle
+                    key={i}
+                    cx={px}
+                    cy={py}
+                    r={i % 3 === 0 ? 2 : 1.5}
+                    fill={i % 2 === 0 ? '#06b6d4' : '#10b981'}
+                    opacity={0.6 + (i % 4) * 0.1}
+                    className="animate-pulse"
+                  />
+                ))}
+
+                {/* LiDAR Laser Scan Cone radiating from active drone to ground */}
+                <polygon
+                  points="100,160 300,80 200,120"
+                  fill="#06b6d4"
+                  opacity="0.06"
+                />
+
+                {/* Laser Elevation Safety Distance Badge */}
+                <rect x="175" y="65" width="150" height="18" rx="4" fill="#020617" fillOpacity="0.85" stroke="#06b6d4" strokeWidth="0.8" />
+                <text x="250" y="77" fill="#67e8f9" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                  LiDAR Clearance: 98.2% [8.4m Safe]
+                </text>
+              </g>
+            )}
+
+            {/* 2. FLIR Thermal Radiometric Thermography Heatmaps */}
+            {sensorMode === 'FLIR' && (
+              <g className="transition-opacity duration-500">
+                {/* Substation Thermal Bloom (Hotspot: 82.4°C) */}
+                <circle cx="100" cy="160" r="55" fill="url(#substationThermal)" className="animate-pulse" />
+                <circle cx="100" cy="160" r="30" fill="url(#substationThermal)" />
+
+                {/* BESS Battery Container Thermal (Warm: 45.1°C) */}
+                <circle cx="300" cy="80" r="42" fill="url(#bessThermal)" />
+
+                {/* Smart Loads Thermal (Cool: 28.0°C) */}
+                <circle cx="480" cy="200" r="36" fill="url(#loadThermal)" />
+
+                {/* Thermal Crosshair Probes */}
+                {/* Substation Probe */}
+                <line x1="90" y1="160" x2="110" y2="160" stroke="#ffffff" strokeWidth="1" />
+                <line x1="100" y1="150" x2="100" y2="170" stroke="#ffffff" strokeWidth="1" />
+                <rect x="70" y="112" width="60" height="16" rx="3" fill="#020617" fillOpacity="0.85" stroke="#ef4444" strokeWidth="1" />
+                <text x="100" y="123" fill="#fca5a5" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                  SP01: 82.4°C
+                </text>
+
+                {/* BESS Probe */}
+                <line x1="290" y1="80" x2="310" y2="80" stroke="#ffffff" strokeWidth="1" />
+                <line x1="300" y1="70" x2="300" y2="90" stroke="#ffffff" strokeWidth="1" />
+                <rect x="270" y="32" width="60" height="16" rx="3" fill="#020617" fillOpacity="0.85" stroke="#f97316" strokeWidth="1" />
+                <text x="300" y="43" fill="#fed7aa" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                  SP02: 45.1°C
+                </text>
+
+                {/* Microgrid Probe */}
+                <rect x="450" y="152" width="60" height="16" rx="3" fill="#020617" fillOpacity="0.85" stroke="#38bdf8" strokeWidth="1" />
+                <text x="480" y="163" fill="#bae6fd" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
+                  SP03: 28.0°C
+                </text>
+              </g>
+            )}
+
+            {/* 3. 4K Optical Satellite High-Res Overlay */}
+            {sensorMode === 'OPTICAL' && (
+              <g className="transition-opacity duration-500">
+                {/* Tactical Framing Corner Brackets */}
+                <path d="M 15 25 L 15 15 L 25 15" fill="none" stroke="#94a3b8" strokeWidth="2" />
+                <path d="M 585 25 L 585 15 L 575 15" fill="none" stroke="#94a3b8" strokeWidth="2" />
+                <path d="M 15 295 L 15 305 L 25 305" fill="none" stroke="#94a3b8" strokeWidth="2" />
+                <path d="M 585 295 L 585 305 L 575 305" fill="none" stroke="#94a3b8" strokeWidth="2" />
+
+                {/* 4K Optical Watermark & Compass */}
+                <text x="30" y="30" fill="#cbd5e1" fontSize="9" fontFamily="monospace" fontWeight="bold">
+                  [CAM-01: 4K UHD 60FPS &bull; 35mm F/2.8 &bull; ISO 100]
+                </text>
+                <text x="570" y="30" fill="#34d399" fontSize="9" fontFamily="monospace" textAnchor="end" fontWeight="bold">
+                  ● REC LIVE
+                </text>
+              </g>
+            )}
 
             {/* Radar Sweep Circles */}
             <circle
@@ -332,19 +496,19 @@ export default function DroneFleet({
               cy="160"
               r="70"
               fill="none"
-              stroke={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+              stroke={sensorMode === 'FLIR' ? '#c026d3' : isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
               strokeWidth={isOverloadedOrIslanded ? '1.5' : '0.85'}
               strokeDasharray="3 3"
-              opacity={isOverloadedOrIslanded ? '0.75' : '0.45'}
+              opacity={sensorMode === 'FLIR' ? '0.4' : isOverloadedOrIslanded ? '0.75' : '0.45'}
             />
             <circle
               cx="300"
               cy="160"
               r="130"
               fill="none"
-              stroke={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+              stroke={sensorMode === 'FLIR' ? '#c026d3' : isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
               strokeWidth={isOverloadedOrIslanded ? '1.5' : '0.85'}
-              opacity={isOverloadedOrIslanded ? '0.6' : '0.25'}
+              opacity={sensorMode === 'FLIR' ? '0.25' : isOverloadedOrIslanded ? '0.6' : '0.25'}
             />
 
             {/* Rotating Radar Sweep Beam Line */}
@@ -353,86 +517,116 @@ export default function DroneFleet({
               y1="160"
               x2="430"
               y2="160"
-              stroke={isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
+              stroke={sensorMode === 'FLIR' ? '#f43f5e' : isOverloadedOrIslanded ? '#ef4444' : activeDrone.color}
               strokeWidth={isOverloadedOrIslanded ? '2' : '1.2'}
-              opacity={isOverloadedOrIslanded ? '0.85' : '0.6'}
+              opacity={sensorMode === 'FLIR' ? '0.75' : isOverloadedOrIslanded ? '0.85' : '0.6'}
               style={{
                 animation: `radarSweepSpin ${isOverloadedOrIslanded ? '1.8s' : '4.5s'} linear infinite`,
               }}
             />
 
-            {/* Dynamic Active Sector Highlight Corridors based on Selected Drone */}
-            {selectedDroneId === 'DRONE-ALPHA' && (
-              <g className="transition-all duration-500">
-                <line
-                  x1="100"
-                  y1="160"
-                  x2="300"
-                  y2="80"
-                  stroke="#06b6d4"
-                  strokeWidth="3.5"
-                  strokeDasharray="8 4"
-                  className="animate-flow-dash"
-                  style={{ filter: 'drop-shadow(0 0 8px #06b6d4)' }}
-                />
-                <circle cx="200" cy="120" r="28" fill="#06b6d4" opacity="0.08" className="animate-pulse" />
-              </g>
-            )}
+            {/* TRANSMISSION FIBERS / POWER FLOW VECTORS */}
+            {/* Fiber 1: Substation <-> BESS Storage (Alpha Transmission Corridor) */}
+            <g className="cursor-pointer" onClick={() => setSelectedDroneId('DRONE-ALPHA')}>
+              <line
+                x1="100"
+                y1="160"
+                x2="300"
+                y2="80"
+                stroke={
+                  selectedDroneId === 'DRONE-ALPHA'
+                    ? sensorMode === 'FLIR'
+                      ? '#f43f5e'
+                      : '#06b6d4'
+                    : sensorMode === 'FLIR'
+                    ? '#9333ea'
+                    : '#334155'
+                }
+                strokeWidth={selectedDroneId === 'DRONE-ALPHA' ? '4' : '1.8'}
+                strokeDasharray={selectedDroneId === 'DRONE-ALPHA' ? '8 4' : '4 4'}
+                className={selectedDroneId === 'DRONE-ALPHA' ? 'animate-flow-dash' : ''}
+                style={{
+                  filter:
+                    selectedDroneId === 'DRONE-ALPHA'
+                      ? `drop-shadow(0 0 10px ${sensorMode === 'FLIR' ? '#f43f5e' : '#06b6d4'})`
+                      : 'none',
+                }}
+              />
+              {selectedDroneId === 'DRONE-ALPHA' && (
+                <circle cx="200" cy="120" r="28" fill="#06b6d4" opacity="0.12" className="animate-pulse" />
+              )}
+            </g>
 
-            {selectedDroneId === 'DRONE-BETA' && (
-              <g className="transition-all duration-500">
-                <circle
-                  cx="100"
-                  cy="160"
-                  r="46"
-                  fill="#f43f5e"
-                  opacity="0.12"
-                  stroke="#f43f5e"
-                  strokeWidth="2"
-                  strokeDasharray="4 4"
-                  className="animate-pulse"
-                />
-                <line
-                  x1="100"
-                  y1="160"
-                  x2="110"
-                  y2="140"
-                  stroke="#f43f5e"
-                  strokeWidth="2"
-                  strokeDasharray="3 3"
-                />
-              </g>
-            )}
+            {/* Fiber 2: Substation Transformer Yard (Beta Corridor) */}
+            <g className="cursor-pointer" onClick={() => setSelectedDroneId('DRONE-BETA')}>
+              {selectedDroneId === 'DRONE-BETA' && (
+                <>
+                  <circle
+                    cx="100"
+                    cy="160"
+                    r="46"
+                    fill="#f43f5e"
+                    opacity="0.15"
+                    stroke="#f43f5e"
+                    strokeWidth="2"
+                    strokeDasharray="4 4"
+                    className="animate-pulse"
+                  />
+                  <line
+                    x1="100"
+                    y1="160"
+                    x2="110"
+                    y2="140"
+                    stroke="#f43f5e"
+                    strokeWidth="3"
+                    strokeDasharray="3 3"
+                  />
+                </>
+              )}
+            </g>
 
-            {selectedDroneId === 'DRONE-GAMMA' && (
-              <g className="transition-all duration-500">
-                <line
-                  x1="300"
-                  y1="80"
-                  x2="480"
-                  y2="200"
-                  stroke="#10b981"
-                  strokeWidth="3.5"
-                  strokeDasharray="8 4"
-                  className="animate-flow-dash"
-                  style={{ filter: 'drop-shadow(0 0 8px #10b981)' }}
-                />
-                <circle cx="390" cy="140" r="28" fill="#10b981" opacity="0.08" className="animate-pulse" />
-              </g>
-            )}
+            {/* Fiber 3: BESS Storage <-> Smart Loads (Gamma Corridor) */}
+            <g className="cursor-pointer" onClick={() => setSelectedDroneId('DRONE-GAMMA')}>
+              <line
+                x1="300"
+                y1="80"
+                x2="480"
+                y2="200"
+                stroke={
+                  selectedDroneId === 'DRONE-GAMMA'
+                    ? sensorMode === 'FLIR'
+                      ? '#f97316'
+                      : '#10b981'
+                    : sensorMode === 'FLIR'
+                    ? '#9333ea'
+                    : '#334155'
+                }
+                strokeWidth={selectedDroneId === 'DRONE-GAMMA' ? '4' : '1.8'}
+                strokeDasharray={selectedDroneId === 'DRONE-GAMMA' ? '8 4' : '4 4'}
+                className={selectedDroneId === 'DRONE-GAMMA' ? 'animate-flow-dash' : ''}
+                style={{
+                  filter:
+                    selectedDroneId === 'DRONE-GAMMA'
+                      ? `drop-shadow(0 0 10px ${sensorMode === 'FLIR' ? '#f97316' : '#10b981'})`
+                      : 'none',
+                }}
+              />
+              {selectedDroneId === 'DRONE-GAMMA' && (
+                <circle cx="390" cy="140" r="28" fill="#10b981" opacity="0.12" className="animate-pulse" />
+              )}
+            </g>
 
-            {/* Power Line Interconnect Vectors (Baseline Topology) */}
+            {/* Baseline Power Line Interconnect Vectors */}
             <path
               d="M 100 160 L 300 80 L 480 200 Z"
               fill="none"
               stroke="url(#flightPathCyan)"
               strokeWidth={isOverloadedOrIslanded ? '2' : '1.5'}
               strokeDasharray="5 5"
-              opacity="0.6"
+              opacity="0.5"
             />
-            <path d="M 300 80 L 300 240" fill="none" stroke="#334155" strokeWidth="1" strokeDasharray="2 2" />
 
-            {/* Static Ground Nodes (Clickable to switch aerial focus) */}
+            {/* STATIC GROUND NODES WITH CRISP BACKDROP PILLS (NEVER BLURRY OR COLLIDING) */}
             {/* Node 1: Main Substation Grid Tower */}
             <g
               transform="translate(100, 160)"
@@ -444,19 +638,21 @@ export default function DroneFleet({
               )}
               <circle
                 r="18"
-                fill={isOverloadedOrIslanded ? '#7f1d1d' : '#1e293b'}
-                stroke={isOverloadedOrIslanded ? '#ef4444' : '#eab308'}
+                fill={isOverloadedOrIslanded ? '#7f1d1d' : sensorMode === 'FLIR' ? '#581c87' : '#1e293b'}
+                stroke={isOverloadedOrIslanded ? '#ef4444' : sensorMode === 'FLIR' ? '#f43f5e' : '#eab308'}
                 strokeWidth={isOverloadedOrIslanded ? '3' : '2'}
                 style={{
                   filter: isOverloadedOrIslanded ? 'drop-shadow(0 0 16px #ef4444)' : 'none',
                 }}
               />
               <circle r="6" fill={isOverloadedOrIslanded ? '#ef4444' : '#eab308'} />
+              {/* High-legibility pill backdrop */}
+              <rect x="-60" y="24" width="120" height="18" rx="4" fill="#020617" fillOpacity="0.88" stroke="#334155" strokeWidth="0.8" />
               <text
                 x="0"
-                y="32"
-                fill={isOverloadedOrIslanded ? '#fca5a5' : '#e2e8f0'}
-                fontSize="10"
+                y="36"
+                fill={isOverloadedOrIslanded ? '#fca5a5' : '#f8fafc'}
+                fontSize="9"
                 fontFamily="monospace"
                 textAnchor="middle"
                 fontWeight="bold"
@@ -471,13 +667,20 @@ export default function DroneFleet({
               className="cursor-pointer"
               onClick={() => setSelectedDroneId('DRONE-ALPHA')}
             >
-              <circle r="18" fill="#1e293b" stroke="#06b6d4" strokeWidth="2" />
-              <circle r="6" fill="#06b6d4" />
+              <circle
+                r="18"
+                fill={sensorMode === 'FLIR' ? '#312e81' : '#1e293b'}
+                stroke={sensorMode === 'FLIR' ? '#f97316' : '#06b6d4'}
+                strokeWidth="2"
+              />
+              <circle r="6" fill={sensorMode === 'FLIR' ? '#f97316' : '#06b6d4'} />
+              {/* High-legibility pill backdrop */}
+              <rect x="-50" y="-38" width="100" height="18" rx="4" fill="#020617" fillOpacity="0.88" stroke="#334155" strokeWidth="0.8" />
               <text
                 x="0"
-                y="-24"
-                fill="#e2e8f0"
-                fontSize="10"
+                y="-26"
+                fill="#f8fafc"
+                fontSize="9"
                 fontFamily="monospace"
                 textAnchor="middle"
                 fontWeight="bold"
@@ -492,13 +695,20 @@ export default function DroneFleet({
               className="cursor-pointer"
               onClick={() => setSelectedDroneId('DRONE-GAMMA')}
             >
-              <circle r="18" fill="#1e293b" stroke="#3b82f6" strokeWidth="2" />
-              <circle r="6" fill="#3b82f6" />
+              <circle
+                r="18"
+                fill={sensorMode === 'FLIR' ? '#1e1b4b' : '#1e293b'}
+                stroke={sensorMode === 'FLIR' ? '#38bdf8' : '#3b82f6'}
+                strokeWidth="2"
+              />
+              <circle r="6" fill={sensorMode === 'FLIR' ? '#38bdf8' : '#3b82f6'} />
+              {/* High-legibility pill backdrop */}
+              <rect x="-45" y="24" width="90" height="18" rx="4" fill="#020617" fillOpacity="0.88" stroke="#334155" strokeWidth="0.8" />
               <text
                 x="0"
-                y="32"
-                fill="#e2e8f0"
-                fontSize="10"
+                y="36"
+                fill="#f8fafc"
+                fontSize="9"
                 fontFamily="monospace"
                 textAnchor="middle"
                 fontWeight="bold"
@@ -520,7 +730,8 @@ export default function DroneFleet({
                 <>
                   <circle r="22" fill="#06b6d4" opacity="0.18" className="animate-ping" />
                   <circle r="18" fill="none" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3 3" />
-                  <text x="14" y="-8" fill="#06b6d4" fontSize="8" fontFamily="monospace" fontWeight="bold">
+                  <rect x="14" y="-18" width="60" height="14" rx="3" fill="#020617" fillOpacity="0.85" stroke="#06b6d4" strokeWidth="0.8" />
+                  <text x="44" y="-8" fill="#06b6d4" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
                     [TRACKING]
                   </text>
                 </>
@@ -543,7 +754,8 @@ export default function DroneFleet({
                 <>
                   <circle r="22" fill="#f43f5e" opacity="0.2" className="animate-ping" />
                   <circle r="18" fill="none" stroke="#f43f5e" strokeWidth="1.5" strokeDasharray="3 3" />
-                  <text x="14" y="-8" fill="#f43f5e" fontSize="8" fontFamily="monospace" fontWeight="bold">
+                  <rect x="14" y="-18" width="60" height="14" rx="3" fill="#020617" fillOpacity="0.85" stroke="#f43f5e" strokeWidth="0.8" />
+                  <text x="44" y="-8" fill="#f43f5e" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
                     [TRACKING]
                   </text>
                 </>
@@ -575,7 +787,8 @@ export default function DroneFleet({
                 <>
                   <circle r="22" fill="#10b981" opacity="0.18" className="animate-ping" />
                   <circle r="18" fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="3 3" />
-                  <text x="14" y="-8" fill="#10b981" fontSize="8" fontFamily="monospace" fontWeight="bold">
+                  <rect x="14" y="-18" width="60" height="14" rx="3" fill="#020617" fillOpacity="0.85" stroke="#10b981" strokeWidth="0.8" />
+                  <text x="44" y="-8" fill="#10b981" fontSize="8" fontFamily="monospace" textAnchor="middle" fontWeight="bold">
                     [TRACKING]
                   </text>
                 </>
@@ -589,49 +802,30 @@ export default function DroneFleet({
             </g>
           </svg>
 
-          {/* Map Overlay HUD Callout with DYNAMIC SECTOR NAME & LIVE GPS TELEMETRY */}
-          <div
-            className={`absolute top-3 left-3 px-3.5 py-2.5 rounded-xl border text-[10px] font-mono transition-all backdrop-blur-md shadow-lg ${
-              isOverloadedOrIslanded
-                ? 'bg-rose-950/95 border-rose-500 text-rose-300 font-bold shadow-rose-950/50'
-                : 'bg-slate-950/90 border-white/15 text-slate-200'
-            }`}
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className="w-2.5 h-2.5 rounded-full animate-ping shrink-0"
-                style={{ backgroundColor: activeDrone.color }}
-              />
-              <span className="font-extrabold text-white tracking-wide text-xs">
-                {activeDrone.sector}
-              </span>
-              <span className="text-[10px] text-slate-400 font-normal">
-                &bull; CEILING: {activeDrone.ceiling}
-              </span>
-              {isOverloadedOrIslanded && (
-                <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-900 text-rose-200 border border-rose-600 font-bold uppercase animate-pulse">
-                  OVERLOAD SCRAMBLE
-                </span>
-              )}
+          {/* FLIR Ironbow Thermal Scale Legend (Visible in FLIR mode) */}
+          {sensorMode === 'FLIR' && (
+            <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-slate-950/90 border border-purple-500/40 text-[10px] font-mono flex items-center gap-2 shadow-xl backdrop-blur-md">
+              <span className="text-purple-300 font-bold">20°C</span>
+              <div className="w-20 h-2.5 rounded-full bg-gradient-to-r from-purple-800 via-blue-600 via-emerald-500 via-yellow-400 to-rose-600 border border-white/20" />
+              <span className="text-rose-400 font-bold">95°C</span>
             </div>
-            <div className="text-[9px] text-slate-400 mt-1.5 flex flex-wrap items-center gap-2">
-              <span className="text-white font-bold flex items-center gap-1">
-                <Crosshair className="w-3 h-3 text-cyan-400" />
-                LOCKED: {activeDrone.callsign.toUpperCase()}
-              </span>
-              <span>&bull;</span>
-              <span className="text-cyan-300">{activeDrone.coords}</span>
-              <span>&bull;</span>
-              <span className="text-amber-300 flex items-center gap-1">
-                <Compass className="w-3 h-3" />
-                HDG: {activeDrone.heading}
-              </span>
-              <span>&bull;</span>
-              <span className="font-bold text-emerald-400">
-                VIEW: {sensorMode}
-              </span>
+          )}
+
+          {/* LiDAR Sensor Elevation Legend (Visible in LiDAR mode) */}
+          {sensorMode === 'LIDAR' && (
+            <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-slate-950/90 border border-cyan-500/40 text-[10px] font-mono flex items-center gap-2 shadow-xl backdrop-blur-md text-cyan-300">
+              <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span>LiDAR Grid: 128 pts/m²</span>
             </div>
-          </div>
+          )}
+
+          {/* 4K Optical Telemetry Legend (Visible in Optical mode) */}
+          {sensorMode === 'OPTICAL' && (
+            <div className="absolute bottom-3 right-3 px-3 py-1.5 rounded-xl bg-slate-950/90 border border-emerald-500/40 text-[10px] font-mono flex items-center gap-2 shadow-xl backdrop-blur-md text-emerald-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>4.2x Optical Telemetry</span>
+            </div>
+          )}
         </div>
 
         {/* Right: Drone Selected Telemetry Feed */}
