@@ -722,9 +722,18 @@ export default function Dashboard() {
   };
 
   const handleWeatherLoaded = (rows, label) => {
+    // Stop any existing simulation stream so the new location weather can immediately process
+    stopRequestedRef.current = true;
+    isRunningRef.current = false;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
     setCsvData(rows);
     setLoadedCsvName(label);
-    runStreamingSimulation(rows, label, false);
+    setTimeout(() => {
+      runStreamingSimulation(rows, label, false);
+    }, 60);
   };
 
   const handleOverrideLoad = (newDemandKw) => {

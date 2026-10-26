@@ -88,7 +88,7 @@ const REGIONAL_SUBSTATIONS = [
   },
 ];
 
-export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
+export default function WeatherSync({ onWeatherLoaded }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAcquiringGnss, setIsAcquiringGnss] = useState(false);
   const [activeStationId, setActiveStationId] = useState('SUB_SF');
@@ -438,37 +438,70 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     }
   };
 
-  // Mobile GPS: Triggered strictly on direct user click inside the onClick handler
+  // Mobile & Laptop GPS: Triggered strictly on direct user click inside the onClick handler
   const handleGpsSync = () => {
     setError(null);
     setGeoDeniedWarning(false);
 
     if (typeof window === 'undefined' || !navigator?.geolocation) {
-      setGeoDeniedWarning(true);
-      setError('⚠️ Geolocation not supported by this browser. Enter city or select a substation.');
+      if (isMountedRef.current) {
+        setGeoDeniedWarning(true);
+        setError('⚠️ Geolocation not supported by this browser. Enter city or select a substation.');
+      }
       return;
     }
 
     setIsLoading(true);
     setIsAcquiringGnss(true);
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setIsAcquiringGnss(false);
-        const lat = Number(pos.coords.latitude.toFixed(5));
-        const lon = Number(pos.coords.longitude.toFixed(5));
-        const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-        setGpsAccuracy(acc);
-        fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
-      },
-      (err) => {
-        setIsAcquiringGnss(false);
-        setIsLoading(false);
-        setGeoDeniedWarning(true);
-        console.warn('Geolocation error:', err?.code, err?.message);
-      },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
-    );
+    const onPosSuccess = (pos) => {
+      if (!isMountedRef.current) return;
+      setIsAcquiringGnss(false);
+      const lat = Number(pos.coords.latitude.toFixed(5));
+      const lon = Number(pos.coords.longitude.toFixed(5));
+      const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+      setGpsAccuracy(acc);
+      fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
+    };
+
+    // Attempt high accuracy first (satellites for mobile). If timeout or unavailable (e.g. laptop or indoor), fallback to standard network accuracy
+    try {
+      navigator.geolocation.getCurrentPosition(
+        onPosSuccess,
+        (err) => {
+          if (err?.code === 1) {
+            // User actively clicked 'Deny'
+            if (!isMountedRef.current) return;
+            setIsAcquiringGnss(false);
+            setIsLoading(false);
+            setGeoDeniedWarning(true);
+            return;
+          }
+
+          // Non-denial error: Timeout (code 3) or Position Unavailable (code 2)
+          // Fall back gracefully to standard/network accuracy with cached position allowed
+          console.warn('High-accuracy GPS delayed, attempting standard network location:', err?.message);
+          navigator.geolocation.getCurrentPosition(
+            onPosSuccess,
+            (fallbackErr) => {
+              if (!isMountedRef.current) return;
+              setIsAcquiringGnss(false);
+              setIsLoading(false);
+              setGeoDeniedWarning(true);
+              console.warn('Network location failed:', fallbackErr?.code, fallbackErr?.message);
+            },
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+          );
+        },
+        { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
+      );
+    } catch (e) {
+      if (!isMountedRef.current) return;
+      setIsAcquiringGnss(false);
+      setIsLoading(false);
+      setGeoDeniedWarning(true);
+      console.warn('Geolocation invocation error:', e);
+    }
   };
 
   // Manual city search fallback via Open-Meteo Geocoding API
@@ -623,9 +656,9 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           <button
             type="button"
             onClick={handleGpsSync}
-            disabled={isLoading || isStreaming}
-            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none cursor-pointer border-none active:scale-95 ${
-              isLoading || isStreaming ? 'opacity-50 cursor-not-allowed' : ''
+            disabled={isAcquiringGnss}
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none border-none active:scale-95 cursor-pointer ${
+              isAcquiringGnss ? 'opacity-70 cursor-wait' : 'hover:shadow-amber-500/30'
             }`}
           >
             {isAcquiringGnss ? (
@@ -657,13 +690,12 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
                 placeholder="Or enter city (e.g. Hyderabad)"
                 value={manualCity}
                 onChange={(e) => setManualCity(e.target.value)}
-                disabled={isLoading || isStreaming}
                 className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-slate-950/90 border border-white/10 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 shadow-inner"
               />
             </div>
             <button
               type="submit"
-              disabled={isLoading || isStreaming || !manualCity.trim()}
+              disabled={!manualCity.trim()}
               className="px-3 py-2 rounded-xl text-xs font-mono font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
             >
               Go
@@ -785,7 +817,6 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
             <button
               key={station.id}
               type="button"
-              disabled={isLoading}
               onClick={() => handleSelectSubstation(station)}
               className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
                 isSelected
