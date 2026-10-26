@@ -1,8 +1,12 @@
 {
   "name": "appsail",
   "type": "python3.13",
+  "stack": "python_3_13",
+  "build_path": "./",
   "command": "python3 app.py",
   "env_variables": {
     "PYTHONPATH": ".:lib"
-  }
+  },
+  "memory": 256,
+  "scripts": {}
 }
