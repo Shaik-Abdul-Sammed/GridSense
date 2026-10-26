@@ -1,11 +1,20 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import { Menu, Zap, Sun, Moon, Settings as SettingsIcon } from 'lucide-react';
+import {
+  Menu,
+  Zap,
+  Sun,
+  Moon,
+  Settings as SettingsIcon,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const PAGE_TITLES = {
   '/': 'Real-Time Grid Telemetry & 3D Digital Twin',
+  '/impact': 'Impact & Innovation Pitch Deck & ESG Metrics',
   '/analytics': 'Predictive Model Insights & Feature Importance',
   '/history': 'Dispatch Decision Log & Audit Trail',
   '/marketplace': 'Peer-to-Peer (P2P) Energy Marketplace Ledger',
@@ -20,8 +29,41 @@ const PAGE_TITLES = {
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gridsense_sidebar_visible');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+
   const location = useLocation();
   const { isDark, toggleTheme } = useTheme();
+
+  const toggleSidebarVisible = () => {
+    setIsSidebarVisible((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('gridsense_sidebar_visible', String(next));
+      } catch {
+        // Safe fallback
+      }
+      return next;
+    });
+  };
+
+  // Keyboard shortcut Ctrl+B / Cmd+B to toggle sidebar collapse
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleSidebarVisible();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const currentTitle = PAGE_TITLES[location.pathname] || 'GridSense Command Center';
 
@@ -33,13 +75,37 @@ export default function Layout() {
       <div className="fixed top-1/2 right-10 w-[400px] h-[400px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none z-0" />
 
       {/* Persistent Left Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        isVisible={isSidebarVisible}
+        onToggleCollapse={toggleSidebarVisible}
+      />
 
       {/* Main Content Viewport */}
-      <div className="flex-1 lg:pl-72 flex flex-col min-h-screen relative z-10">
+      <div
+        className={`flex-1 flex flex-col min-h-screen relative z-10 transition-all duration-300 ${
+          isSidebarVisible ? 'lg:pl-72' : 'lg:pl-0'
+        }`}
+      >
         {/* Top Header Bar */}
         <header className="sticky top-0 z-30 bg-slate-950/70 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 py-3.5 flex items-center justify-between transition-colors">
           <div className="flex items-center gap-3">
+            {/* Desktop Sidebar Collapse / Expand Toggle */}
+            <button
+              type="button"
+              onClick={toggleSidebarVisible}
+              title={isSidebarVisible ? 'Collapse Sidebar (Ctrl+B)' : 'Expand Sidebar (Ctrl+B)'}
+              className="hidden lg:flex p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-slate-300 hover:text-white transition-all cursor-pointer items-center justify-center select-none"
+              aria-label={isSidebarVisible ? 'Collapse Sidebar' : 'Expand Sidebar'}
+            >
+              {isSidebarVisible ? (
+                <PanelLeftClose className="w-5 h-5 text-cyan-400" />
+              ) : (
+                <PanelLeftOpen className="w-5 h-5 text-cyan-400" />
+              )}
+            </button>
+
             {/* Mobile Sidebar Hamburger Toggle */}
             <button
               onClick={() => setSidebarOpen(true)}

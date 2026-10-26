@@ -16,6 +16,7 @@ import {
   Camera,
   CloudSun,
   Award,
+  PanelLeftClose,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -89,7 +90,7 @@ const NAV_ITEMS = [
   },
 ];
 
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, isVisible = true, onToggleCollapse }) {
   const navRef = useRef(null);
 
   // Ensure sidebar navigation always defaults to the top so Live Dashboard is never scrolled out of view
@@ -110,12 +111,14 @@ export default function Sidebar({ isOpen, onClose }) {
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between transition-transform duration-300 ${
+          isVisible ? 'lg:translate-x-0' : 'lg:-translate-x-full'
+        } ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         {/* Brand Header */}
-        <div className="px-5 py-4 border-b border-white/10">
+        <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-gradient-to-tr from-cyan-600 via-cyan-500 to-emerald-400 text-white shadow-lg shadow-cyan-500/20 flex items-center justify-center shrink-0">
               <Zap className="w-5 h-5 fill-white/20" />
@@ -134,6 +137,18 @@ export default function Sidebar({ isOpen, onClose }) {
               </p>
             </div>
           </div>
+
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              title="Collapse Sidebar (Ctrl+B)"
+              className="hidden lg:flex p-1.5 rounded-lg bg-slate-900/80 hover:bg-slate-800 border border-white/10 text-slate-400 hover:text-cyan-300 transition-colors cursor-pointer select-none"
+              aria-label="Collapse Sidebar"
+            >
+              <PanelLeftClose className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Routes */}
@@ -256,5 +271,7 @@ export default function Sidebar({ isOpen, onClose }) {
 Sidebar.propTypes = {
   isOpen: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
+  isVisible: PropTypes.bool,
+  onToggleCollapse: PropTypes.func,
 };
 

@@ -198,7 +198,6 @@ export default function GamerDemo() {
 
   // Guided UI Tour State
   const [runTour, setRunTour] = useState(false);
-  const [tourStepIndex, setTourStepIndex] = useState(0);
   const runTourRef = useRef(false);
   runTourRef.current = runTour;
 
@@ -206,7 +205,6 @@ export default function GamerDemo() {
   useEffect(() => {
     const handleForceClose = () => {
       setRunTour(false);
-      setTourStepIndex(0);
     };
     window.addEventListener('gridsense:close-tour', handleForceClose);
     return () => window.removeEventListener('gridsense:close-tour', handleForceClose);
@@ -216,16 +214,15 @@ export default function GamerDemo() {
     if (gameState !== 'PLAYING') {
       startWave(0);
     }
-    // Single-click clean start: reset state then launch
+    // Single-click clean start: reset state then launch uncontrolled Joyride
     setRunTour(false);
-    setTourStepIndex(0);
     setTimeout(() => {
       setRunTour(true);
     }, 40);
   };
 
   const handleTourCallback = (data) => {
-    const { action, index, status, type } = data;
+    const { action, status, type } = data;
 
     // Immediately unmount Joyride and clear dimming overlay on ANY exit trigger
     if (
@@ -238,16 +235,6 @@ export default function GamerDemo() {
       type === 'tour:end'
     ) {
       setRunTour(false);
-      setTourStepIndex(0);
-      return;
-    }
-
-    if (type === 'step:after' || (action === 'next' && type === 'tooltip')) {
-      setTourStepIndex(index + 1);
-    } else if (action === 'prev') {
-      setTourStepIndex(Math.max(0, index - 1));
-    } else if (type === 'error:target_not_found') {
-      setTourStepIndex(index + 1);
     }
   };
 
@@ -367,7 +354,6 @@ export default function GamerDemo() {
         <Joyride
           steps={GAME_TOUR_STEPS}
           run={runTour}
-          stepIndex={tourStepIndex}
           continuous
           showProgress
           showSkipButton

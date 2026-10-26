@@ -266,29 +266,26 @@ export default function Dashboard() {
   const { settings } = useSettings();
 
   const [runTour, setRunTour] = useState(false);
-  const [tourStepIndex, setTourStepIndex] = useState(0);
 
   // Synchronous fail-safe: immediately kill Joyride when custom exit event fires
   useEffect(() => {
     const handleForceClose = () => {
       setRunTour(false);
-      setTourStepIndex(0);
     };
     window.addEventListener('gridsense:close-tour', handleForceClose);
     return () => window.removeEventListener('gridsense:close-tour', handleForceClose);
   }, []);
 
   const handleStartTour = useCallback(() => {
-    // Single-click clean start: reset any prior state before mounting tour
+    // Single-click clean start: mount fresh uncontrolled Joyride
     setRunTour(false);
-    setTourStepIndex(0);
     setTimeout(() => {
       setRunTour(true);
     }, 40);
   }, []);
 
   const handleTourCallback = useCallback((data) => {
-    const { action, index, status, type } = data;
+    const { action, status, type } = data;
 
     // Immediately unmount Joyride and clear dimming overlay on ANY exit trigger:
     // Finished, Skipped, Closed via 'X', Esc pressed, stopped, or background overlay clicked
@@ -302,16 +299,6 @@ export default function Dashboard() {
       type === 'tour:end'
     ) {
       setRunTour(false);
-      setTourStepIndex(0);
-      return;
-    }
-
-    if (type === 'step:after' || (action === 'next' && type === 'tooltip')) {
-      setTourStepIndex(index + 1);
-    } else if (action === 'prev') {
-      setTourStepIndex(Math.max(0, index - 1));
-    } else if (type === 'error:target_not_found') {
-      setTourStepIndex(index + 1);
     }
   }, []);
   const [forecastData, setForecastData] = useState([]);
@@ -1042,7 +1029,6 @@ export default function Dashboard() {
         <Joyride
           steps={DASHBOARD_TOUR_STEPS}
           run={runTour}
-          stepIndex={tourStepIndex}
           continuous
           showProgress
           showSkipButton

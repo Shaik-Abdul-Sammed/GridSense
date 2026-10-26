@@ -113,6 +113,7 @@ export default function TourTooltip({
           {index > 0 && (
             <button
               type="button"
+              {...backProps}
               onClick={handleBackStep}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-900 hover:bg-slate-800 border border-white/10 transition-colors cursor-pointer select-none"
             >
@@ -123,6 +124,7 @@ export default function TourTooltip({
 
           <button
             type="button"
+            {...primaryProps}
             onClick={handleNextStep}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black tracking-wide text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 shadow-lg shadow-cyan-500/40 hover:shadow-cyan-400/60 transition-all cursor-pointer border-none select-none"
           >
