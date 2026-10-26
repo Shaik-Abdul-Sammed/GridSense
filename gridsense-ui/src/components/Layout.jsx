@@ -67,7 +67,7 @@ export default function Layout() {
   const currentTitle = PAGE_TITLES[location.pathname] || 'GridSense Command Center';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white font-sans selection:bg-cyan-500 selection:text-white flex flex-col lg:flex-row relative overflow-x-hidden transition-colors duration-200">
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-black text-white font-sans selection:bg-cyan-500 selection:text-white flex flex-col lg:flex-row relative transition-colors duration-200">
       {/* Background Ambient Glow Orbs */}
       <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none z-0" />
       <div className="fixed bottom-10 right-1/4 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-[140px] pointer-events-none z-0" />
@@ -83,7 +83,7 @@ export default function Layout() {
 
       {/* Main Content Viewport */}
       <div
-        className={`flex-1 flex flex-col min-h-screen relative z-10 transition-all duration-300 ${
+        className={`flex-1 flex flex-col h-screen overflow-hidden relative z-10 transition-all duration-300 ${
           isSidebarVisible ? 'lg:pl-72' : 'lg:pl-0'
         }`}
       >
@@ -156,8 +156,8 @@ export default function Layout() {
         </header>
 
         {/* Dynamic Route Pages */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-6">
+        <main className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 scrollbar-thin scrollbar-thumb-slate-700">
+          <div className="max-w-7xl mx-auto space-y-6 pb-12">
             <Outlet />
           </div>
         </main>

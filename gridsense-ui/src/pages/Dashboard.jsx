@@ -1051,6 +1051,8 @@ export default function Dashboard() {
           showSkipButton
           scrollToFirstStep
           scrollOffset={100}
+          disableBeacon={true}
+          disableScrollParentFix={true}
           disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}
