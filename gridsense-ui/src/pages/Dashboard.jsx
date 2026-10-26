@@ -438,15 +438,16 @@ export default function Dashboard() {
 
             setIsOnline(false);
             prediction = generateSimulatedResponse(item, hourNum, settings);
-            if (i === 0) {
-              const rawMsg = fetchErr?.message || String(fetchErr);
-              const isNetworkFailed =
-                rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError');
-              const extraHint = isNetworkFailed
-                ? ' (Likely CORS restriction or AppSail container starting)'
-                : '';
-              setError(`Connection Failed: ${rawMsg}${extraHint}`);
-            }
+            const rawMsg = fetchErr?.message || String(fetchErr);
+            const isCorsOrNetwork =
+              rawMsg.includes('Failed to fetch') ||
+              rawMsg.includes('NetworkError') ||
+              rawMsg.includes('Network request failed') ||
+              fetchErr?.name === 'TypeError';
+            const extraHint = isCorsOrNetwork
+              ? ' (CORS Origin blocked or AppSail backend offline/starting)'
+              : '';
+            setError(`Connection Failed: ${rawMsg}${extraHint}`);
           }
         }
 

@@ -497,9 +497,8 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       {geoDeniedWarning && (
         <div className="w-full text-xs sm:text-sm font-mono text-amber-950 bg-amber-400 border-2 border-amber-300 p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3 shadow-xl shadow-amber-950/40 animate-fadeIn">
           <div className="flex items-center gap-2.5 font-bold">
-            <span className="text-xl shrink-0">⚠️</span>
             <span>
-              Location Access Denied. Showing default substation location (San Francisco). Please enable location permissions in your browser.
+              ⚠️ Location Access Denied. Please click the Lock icon 🔒 in your browser&apos;s address bar and set Location to &apos;Allow&apos;, then refresh the page. Showing default fallback location.
             </span>
           </div>
           <button

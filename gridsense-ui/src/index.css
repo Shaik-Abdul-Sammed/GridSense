@@ -214,3 +214,9 @@ button[data-action="primary"] {
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: rgba(6, 182, 212, 0.5);
 }
+
+/* Force-hide React Joyride beacon globally */
+.react-joyride__beacon {
+  display: none !important;
+}
+
