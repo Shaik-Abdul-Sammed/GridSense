@@ -79,6 +79,13 @@ html:not(.dark) .text-white {
   color: #0f172a !important;
 }
 
+html:not(.dark) button.text-white,
+html:not(.dark) button .text-white,
+html:not(.dark) .bg-gradient-to-tr .text-white,
+html:not(.dark) .bg-gradient-to-r .text-white {
+  color: #ffffff !important;
+}
+
 html:not(.dark) .text-slate-100,
 html:not(.dark) .text-slate-200,
 html:not(.dark) .text-slate-300 {

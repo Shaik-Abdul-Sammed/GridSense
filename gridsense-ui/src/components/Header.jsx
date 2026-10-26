@@ -1,3 +1,4 @@
+import PropTypes from 'prop-types';
 import {
   Zap,
   Activity,
@@ -77,10 +78,10 @@ export default function Header({
         </div>
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white whitespace-nowrap">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white">
               GridSense Dashboard
             </h1>
-            <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/40 whitespace-nowrap shadow-xs shrink-0">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-950/90 text-cyan-300 border border-cyan-400/50 shadow-xs shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
               v3.0 DIGITAL TWIN
             </span>
@@ -252,3 +253,18 @@ export default function Header({
     </header>
   );
 }
+
+Header.propTypes = {
+  lastUpdated: PropTypes.string,
+  isOnline: PropTypes.bool,
+  latestDemand: PropTypes.number,
+  criticalThreshold: PropTypes.number,
+  isCyberattack: PropTypes.bool,
+  onTriggerCyberattack: PropTypes.func,
+  isVoiceMuted: PropTypes.bool,
+  onToggleVoiceMute: PropTypes.func,
+  ambientTemp: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  humidityPct: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  solarIrradiance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  onStartTour: PropTypes.func,
+};

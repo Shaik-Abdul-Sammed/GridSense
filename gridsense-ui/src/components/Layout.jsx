@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Outlet, useLocation, Link } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import {
   Menu,
   Zap,
   Sun,
   Moon,
-  Settings as SettingsIcon,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -145,16 +144,6 @@ export default function Layout() {
                 <Moon className="w-4 h-4 text-cyan-400" />
               )}
             </button>
-
-            {/* Global Settings Navigation Shortcut */}
-            <Link
-              to="/settings"
-              title="Grid Transition Rules & Developer Settings"
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-white/10 text-cyan-300 hover:text-white transition-all cursor-pointer select-none flex items-center justify-center"
-              aria-label="Open Settings"
-            >
-              <SettingsIcon className="w-4 h-4" />
-            </Link>
 
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs">
               <span className="relative flex h-2 w-2">

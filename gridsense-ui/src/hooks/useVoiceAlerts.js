@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Web Audio synthesizer tone generator (guaranteed audio feedback across all browsers)
+// Web Audio synthesizer tone generator (guaranteed audio feedback across all modern browsers)
 function playToneChime(isPositive = true) {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
+
+    // Chromium requires resuming AudioContext on user interaction
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
@@ -15,7 +21,7 @@ function playToneChime(isPositive = true) {
       osc.frequency.setValueAtTime(523.25, now); // C5
       osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.12); // E5
       osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.25); // G5
-      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.setValueAtTime(0.18, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -25,7 +31,7 @@ function playToneChime(isPositive = true) {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(440, now);
       osc.frequency.exponentialRampToValueAtTime(330, now + 0.15);
-      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.setValueAtTime(0.15, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
       osc.connect(gain);
       gain.connect(ctx.destination);
@@ -147,6 +153,13 @@ export function useVoiceAlerts() {
       }
 
       if (synthRef.current) {
+        if (synthRef.current.paused) {
+          try {
+            synthRef.current.resume();
+          } catch {
+            // ignore
+          }
+        }
         synthRef.current.cancel();
       }
 
@@ -154,8 +167,8 @@ export function useVoiceAlerts() {
         // User unmuted: provide immediate voice and tone confirmation
         playToneChime(true);
         setTimeout(() => {
-          speakAlert('Voice alerts online. Monitoring active grid telemetry.', true, 0);
-        }, 150);
+          speakAlert('GridSense voice telemetry online. Monitoring active grid.', true, 0);
+        }, 120);
       } else {
         // User muted
         playToneChime(false);

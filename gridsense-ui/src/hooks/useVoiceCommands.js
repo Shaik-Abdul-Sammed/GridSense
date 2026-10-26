@@ -1,6 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+function playToneFeedback(freq = 600, duration = 0.15) {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  } catch {
+    // Audio context may be restricted
+  }
+}
+
 export function useVoiceCommands({ onStartSimulation, onStopSimulation, onStartTour }) {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
@@ -26,12 +49,14 @@ export function useVoiceCommands({ onStartSimulation, onStopSimulation, onStartT
 
     recognition.onstart = () => {
       setIsListening(true);
+      playToneFeedback(580, 0.12);
       setFeedback('🎙️ Listening... (Say: "Start tour", "Simulate grid", "Play game", "Show 3D", "Impact")');
     };
 
     recognition.onresult = (event) => {
       const text = event.results[0][0].transcript.toLowerCase().trim();
       setTranscript(text);
+      playToneFeedback(880, 0.2);
 
       // Voice Command Routing Logic
       if (text.includes('tour') || text.includes('guide') || text.includes('walkthrough')) {

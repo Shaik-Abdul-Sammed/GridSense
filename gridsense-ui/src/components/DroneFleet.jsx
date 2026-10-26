@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import {
   Navigation,
   Radio,
@@ -6,6 +7,11 @@ import {
   AlertTriangle,
   Crosshair,
   Compass,
+  Layers,
+  Flame,
+  Camera,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 const INITIAL_DRONES = [
@@ -63,10 +69,25 @@ export default function DroneFleet({
 }) {
   const [drones, setDrones] = useState(INITIAL_DRONES);
   const [selectedDroneId, setSelectedDroneId] = useState('DRONE-GAMMA');
+  const [sensorMode, setSensorMode] = useState('LIDAR'); // 'LIDAR', 'FLIR', 'OPTICAL'
+  const [viewPerspective, setViewPerspective] = useState('SECTOR_ZOOM'); // 'SECTOR_ZOOM', 'FULL_GRID'
 
   // Reactive state triggers
   const isOverloadedOrIslanded = currentDemand > 200 || gridMode === 'ISLANDED_MODE';
   const isAnomalyActive = transformerHealth < 60 || isOverloadedOrIslanded;
+
+  const getDynamicViewBox = () => {
+    if (viewPerspective === 'FULL_GRID') {
+      return '0 0 600 320';
+    }
+    if (selectedDroneId === 'DRONE-ALPHA') {
+      return '40 20 360 210';
+    }
+    if (selectedDroneId === 'DRONE-BETA') {
+      return '0 70 320 200';
+    }
+    return '200 40 380 230';
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -175,7 +196,70 @@ export default function DroneFleet({
           ) : (
             <Radio className="w-3.5 h-3.5 animate-pulse" />
           )}
-          <span>{isOverloadedOrIslanded ? 'SECTOR: THERMAL RUNAWAY' : 'MESH COMMS: LINKED'}</span>
+          <span>{isOverloadedOrIslanded ? '⚠️ OVERLOAD SCRAMBLE' : `${activeDrone.callsign.toUpperCase()} • ${activeDrone.heading}`}</span>
+        </div>
+      </div>
+
+      {/* Aerial View & Sensor Mode Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-1">
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-white/10 text-xs font-mono">
+          <span className="text-[10px] text-slate-400 uppercase font-bold px-2">Aerial Sensor:</span>
+          <button
+            type="button"
+            onClick={() => setSensorMode('LIDAR')}
+            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              sensorMode === 'LIDAR'
+                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 font-bold shadow-xs'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Layers className="w-3 h-3 text-cyan-400" />
+            <span>LiDAR Cloud</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSensorMode('FLIR')}
+            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              sensorMode === 'FLIR'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold shadow-xs'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Flame className="w-3 h-3 text-rose-400" />
+            <span>FLIR Thermal</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSensorMode('OPTICAL')}
+            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+              sensorMode === 'OPTICAL'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold shadow-xs'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Camera className="w-3 h-3 text-emerald-400" />
+            <span>4K Optical</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-950/80 border border-white/10 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setViewPerspective((prev) => (prev === 'SECTOR_ZOOM' ? 'FULL_GRID' : 'SECTOR_ZOOM'))}
+            className="px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 text-cyan-300 hover:text-white"
+          >
+            {viewPerspective === 'SECTOR_ZOOM' ? (
+              <>
+                <Minimize2 className="w-3 h-3 text-cyan-400" />
+                <span>Sector Focus</span>
+              </>
+            ) : (
+              <>
+                <Maximize2 className="w-3 h-3 text-emerald-400" />
+                <span>Full Grid Wide</span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -189,8 +273,11 @@ export default function DroneFleet({
               : 'bg-slate-950/90 border-white/10'
           }`}
         >
-          {/* Cybernetic Radial Map Grid */}
-          <svg className="w-full h-full absolute inset-0 select-none" viewBox="0 0 600 320">
+          {/* Cybernetic Radial Map Grid with dynamic ViewBox */}
+          <svg
+            className="w-full h-full absolute inset-0 select-none transition-all duration-700 ease-in-out"
+            viewBox={getDynamicViewBox()}
+          >
             <defs>
               <radialGradient id="mapGlow" cx="50%" cy="50%" r="50%">
                 <stop
@@ -504,24 +591,30 @@ export default function DroneFleet({
 
           {/* Map Overlay HUD Callout with DYNAMIC SECTOR NAME & LIVE GPS TELEMETRY */}
           <div
-            className={`absolute top-3 left-3 px-3 py-2 rounded-xl border text-[10px] font-mono transition-all backdrop-blur-md shadow-lg ${
+            className={`absolute top-3 left-3 px-3.5 py-2.5 rounded-xl border text-[10px] font-mono transition-all backdrop-blur-md shadow-lg ${
               isOverloadedOrIslanded
-                ? 'bg-rose-950/90 border-rose-500 text-rose-300 font-bold animate-pulse'
-                : 'bg-slate-950/85 border-white/10 text-slate-200'
+                ? 'bg-rose-950/95 border-rose-500 text-rose-300 font-bold shadow-rose-950/50'
+                : 'bg-slate-950/90 border-white/15 text-slate-200'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span
                 className="w-2.5 h-2.5 rounded-full animate-ping shrink-0"
                 style={{ backgroundColor: activeDrone.color }}
               />
-              <span className="font-extrabold text-white tracking-wide">
-                {isOverloadedOrIslanded
-                  ? '⚠️ SECTOR: EMERGENCY TACTICAL SCRAMBLE • RUNAWAY ALERT'
-                  : `${activeDrone.sector} • CEILING: ${activeDrone.ceiling}`}
+              <span className="font-extrabold text-white tracking-wide text-xs">
+                {activeDrone.sector}
               </span>
+              <span className="text-[10px] text-slate-400 font-normal">
+                &bull; CEILING: {activeDrone.ceiling}
+              </span>
+              {isOverloadedOrIslanded && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-900 text-rose-200 border border-rose-600 font-bold uppercase animate-pulse">
+                  OVERLOAD SCRAMBLE
+                </span>
+              )}
             </div>
-            <div className="text-[9px] text-slate-400 mt-1 flex flex-wrap items-center gap-2">
+            <div className="text-[9px] text-slate-400 mt-1.5 flex flex-wrap items-center gap-2">
               <span className="text-white font-bold flex items-center gap-1">
                 <Crosshair className="w-3 h-3 text-cyan-400" />
                 LOCKED: {activeDrone.callsign.toUpperCase()}
@@ -532,6 +625,10 @@ export default function DroneFleet({
               <span className="text-amber-300 flex items-center gap-1">
                 <Compass className="w-3 h-3" />
                 HDG: {activeDrone.heading}
+              </span>
+              <span>&bull;</span>
+              <span className="font-bold text-emerald-400">
+                VIEW: {sensorMode}
               </span>
             </div>
           </div>
@@ -641,3 +738,9 @@ export default function DroneFleet({
     </div>
   );
 }
+
+DroneFleet.propTypes = {
+  currentDemand: PropTypes.number,
+  gridMode: PropTypes.string,
+  transformerHealth: PropTypes.number,
+};
