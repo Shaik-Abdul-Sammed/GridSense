@@ -2,30 +2,21 @@ import os
 import math
 import requests
 from flask import Flask, request, g, jsonify
-from flask_cors import CORS
 
 # Initialize Flask app
 app = Flask(__name__)
 
-# Explicitly allow the live Slate frontend
-ALLOWED_ORIGIN = "https://gridsense-ui-zjbtthvz.onslate.in"
-
-CORS(app, resources={
-    r"/*": {
-        "origins": [ALLOWED_ORIGIN, "http://localhost:5173"],
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "X-QUICKML-ENDPOINT-KEY"]
-    }
-})
-
-# Force headers on every single response to prevent the gateway from stripping them
+# Force headers on every response to guarantee CORS compatibility
+# Consolidates CORS headers so Catalyst Gateway and Flask do not duplicate Access-Control-Allow-Origin
 @app.after_request
 def after_request_cors(response):
     origin = request.headers.get('Origin')
-    if origin == ALLOWED_ORIGIN or origin == "http://localhost:5173":
+    # For local development, inject origin since Catalyst's reverse proxy is not present
+    if origin == "http://localhost:5173":
         response.headers["Access-Control-Allow-Origin"] = origin
-    else:
-        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+    # Note: For the live Slate deployment (https://gridsense-ui-zjbtthvz.onslate.in),
+    # the Zoho Catalyst Cloud Gateway is already configured to inject Access-Control-Allow-Origin.
+    # Omitting it here prevents the browser "MultipleAllowOriginValues" duplicate header error.
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-QUICKML-ENDPOINT-KEY"
@@ -198,10 +189,8 @@ def home():
 def handle_options():
     response = app.make_response(('', 200))
     origin = request.headers.get('Origin')
-    if origin == ALLOWED_ORIGIN or origin == "http://localhost:5173":
+    if origin == "http://localhost:5173":
         response.headers["Access-Control-Allow-Origin"] = origin
-    else:
-        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-QUICKML-ENDPOINT-KEY"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
