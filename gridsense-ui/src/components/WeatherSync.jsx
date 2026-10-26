@@ -103,6 +103,9 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
   // Prominent warning when location permission is blocked or denied
   const [geoDeniedWarning, setGeoDeniedWarning] = useState(false);
 
+  // Manual city fallback input
+  const [manualCity, setManualCity] = useState('');
+
   // Modern place search autocomplete state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -147,7 +150,6 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
 
   // GNSS Watcher reference for cleanup
   const gnssWatchIdRef = useRef(null);
-  const bestGnssFixRef = useRef(null);
 
   // Store onWeatherLoaded in a ref to avoid infinite re-render loops
   const onWeatherLoadedRef = useRef(onWeatherLoaded);
@@ -419,111 +421,70 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     }
   };
 
-  // Multi-Sample Hardware GNSS Fix Acquisition (Progressive Satellite Locking)
+  // Mobile GPS: Triggered strictly on direct user click inside the onClick handler
   const handleGpsSync = () => {
     setError(null);
-    setIsLoading(true);
-    setIsAcquiringGnss(true);
     setGeoDeniedWarning(false);
-    bestGnssFixRef.current = null;
 
     if (typeof window === 'undefined' || !navigator?.geolocation) {
-      setIsAcquiringGnss(false);
       setGeoDeniedWarning(true);
-      setError('Hardware geolocation not supported by this browser. Defaulting to Substation Alpha-1.');
-      const def = REGIONAL_SUBSTATIONS[0];
-      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
+      setError('⚠️ Geolocation not supported by this browser. Enter city or select a substation.');
       return;
     }
 
-    // Safety timeout: Lock with the best acquired fix within 6 seconds
-    const safetyTimer = setTimeout(() => {
-      if (gnssWatchIdRef.current != null) {
-        navigator.geolocation.clearWatch(gnssWatchIdRef.current);
-        gnssWatchIdRef.current = null;
-      }
-      setIsAcquiringGnss(false);
+    setIsLoading(true);
+    setIsAcquiringGnss(true);
 
-      if (bestGnssFixRef.current) {
-        const { lat, lon, accuracy } = bestGnssFixRef.current;
-        fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
-      } else {
-        // Fallback to one-shot getCurrentPosition with mobile-optimized timeout
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const lat = Number(pos.coords.latitude.toFixed(5));
-            const lon = Number(pos.coords.longitude.toFixed(5));
-            const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-            fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
-          },
-          () => {
-            setGeoDeniedWarning(true);
-            const def = REGIONAL_SUBSTATIONS[0];
-            fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
-          },
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-        );
-      }
-    }, 6000);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsAcquiringGnss(false);
+        const lat = Number(pos.coords.latitude.toFixed(5));
+        const lon = Number(pos.coords.longitude.toFixed(5));
+        const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+        setGpsAccuracy(acc);
+        fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
+      },
+      (err) => {
+        setIsAcquiringGnss(false);
+        setIsLoading(false);
+        setGeoDeniedWarning(true);
+        console.warn('Geolocation error:', err?.code, err?.message);
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    );
+  };
 
-    // Progressive GNSS watch: captures increasingly accurate satellite readings
+  // Manual city search fallback via Open-Meteo Geocoding API
+  const handleManualCitySubmit = async (e) => {
+    if (e) e.preventDefault();
+    const query = manualCity.trim();
+    if (!query) return;
+
+    setError(null);
+    setGeoDeniedWarning(false);
+    setIsLoading(true);
+
     try {
-      gnssWatchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          const lat = Number(pos.coords.latitude.toFixed(5));
-          const lon = Number(pos.coords.longitude.toFixed(5));
-          const acc = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-
-          if (
-            bestGnssFixRef.current == null ||
-            (acc != null && acc < (bestGnssFixRef.current.accuracy || 9999))
-          ) {
-            bestGnssFixRef.current = { lat, lon, accuracy: acc };
-            setGpsAccuracy(acc);
-          }
-
-          // If accuracy is high-precision (<= 15 meters), lock in immediately!
-          if (acc != null && acc <= 15) {
-            clearTimeout(safetyTimer);
-            if (gnssWatchIdRef.current != null) {
-              navigator.geolocation.clearWatch(gnssWatchIdRef.current);
-              gnssWatchIdRef.current = null;
-            }
-            setIsAcquiringGnss(false);
-            fetchWeather(lat, lon, null, 'LIVE_GPS', acc);
-          }
-        },
-        (err) => {
-          console.warn('GNSS watcher error:', err.message);
-          clearTimeout(safetyTimer);
-          if (gnssWatchIdRef.current != null) {
-            navigator.geolocation.clearWatch(gnssWatchIdRef.current);
-            gnssWatchIdRef.current = null;
-          }
-          setIsAcquiringGnss(false);
-          setGeoDeniedWarning(true);
-
-          if (bestGnssFixRef.current) {
-            const { lat, lon, accuracy } = bestGnssFixRef.current;
-            fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
-          } else {
-            const def = REGIONAL_SUBSTATIONS[0];
-            fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
-          }
-        },
-        {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000,
-        }
+      const res = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`
       );
-    } catch (e) {
-      clearTimeout(safetyTimer);
-      setIsAcquiringGnss(false);
-      setGeoDeniedWarning(true);
-      console.warn('Geolocation invocation exception:', e);
-      const def = REGIONAL_SUBSTATIONS[0];
-      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
+      if (!res.ok) throw new Error(`Geocoding HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data?.results || data.results.length === 0) {
+        setError(`⚠️ Could not locate city "${query}". Please check the spelling.`);
+        setIsLoading(false);
+        return;
+      }
+      const city = data.results[0];
+      const displayName = [city.name, city.admin1, city.country].filter(Boolean).join(', ');
+      const lat = Number(city.latitude.toFixed(5));
+      const lon = Number(city.longitude.toFixed(5));
+      await fetchWeather(lat, lon, displayName, `CITY_${city.id}`, null);
+      setManualCity('');
+    } catch (err) {
+      console.warn('City geocoding error:', err);
+      setError(`Failed to geocode "${query}". Please check connection.`);
+      setIsLoading(false);
     }
   };
 
@@ -631,9 +592,9 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           </div>
         </div>
 
-        {/* Action Controls: Locate GPS & Google Maps */}
+        {/* Action Controls: Locate GPS, Manual City Fallback & Google Maps */}
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end shrink-0">
-          {/* High-Accuracy Multi-Sample GPS Sync Trigger */}
+          {/* High-Accuracy GPS Sync Button */}
           <button
             type="button"
             onClick={handleGpsSync}
@@ -645,9 +606,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
             {isAcquiringGnss ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>
-                  {gpsAccuracy ? `Locking (±${gpsAccuracy}m)...` : 'Acquiring GPS...'}
-                </span>
+                <span>Acquiring GPS...</span>
               </>
             ) : isLoading && activeStationId === 'LIVE_GPS' ? (
               <>
@@ -661,6 +620,30 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
               </>
             )}
           </button>
+
+          {/* Manual City Input Fallback */}
+          <form
+            onSubmit={handleManualCitySubmit}
+            className="flex items-center gap-1.5 flex-1 sm:flex-initial"
+          >
+            <div className="relative flex-1 sm:w-56">
+              <input
+                type="text"
+                placeholder="Or enter city (e.g. Hyderabad)"
+                value={manualCity}
+                onChange={(e) => setManualCity(e.target.value)}
+                disabled={isLoading || isStreaming}
+                className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-slate-950/90 border border-white/10 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 shadow-inner"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading || isStreaming || !manualCity.trim()}
+              className="px-3 py-2 rounded-xl text-xs font-mono font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              Go
+            </button>
+          </form>
 
           {/* Direct Google Maps Navigation / Satellite Exploration */}
           <a

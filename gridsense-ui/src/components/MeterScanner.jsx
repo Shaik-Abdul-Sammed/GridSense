@@ -93,42 +93,38 @@ export default function MeterScanner({ onOverrideLoad, currentLoad }) {
     }
   };
 
-  // Quick Preset Simulator: generates an inline canvas image of an electric meter
-  const generatePresetMeterImage = (readingKw) => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 200;
-    const ctx = canvas.getContext('2d');
+  // Preset handler: Instantly sets state without running Tesseract OCR (guaranteed to work in production)
+  const handleSelectPreset = (readingKw) => {
+    setErrorMessage(null);
+    setIsScanning(false);
+    setProgress(100);
+    setDetectedDemand(Number(readingKw.toFixed(1)));
+    setStatusMessage(`Preset Meter Selected: ${readingKw.toFixed(1)} kW (Ready to override)`);
 
-    // Dark LCD background
-    ctx.fillStyle = '#0a101d';
-    ctx.fillRect(0, 0, 400, 200);
-
-    // Glowing LCD Bezel
-    ctx.strokeStyle = '#06b6d4';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(10, 10, 380, 180);
-
-    // Subheader text
-    ctx.font = '16px monospace';
-    ctx.fillStyle = '#64748b';
-    ctx.fillText('SMART SUBSTATION TELEMETRY', 60, 45);
-
-    // High contrast 7-segment style LCD text
-    ctx.font = 'bold 54px monospace';
-    ctx.fillStyle = '#22d3ee';
-    ctx.fillText(`${readingKw.toFixed(1)} kW`, 75, 115);
-
-    // Bottom label
-    ctx.font = '14px monospace';
-    ctx.fillStyle = '#10b981';
-    ctx.fillText('STATUS: ONLINE &bull; 60Hz', 120, 160);
-
-    canvas.toBlob((blob) => {
-      if (blob) {
-        processImageFile(blob);
-      }
-    });
+    // Render an instantaneous canvas LCD data URL for visual fidelity
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 400;
+      canvas.height = 200;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#0a101d';
+      ctx.fillRect(0, 0, 400, 200);
+      ctx.strokeStyle = readingKw >= 200 ? '#f43f5e' : '#06b6d4';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(10, 10, 380, 180);
+      ctx.font = '16px monospace';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('SMART SUBSTATION TELEMETRY', 60, 45);
+      ctx.font = 'bold 54px monospace';
+      ctx.fillStyle = readingKw >= 200 ? '#fb7185' : '#22d3ee';
+      ctx.fillText(`${readingKw.toFixed(1)} kW`, 75, 115);
+      ctx.font = '14px monospace';
+      ctx.fillStyle = readingKw >= 200 ? '#f43f5e' : '#10b981';
+      ctx.fillText(readingKw >= 200 ? 'STATUS: CRITICAL LOAD • 60Hz' : 'STATUS: ONLINE • 60Hz', 85, 160);
+      setPreviewUrl(canvas.toDataURL());
+    } catch {
+      // preview is optional
+    }
   };
 
   const handleApplyOverride = () => {
@@ -169,7 +165,7 @@ export default function MeterScanner({ onOverrideLoad, currentLoad }) {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => generatePresetMeterImage(238.5)}
+            onClick={() => handleSelectPreset(238.5)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-950/60 hover:bg-rose-900/80 border border-rose-800/60 transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -177,7 +173,7 @@ export default function MeterScanner({ onOverrideLoad, currentLoad }) {
           </button>
           <button
             type="button"
-            onClick={() => generatePresetMeterImage(145.2)}
+            onClick={() => handleSelectPreset(145.2)}
             className="px-3 py-1.5 rounded-lg text-xs font-semibold text-cyan-300 bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-800/60 transition-colors cursor-pointer flex items-center gap-1.5"
           >
             <span>Normal (145.2 kW)</span>

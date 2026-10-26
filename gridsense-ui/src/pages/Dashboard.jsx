@@ -936,6 +936,18 @@ export default function Dashboard() {
     return forecastData[forecastData.length - 1];
   }, [forecastData, selectedHour]);
 
+  const currentDemandVal = Number(latestPrediction?.predicted_demand_kw) || 0;
+  const isCurrentOverload =
+    currentDemandVal >= (settings.criticalThreshold || 200) ||
+    latestPrediction?.alert === 'CRITICAL_OVERLOAD' ||
+    isCyberattack;
+
+  const hasFutureOverload =
+    !isCurrentOverload &&
+    forecastData.some(
+      (item) => Number(item.predicted_demand_kw) >= (settings.criticalThreshold || 200)
+    );
+
   const latestSoc = useMemo(() => {
     if (!latestPrediction) return '100.0';
     if (latestPrediction.battery_soc !== undefined && latestPrediction.battery_soc !== null) {
@@ -1217,8 +1229,11 @@ export default function Dashboard() {
       {/* Printable Report Canvas Container */}
       <div id="dashboard-report-content" className="space-y-6 rounded-2xl bg-slate-950/60 p-2 sm:p-4">
         {/* Unmissable Alert Banner */}
-        {criticalHours.length > 0 && (
+        {(isCurrentOverload || hasFutureOverload) && (
           <AlertBanner
+            isCurrentOverload={isCurrentOverload}
+            currentDemand={currentDemandVal}
+            hasFutureOverload={hasFutureOverload}
             criticalHours={criticalHours}
             maxDemand={maxDemand}
             peakHour={peakOverloadPoint?.hour || criticalHours[0]}
