@@ -5,6 +5,10 @@
 
 > Modern, high-performance frontend for **GridSense**, an autonomous microgrid demand forecasting and energy management platform built on **Zoho Catalyst Slate**.
 
+### 🌐 Live Production Deployments
+- **Live Frontend (Slate)**: [https://gridsense-ui-zjbtthvz.onslate.in](https://gridsense-ui-zjbtthvz.onslate.in)
+- **Live Backend API (AppSail)**: [https://appsail-50047147234.development.catalystappsail.in/forecast](https://appsail-50047147234.development.catalystappsail.in/forecast)
+
 For the complete project overview, hackathon comparison table, and end-to-end architecture, see the primary [**Project README.md**](../README.md).
 
 ---
@@ -41,3 +45,17 @@ GridSense implements Vite manual chunking and dynamic loading to isolate heavy d
 - **`charts-[hash].js`**: Recharts and D3 dependencies
 - **`react-[hash].js`**: React 19 core, ReactDOM, and React Router DOM
 - **Dynamic Feature Chunks**: `Substation3D`, `FieldTechAR`, `DroneFleet`, `GridDefenderModal`, `MeterScanner`
+
+---
+
+## 👥 HackSphere 3.0 Team & Collaborators
+
+- **Shaik Abdul Sammed** - *Lead Full-Stack AI Engineer & System Architect*
+- **Shaik.Mahmmad Inthiyaz** - *Collaborator & Microgrid Systems Research*
+- **Team Hulk** - *HackSphere 3.0 Grand Finalists*
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](../LICENSE) file for details.

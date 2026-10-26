@@ -20,6 +20,16 @@
 
 ---
 
+## 🌐 Live Production Deployments
+
+| Component | Platform | Live Production URL | Deployment Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend UI (Slate)** | **Zoho Catalyst Slate** | [https://gridsense-ui-zjbtthvz.onslate.in](https://gridsense-ui-zjbtthvz.onslate.in) | ![Operational](https://img.shields.io/badge/Status-Operational-brightgreen?style=flat-square) |
+| **Backend API (AppSail)** | **Zoho Catalyst AppSail** | [https://appsail-50047147234.development.catalystappsail.in/forecast](https://appsail-50047147234.development.catalystappsail.in/forecast) | ![Active](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square) |
+| **AutoML Service (QuickML)** | **Zoho Catalyst QuickML** | `https://api.catalyst.zoho.in/quickml/v1/project/89804000000013023/endpoints/predict` | ![Ready](https://img.shields.io/badge/QuickML-Inference%20Ready-blue?style=flat-square) |
+
+---
+
 ## 📖 Project Overview
 
 Modern electrical distribution grids face severe operational instability caused by three intersecting challenges:
@@ -375,9 +385,10 @@ cd gridsense-ui && catalyst deploy slate gridsense-ui
 
 ---
 
-## 👥 HackSphere 3.0 Team
+## 👥 HackSphere 3.0 Team & Collaborators
 
 - **Shaik Abdul Sammed** - *Lead Full-Stack AI Engineer & System Architect*
+- **Shaik.Mahmmad Inthiyaz** - *Collaborator & Microgrid Systems Research*
 - **Team Hulk** - *HackSphere 3.0 Grand Finalists*
 
 ---
