@@ -7,14 +7,29 @@ from flask_cors import CORS
 # Initialize Flask app
 app = Flask(__name__)
 
-# Allow all origins for debugging and robust Catalyst routing
-CORS(app, resources={r"/*": {"origins": "*"}})
+# Explicitly allow the live Slate frontend
+ALLOWED_ORIGIN = "https://gridsense-ui-zjbtthvz.onslate.in"
 
+CORS(app, resources={
+    r"/*": {
+        "origins": [ALLOWED_ORIGIN, "http://localhost:5173"],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Requested-With", "X-QUICKML-ENDPOINT-KEY"]
+    }
+})
+
+# Force headers on every single response to prevent the gateway from stripping them
 @app.after_request
 def after_request_cors(response):
-    response.headers["Access-Control-Allow-Origin"] = "*"
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-QUICKML-ENDPOINT-KEY,X-Requested-With"
-    response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS,PUT,DELETE"
+    origin = request.headers.get('Origin')
+    if origin == ALLOWED_ORIGIN or origin == "http://localhost:5173":
+        response.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-QUICKML-ENDPOINT-KEY"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
     return response
 
 # QuickML Endpoint & Authentication Configuration
@@ -181,11 +196,16 @@ def home():
 # 3. Explicit OPTIONS handling for preflight requests
 @app.route('/forecast', methods=['OPTIONS'])
 def handle_options():
-    response = jsonify({'status': 'ok'})
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-    return response, 200
+    response = app.make_response(('', 200))
+    origin = request.headers.get('Origin')
+    if origin == ALLOWED_ORIGIN or origin == "http://localhost:5173":
+        response.headers["Access-Control-Allow-Origin"] = origin
+    else:
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-QUICKML-ENDPOINT-KEY"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
 
 
 # 4. Forecast endpoint with POST handling and logging
