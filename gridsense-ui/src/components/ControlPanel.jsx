@@ -474,17 +474,20 @@ export default function ControlPanel({
 
       {/* Backend connection error notice */}
       {error && (
-        <div className="bg-rose-950/70 border border-rose-500/80 text-rose-200 p-4 rounded-xl text-xs flex items-start justify-between gap-3">
+        <div className="bg-rose-950/85 border-2 border-rose-500 text-rose-100 p-4 rounded-xl text-xs flex items-start justify-between gap-3 shadow-xl shadow-rose-950/60 animate-fadeIn">
           <div className="flex items-start gap-2.5">
             <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-white text-sm">Backend Service Notice</p>
-              <p className="mt-1 text-rose-300">{error}</p>
+              <p className="font-black text-rose-200 text-sm tracking-wide uppercase">Backend Service Notice</p>
+              <p className="mt-1 font-mono text-rose-200 font-semibold break-words leading-relaxed">{error}</p>
+              <p className="mt-1 text-[11px] text-rose-400">
+                Running in Local Simulation Mode. Target: <code className="text-cyan-300 font-mono">{apiUrl}</code>
+              </p>
             </div>
           </div>
           <button
             onClick={onClearError}
-            className="text-slate-400 hover:text-white p-1 rounded-md cursor-pointer"
+            className="text-slate-400 hover:text-white p-1 rounded-md cursor-pointer shrink-0"
             title="Dismiss error"
           >
             ✕

@@ -15,11 +15,32 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { SettingsProvider } from './context/SettingsContext';
 import { ThemeProvider } from './context/ThemeContext';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
+console.log("ACTIVE API URL:", API_URL);
+
 export default function App() {
+  // Strict API connection debugging: detect if deployed on Slate or remote cloud but pointing to localhost
+  const isLocalhostApi = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+  const isRemoteDeployment =
+    typeof window !== 'undefined' &&
+    (window.location.hostname.includes('onslate.in') ||
+      (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'));
+
+  const showLocalhostErrorBanner = isLocalhostApi && isRemoteDeployment;
+
   return (
     <ErrorBoundary>
       <ThemeProvider>
         <SettingsProvider>
+          {/* Massive Production Configuration Alert Banner */}
+          {showLocalhostErrorBanner && (
+            <div className="bg-rose-600 border-b-4 border-rose-950 text-white font-mono font-black text-xs sm:text-sm px-4 py-3.5 text-center shadow-2xl z-50 sticky top-0 flex items-center justify-center gap-2 animate-pulse">
+              <span>
+                🚨 CONFIGURATION ERROR: Frontend is trying to connect to localhost ({API_URL}). Please update VITE_API_URL in Catalyst Slate.
+              </span>
+            </div>
+          )}
+
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Layout />}>

@@ -18,14 +18,14 @@ except ImportError:
 
 app = Flask(__name__)
 if has_cors:
-    CORS(app)
-else:
-    @app.after_request
-    def after_request_cors(response):
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization,X-QUICKML-ENDPOINT-KEY")
-        response.headers.add("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
-        return response
+    CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.after_request
+def after_request_cors(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type,Authorization,X-QUICKML-ENDPOINT-KEY,X-Requested-With"
+    response.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS,PUT,DELETE"
+    return response
 
 # QuickML Endpoint & Authentication Configuration
 QUICKML_ENDPOINT_KEY = "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"

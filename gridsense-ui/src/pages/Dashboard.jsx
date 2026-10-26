@@ -39,6 +39,7 @@ const DroneFleet = lazy(() => import('../components/DroneFleet'));
 const MeterScanner = lazy(() => import('../components/MeterScanner'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
+console.log("ACTIVE API URL:", API_URL);
 
 // Timezone-safe hour parser
 function parseTimezoneSafeHour(timestampStr, fallbackHour = 0) {
@@ -132,16 +133,27 @@ function generateSimulatedResponse(weatherPayload, hour, settings) {
   };
 }
 
-// Network retry logic
+// Network retry logic with detailed error capture
 async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
+  let lastError = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(url, options);
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        let errorBody = '';
+        try {
+          const text = await res.text();
+          if (text) {
+            errorBody = ` - ${text.slice(0, 150)}`;
+          }
+        } catch {
+          // ignore
+        }
+        throw new Error(`HTTP ${res.status} (${res.statusText || 'Error'})${errorBody}`);
       }
       return await res.json();
     } catch (err) {
+      lastError = err;
       if (options?.signal?.aborted || err.name === 'AbortError') {
         throw err;
       }
@@ -151,6 +163,7 @@ async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
+  throw lastError || new Error('Network request failed');
 }
 
 const DASHBOARD_TOUR_STEPS = [
@@ -426,9 +439,13 @@ export default function Dashboard() {
             setIsOnline(false);
             prediction = generateSimulatedResponse(item, hourNum, settings);
             if (i === 0) {
-              setError(
-                'Backend offline. Running in Local Simulation Mode. Start the Python backend to connect to QuickML.'
-              );
+              const rawMsg = fetchErr?.message || String(fetchErr);
+              const isNetworkFailed =
+                rawMsg.includes('Failed to fetch') || rawMsg.includes('NetworkError');
+              const extraHint = isNetworkFailed
+                ? ' (Likely CORS restriction or AppSail container starting)'
+                : '';
+              setError(`Connection Failed: ${rawMsg}${extraHint}`);
             }
           }
         }
