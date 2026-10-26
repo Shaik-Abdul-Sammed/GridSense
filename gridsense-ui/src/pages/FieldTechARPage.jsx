@@ -28,29 +28,39 @@ export default function FieldTechARPage() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsScannerActive(true)}
-          className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 cursor-pointer flex items-center gap-2"
-        >
-          <Eye className="w-4 h-4" />
-          <span>Launch AR Scan</span>
-        </button>
-      </div>
-
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl p-6 shadow-2xl">
-        <Suspense fallback={<div className="h-64 rounded-2xl bg-slate-900/60 animate-pulse border border-white/10" />}>
-          <FieldTechAR isOpen={isScannerActive} onClose={() => setIsScannerActive(false)} />
-        </Suspense>
-        {!isScannerActive && (
-          <div className="text-center py-16 space-y-3">
-            <p className="text-slate-400 text-sm">AR Diagnostic Session Closed.</p>
+        <div className="flex items-center gap-2">
+          {!isScannerActive && (
             <button
               type="button"
               onClick={() => setIsScannerActive(true)}
-              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-white/10 cursor-pointer"
+              className="px-4 py-2 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-lg shadow-cyan-500/30 cursor-pointer flex items-center gap-2"
             >
-              Reopen Scanner
+              <Eye className="w-4 h-4" />
+              <span>Launch AR Scan</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="rounded-3xl shadow-2xl overflow-hidden">
+        <Suspense fallback={<div className="h-96 rounded-3xl bg-slate-900/60 animate-pulse border border-white/10" />}>
+          <FieldTechAR isOpen={isScannerActive} onClose={() => setIsScannerActive(false)} embedded={true} />
+        </Suspense>
+        {!isScannerActive && (
+          <div className="text-center py-20 space-y-4 bg-slate-900/50 border border-white/10 rounded-3xl backdrop-blur-xl">
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 flex items-center justify-center">
+              <Camera className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">AR Diagnostic Session Inactive</h3>
+              <p className="text-slate-400 text-xs mt-1">Activate the high-voltage spatial FLIR thermal scanner to inspect Transformer T-2.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsScannerActive(true)}
+              className="px-6 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-emerald-400 text-slate-950 font-mono uppercase tracking-wide cursor-pointer shadow-lg shadow-cyan-500/30 border-none"
+            >
+              Engage AR Scanner
             </button>
           </div>
         )}
