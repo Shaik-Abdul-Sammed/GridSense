@@ -343,8 +343,14 @@ export default function Dashboard() {
   // Feature 2: "What-If" Climate Simulator Temperature Delta (0 to +6 °C)
   const [climateDelta, setClimateDelta] = useState(0);
 
-  // Feature 4: Automated AI Voice Alerts (TTS)
-  const { isMuted: isVoiceMuted, toggleMute: toggleVoiceMute, speakAlert } = useVoiceAlerts();
+  // Feature 4: Automated AI Voice Alerts (TTS) with user-gesture audio unlock
+  const {
+    isMuted: isVoiceMuted,
+    toggleMute: toggleVoiceMute,
+    speakAlert,
+    isAudioUnlocked,
+    unlockAudio,
+  } = useVoiceAlerts();
 
   // Digital Twin Display Mode Toggle ('3D' vs '2D')
   const [digitalTwinMode, setDigitalTwinMode] = useState('3D');
@@ -906,6 +912,19 @@ export default function Dashboard() {
     return Math.max(...forecastData.map((d) => Number(d.predicted_demand_kw) || 0));
   }, [forecastData]);
 
+  // Identify specific hour with peak overload for pinpoint alerting
+  const peakOverloadPoint = useMemo(() => {
+    if (!forecastData || forecastData.length === 0) return null;
+    const overloads = forecastData.filter(
+      (item) => Number(item.predicted_demand_kw) >= 200 || item.alert === 'CRITICAL_OVERLOAD'
+    );
+    if (overloads.length === 0) return null;
+    return overloads.reduce(
+      (max, curr) => (Number(curr.predicted_demand_kw) > Number(max.predicted_demand_kw) ? curr : max),
+      overloads[0]
+    );
+  }, [forecastData]);
+
   const latestPrediction = useMemo(() => {
     if (!forecastData || forecastData.length === 0) return null;
 
@@ -1101,6 +1120,8 @@ export default function Dashboard() {
         onTriggerCyberattack={handleToggleCyberattack}
         isVoiceMuted={isVoiceMuted}
         onToggleVoiceMute={toggleVoiceMute}
+        isAudioUnlocked={isAudioUnlocked}
+        onUnlockAudio={unlockAudio}
         ambientTemp={latestPrediction?.ambient_temp_c ?? 26.5}
         humidityPct={latestPrediction?.humidity_pct ?? 55}
         solarIrradiance={latestPrediction?.solar_irradiance_wm2 ?? 350}
@@ -1197,7 +1218,11 @@ export default function Dashboard() {
       <div id="dashboard-report-content" className="space-y-6 rounded-2xl bg-slate-950/60 p-2 sm:p-4">
         {/* Unmissable Alert Banner */}
         {criticalHours.length > 0 && (
-          <AlertBanner criticalHours={criticalHours} maxDemand={maxDemand} />
+          <AlertBanner
+            criticalHours={criticalHours}
+            maxDemand={maxDemand}
+            peakHour={peakOverloadPoint?.hour || criticalHours[0]}
+          />
         )}
 
         {/* Feature 1: Transformer Health Visual Gauge Banner */}

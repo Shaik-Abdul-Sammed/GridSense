@@ -7,7 +7,7 @@ function playToneChime(isPositive = true) {
     if (!AudioCtx) return;
     const ctx = new AudioCtx();
 
-    // Chromium requires resuming AudioContext on user interaction
+    // Chromium and iOS require resuming AudioContext on user interaction
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
     }
@@ -52,6 +52,9 @@ export function useVoiceAlerts() {
     }
   });
 
+  // Mobile browsers (iOS Safari, Android Chrome) block speech synthesis unless unlocked by a direct user gesture
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+
   const lastSpokenRef = useRef(0);
   const synthRef = useRef(null);
   const activeUtteranceRef = useRef(null);
@@ -80,9 +83,45 @@ export function useVoiceAlerts() {
     }
   }, []);
 
+  // Direct user-gesture audio unlocker for mobile browsers
+  const unlockAudio = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        // Silent speech utterance to prime mobile audio channel
+        const silentUtterance = new SpeechSynthesisUtterance(' ');
+        silentUtterance.volume = 0.01;
+        window.speechSynthesis.speak(silentUtterance);
+      } catch (e) {
+        console.warn('Silent utterance unlock error:', e);
+      }
+    }
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    setIsAudioUnlocked(true);
+    setIsMuted(false);
+    try {
+      localStorage.setItem('gridsense_voice_muted', 'false');
+    } catch {
+      // ignore
+    }
+    playToneChime(true);
+  }, []);
+
   const speakAlert = useCallback(
     (text, forced = false, cooldownMs = 15000) => {
-      if (isMuted) return;
+      // Strict gating: do not speak if muted or audio has not been unlocked via user gesture
+      if (isMuted || !isAudioUnlocked) return;
 
       const now = Date.now();
       if (!forced && now - lastSpokenRef.current < cooldownMs) {
@@ -140,7 +179,7 @@ export function useVoiceAlerts() {
         console.warn('Voice alert synthesis error:', err);
       }
     },
-    [isMuted]
+    [isMuted, isAudioUnlocked]
   );
 
   const toggleMute = useCallback(() => {
@@ -164,7 +203,8 @@ export function useVoiceAlerts() {
       }
 
       if (!next) {
-        // User unmuted: provide immediate voice and tone confirmation
+        // User unmuted: also ensure audio is unlocked on this user gesture
+        setIsAudioUnlocked(true);
         playToneChime(true);
         setTimeout(() => {
           speakAlert('GridSense voice telemetry online. Monitoring active grid.', true, 0);
@@ -182,5 +222,7 @@ export function useVoiceAlerts() {
     isMuted,
     toggleMute,
     speakAlert,
+    isAudioUnlocked,
+    unlockAudio,
   };
 }

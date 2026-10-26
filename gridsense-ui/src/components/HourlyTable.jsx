@@ -31,7 +31,7 @@ export default function HourlyTable({ forecastData = [] }) {
         const safeSolar = Number(row.solar_irradiance_wm2 ?? row.solar ?? 0);
 
         // Filter mode checks
-        if (filterMode === 'OVERLOAD' && row.alert !== 'CRITICAL_OVERLOAD' && safeDemand <= 160) {
+        if (filterMode === 'OVERLOAD' && row.alert !== 'CRITICAL_OVERLOAD' && safeDemand < 200) {
           return false;
         }
         if (filterMode === 'PEAK' && !(hourNum >= 18 && hourNum <= 22)) {
@@ -163,7 +163,7 @@ export default function HourlyTable({ forecastData = [] }) {
                   const hourInt = parseInt(String(row.hour || '').split(':')[0], 10);
                   const isOverload =
                     row.alert === 'CRITICAL_OVERLOAD' ||
-                    Number(row.predicted_demand_kw || row.demand || 0) > 160;
+                    Number(row.predicted_demand_kw || row.demand || 0) >= 200;
                   const isPeak = !isNaN(hourInt) && hourInt >= 18 && hourInt <= 22;
                   const isAnomaly = !!row.isAnomaly;
                   const mode = row.grid_mode || row.mode || 'MAIN_GRID_MODE';

@@ -19,6 +19,8 @@ export default function Header({
   onTriggerCyberattack,
   isVoiceMuted = false,
   onToggleVoiceMute,
+  isAudioUnlocked = false,
+  onUnlockAudio,
   ambientTemp = 26.5,
   humidityPct = 55,
   solarIrradiance = 350,
@@ -210,6 +212,19 @@ export default function Header({
           </button>
         )}
 
+        {/* Mobile / Direct User-Gesture Voice Audio Unlocker Button */}
+        {!isAudioUnlocked && onUnlockAudio && (
+          <button
+            type="button"
+            onClick={onUnlockAudio}
+            title="Enable AI Voice Alerts (Requires user gesture on mobile browsers)"
+            className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 border border-amber-400/50 flex items-center gap-1.5 cursor-pointer select-none transition-all animate-pulse"
+          >
+            <Volume2 className="w-3.5 h-3.5 text-slate-950" />
+            <span>🔊 Enable Voice</span>
+          </button>
+        )}
+
         {/* Feature 4: Automated AI Voice Alert Mute/Unmute Toggle */}
         {onToggleVoiceMute && (
           <button
@@ -263,6 +278,8 @@ Header.propTypes = {
   onTriggerCyberattack: PropTypes.func,
   isVoiceMuted: PropTypes.bool,
   onToggleVoiceMute: PropTypes.func,
+  isAudioUnlocked: PropTypes.bool,
+  onUnlockAudio: PropTypes.func,
   ambientTemp: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   humidityPct: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   solarIrradiance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),

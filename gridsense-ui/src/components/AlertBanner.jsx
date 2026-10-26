@@ -1,5 +1,10 @@
-export default function AlertBanner({ criticalHours = [], maxDemand = 0 }) {
+import PropTypes from 'prop-types';
+
+export default function AlertBanner({ criticalHours = [], maxDemand = 0, peakHour = null }) {
   if (!criticalHours || criticalHours.length === 0) return null;
+
+  const displayPeakHour = peakHour || criticalHours[0] || '19:00';
+  const displayPeakKw = Number(maxDemand || 200).toFixed(1);
 
   return (
     <div
@@ -21,7 +26,7 @@ export default function AlertBanner({ criticalHours = [], maxDemand = 0 }) {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl md:text-2xl font-black tracking-wider uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                🚨 CRITICAL OVERLOAD: Demand exceeds 200kW!
+                🚨 CRITICAL OVERLOAD: Peak demand of {displayPeakKw} kW occurred at {displayPeakHour}.
               </h2>
             </div>
             <p className="text-xs md:text-sm text-red-100 font-semibold mt-1">
@@ -31,7 +36,7 @@ export default function AlertBanner({ criticalHours = [], maxDemand = 0 }) {
               </span>{' '}
               ({criticalHours.slice(0, 6).join(', ')}{criticalHours.length > 6 ? ` +${criticalHours.length - 6} more` : ''}). Peak projected:{' '}
               <span className="font-mono font-black text-amber-200 text-base">
-                {maxDemand.toFixed(1)} kW
+                {displayPeakKw} kW
               </span>.
             </p>
           </div>
@@ -46,3 +51,9 @@ export default function AlertBanner({ criticalHours = [], maxDemand = 0 }) {
     </div>
   );
 }
+
+AlertBanner.propTypes = {
+  criticalHours: PropTypes.arrayOf(PropTypes.string),
+  maxDemand: PropTypes.number,
+  peakHour: PropTypes.string,
+};

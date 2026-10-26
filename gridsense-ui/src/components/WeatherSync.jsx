@@ -436,7 +436,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       return;
     }
 
-    // Safety timeout: Lock with the best acquired fix within 4.5 seconds
+    // Safety timeout: Lock with the best acquired fix within 6 seconds
     const safetyTimer = setTimeout(() => {
       if (gnssWatchIdRef.current != null) {
         navigator.geolocation.clearWatch(gnssWatchIdRef.current);
@@ -448,7 +448,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         const { lat, lon, accuracy } = bestGnssFixRef.current;
         fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
       } else {
-        // Fallback to one-shot getCurrentPosition
+        // Fallback to one-shot getCurrentPosition with mobile-optimized timeout
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             const lat = Number(pos.coords.latitude.toFixed(5));
@@ -461,10 +461,10 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
             const def = REGIONAL_SUBSTATIONS[0];
             fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
           },
-          { enableHighAccuracy: true, timeout: 5000 }
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
       }
-    }, 4500);
+    }, 6000);
 
     // Progressive GNSS watch: captures increasingly accurate satellite readings
     try {
@@ -514,7 +514,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         {
           enableHighAccuracy: true,
           maximumAge: 0,
-          timeout: 8000,
+          timeout: 10000,
         }
       );
     } catch (e) {
@@ -527,43 +527,26 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     }
   };
 
-  // Mount-only initialization (Run strictly once to avoid re-render loops)
+  // Mount-only initialization: Load default substation without popping GPS permission prompt (User Gesture Required on Mobile)
   const hasMountedRef = useRef(false);
   useEffect(() => {
     if (hasMountedRef.current) return;
     hasMountedRef.current = true;
 
-    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = Number(pos.coords.latitude.toFixed(5));
-          const lon = Number(pos.coords.longitude.toFixed(5));
-          const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
-          fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
-        },
-        () => {
-          // If browser blocks GPS or user denies permission, trigger the yellow warning banner
-          setGeoDeniedWarning(true);
-          const def = REGIONAL_SUBSTATIONS[0];
-          fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
-        },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 }
-      );
-    } else {
-      setGeoDeniedWarning(true);
-      const def = REGIONAL_SUBSTATIONS[0];
-      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
-    }
+    // Load default Alpha-1 substation on initial mount.
+    // Geolocation is triggered strictly on user click via handleGpsSync to satisfy iOS Safari & Android Chrome policies.
+    const def = REGIONAL_SUBSTATIONS[0];
+    fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
   }, []);
 
   return (
     <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-4 sm:p-6 flex flex-col gap-5">
-      {/* Location Access Denied Yellow Warning Banner */}
+      {/* Location Access Denied Mobile-Friendly Warning Banner */}
       {geoDeniedWarning && (
         <div className="w-full text-xs sm:text-sm font-mono text-amber-950 bg-amber-400 border-2 border-amber-300 p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3 shadow-xl shadow-amber-950/40 animate-fadeIn">
           <div className="flex items-center gap-2.5 font-bold">
             <span>
-              ⚠️ Location Access Denied. Please click the Lock icon 🔒 in your browser&apos;s address bar and set Location to &apos;Allow&apos;, then refresh the page. Showing default fallback location.
+              ⚠️ Location blocked by your phone. Please enable Location Services in your device settings and try again. Showing default substation location.
             </span>
           </div>
           <button
