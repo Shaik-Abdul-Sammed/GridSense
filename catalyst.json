@@ -8,7 +8,7 @@
   "slate": [
     {
       "name": "gridsense-ui",
-      "source": "/home/rgukt/Github/hulk/gridsense-ui"
+      "source": "gridsense-ui"
     }
   ]
 }

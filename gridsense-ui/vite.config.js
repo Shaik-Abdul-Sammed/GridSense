@@ -7,44 +7,25 @@ export default defineConfig({
   base: '/',
   build: {
     outDir: 'dist',
-    chunkSizeWarningLimit: 1200,
+    chunkSizeWarningLimit: 1400,
     rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
-            // Three.js core
-            if (id.includes('node_modules/three/')) {
-              return 'three-core';
+            // Three.js and 3D graphics libraries
+            if (id.includes('three') || id.includes('@react-three')) {
+              return 'three-vendor';
             }
-            // R3F, Drei & helpers
-            if (
-              id.includes('@react-three') ||
-              id.includes('three-stdlib') ||
-              id.includes('three-mesh-bvh')
-            ) {
-              return 'three-fiber';
-            }
-            // Tesseract OCR engine in separate chunk
+            // Tesseract OCR engine in isolated worker chunk
             if (id.includes('tesseract.js') || id.includes('tesseract')) {
-              return 'ocr';
+              return 'ocr-vendor';
             }
             // PDF report generation in separate chunk
-            if (id.includes('jspdf') || id.includes('html2canvas') || id.includes('html2canvas-pro')) {
-              return 'pdf';
+            if (id.includes('jspdf') || id.includes('html2canvas')) {
+              return 'pdf-vendor';
             }
-            // Core React runtime & routing
-            if (
-              id.includes('react-dom') ||
-              id.includes('react-router') ||
-              id.includes('react-router-dom') ||
-              id.includes('/react/')
-            ) {
-              return 'react';
-            }
-            // Recharts & D3 mathematical utilities
-            if (id.includes('recharts') || id.includes('d3-')) {
-              return 'charts';
-            }
+            // Everything else (React, ReactDOM, Recharts, D3, Lucide) bundled together to prevent circular dependency crashes
+            return 'vendor';
           }
         },
       },
