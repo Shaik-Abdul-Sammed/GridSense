@@ -15,6 +15,7 @@ import {
   Sunrise,
   Sunset,
   Navigation,
+  Search,
   ExternalLink,
   Crosshair,
   Globe,
@@ -27,6 +28,7 @@ import {
   reverseGeocode,
   encodePlusCode,
   getGoogleMapsUrl,
+  searchPlaces,
 } from '../utils/weatherUtils';
 
 const REGIONAL_SUBSTATIONS = [
@@ -100,6 +102,48 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
 
   // Prominent warning when location permission is blocked or denied
   const [geoDeniedWarning, setGeoDeniedWarning] = useState(false);
+
+  // Modern place search autocomplete state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchDropdownRef = useRef(null);
+
+  // Close search dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchDropdownRef.current && !searchDropdownRef.current.contains(e.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounced search query handler
+  useEffect(() => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed || trimmed.length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchPlaces(trimmed);
+        setSearchResults(results);
+      } catch (err) {
+        console.warn('Place search failed:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // GNSS Watcher reference for cleanup
   const gnssWatchIdRef = useRef(null);
@@ -352,6 +396,27 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     setIsAcquiringGnss(false);
     setGeoDeniedWarning(false);
     fetchWeather(station.lat, station.lon, `${station.name} (${station.tag})`, station.id, null);
+  };
+
+  // Search result selection handler
+  const handleSelectSearchResult = (result) => {
+    if (gnssWatchIdRef.current != null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+      gnssWatchIdRef.current = null;
+    }
+    setIsAcquiringGnss(false);
+    setGeoDeniedWarning(false);
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    setSearchResults([]);
+    fetchWeather(result.lat, result.lon, result.displayName, result.id, null);
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    if (searchResults.length > 0) {
+      handleSelectSearchResult(searchResults[0]);
+    }
   };
 
   // Multi-Sample Hardware GNSS Fix Acquisition (Progressive Satellite Locking)
@@ -626,6 +691,94 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
             <span>Google Maps</span>
             <ExternalLink className="w-3 h-3 text-cyan-400/80" />
           </a>
+        </div>
+      </div>
+
+      {/* Search Bar & Global Location Resolver */}
+      <div className="pt-2 border-t border-white/5">
+        <div ref={searchDropdownRef} className="relative w-full max-w-xl">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+            <Search className="w-4 h-4 text-cyan-400 absolute left-3.5 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => {
+                if (searchQuery.trim().length >= 2) setIsSearchOpen(true);
+              }}
+              placeholder="Search global city, coordinates (e.g. 14.68, 77.60), or address..."
+              className="w-full pl-9 pr-16 py-2 rounded-xl text-xs font-mono bg-slate-950/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
+            />
+            <div className="absolute right-2 flex items-center gap-1">
+              {isSearching && (
+                <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin mr-1" />
+              )}
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSearchResults([]);
+                    setIsSearchOpen(false);
+                  }}
+                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  title="Clear search"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </form>
+
+          {/* Autocomplete Results Dropdown */}
+          {isSearchOpen && (
+            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/95 backdrop-blur-xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden divide-y divide-white/5 max-h-72 overflow-y-auto">
+              {isSearching && searchResults.length === 0 && (
+                <div className="p-3 text-center text-xs font-mono text-slate-400 flex items-center justify-center gap-2">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                  Searching global database...
+                </div>
+              )}
+              {!isSearching && searchResults.length === 0 && searchQuery.trim().length >= 2 && (
+                <div className="p-3 text-center text-xs font-mono text-slate-400">
+                  No matching locations found for &quot;{searchQuery}&quot;
+                </div>
+              )}
+              {searchResults.map((result) => (
+                <button
+                  key={result.id}
+                  type="button"
+                  onClick={() => handleSelectSearchResult(result)}
+                  className="w-full text-left p-3 hover:bg-cyan-950/50 hover:text-cyan-200 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
+                >
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold font-mono text-white group-hover:text-cyan-300 truncate">
+                        {result.name}
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-400 truncate">
+                        {result.displayName}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-[10px] font-mono text-cyan-400/80 font-semibold">
+                      {result.lat.toFixed(2)}°, {result.lon.toFixed(2)}°
+                    </div>
+                    {result.plusCode && (
+                      <div className="text-[9px] font-mono text-indigo-400/80">
+                        {result.plusCode}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

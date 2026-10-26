@@ -2,23 +2,13 @@ import os
 import math
 import requests
 from flask import Flask, request, g, jsonify
+from flask_cors import CORS
 
-try:
-    from flask_cors import CORS
-    has_cors = True
-except ImportError:
-    has_cors = False
-
-try:
-    import zcatalyst_sdk
-    HAS_ZCATALYST_SDK = True
-except ImportError:
-    zcatalyst_sdk = None
-    HAS_ZCATALYST_SDK = False
-
+# Initialize Flask app
 app = Flask(__name__)
-if has_cors:
-    CORS(app, resources={r"/*": {"origins": "*"}})
+
+# Allow all origins for debugging and robust Catalyst routing
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 @app.after_request
 def after_request_cors(response):
@@ -46,6 +36,13 @@ QUICKML_HEADERS = {
 _zoho_token = os.environ.get("ZOHO_OAUTH_TOKEN") or os.environ.get("CATALYST_ACCESS_TOKEN")
 if _zoho_token:
     QUICKML_HEADERS["Authorization"] = f"Zoho-oauthtoken {_zoho_token}"
+
+try:
+    import zcatalyst_sdk
+    HAS_ZCATALYST_SDK = True
+except ImportError:
+    zcatalyst_sdk = None
+    HAS_ZCATALYST_SDK = False
 
 # 1. Initialize the Catalyst SDK for every request (when running in Catalyst AppSail)
 @app.before_request
@@ -181,12 +178,20 @@ def home():
     })
 
 
-# 3. Forecast endpoint (Includes QuickML invocation and Transition Controller Logic)
-@app.route('/forecast', methods=['POST', 'OPTIONS'])
-def forecast():
-    if request.method == 'OPTIONS':
-        return jsonify({"status": "ok"}), 200
+# 3. Explicit OPTIONS handling for preflight requests
+@app.route('/forecast', methods=['OPTIONS'])
+def handle_options():
+    response = jsonify({'status': 'ok'})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+    return response, 200
 
+
+# 4. Forecast endpoint with POST handling and logging
+@app.route('/forecast', methods=['POST'])
+def get_forecast():
+    print("--- RECEIVED FORECAST REQUEST ---")
     data = request.get_json(silent=True) or {}
 
     # Extract timestamp or default to current simulation slot
@@ -222,18 +227,14 @@ def forecast():
         try:
             current_soc = float(client_soc)
             if grid_mode == "RENEWABLE_STORAGE_MODE":
-                # Storage dispatch reduces reserve
                 battery_soc = max(10.0, round(current_soc - 4.2, 1))
             else:
-                # Normal grid/solar operation recharges BESS
                 battery_soc = min(100.0, round(current_soc + 3.5, 1))
         except (ValueError, TypeError):
             battery_soc = max(10.0, min(100.0, round(100.0 - (predicted_kw / 3.0), 1)))
     else:
-        # Standard dynamic battery curve
         battery_soc = max(10.0, min(100.0, round(100.0 - (predicted_kw / 3.0), 1)))
 
-    # Return the final response matching the strict frontend schema
     return jsonify({
         "timestamp": timestamp_str,
         "predicted_demand_kw": predicted_kw,
@@ -243,7 +244,7 @@ def forecast():
     })
 
 
-# 4. Run the app (Catalyst requires this specific port)
+# 5. Run the app (Catalyst requires this specific port)
 if __name__ == '__main__':
     port = int(os.environ.get('X_ZOHO_CATALYST_LISTEN_PORT', 9000))
     app.run(host='0.0.0.0', port=port)
