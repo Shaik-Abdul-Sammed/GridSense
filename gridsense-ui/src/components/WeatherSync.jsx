@@ -15,12 +15,19 @@ import {
   Sunrise,
   Sunset,
   Navigation,
+  Search,
+  ExternalLink,
+  Crosshair,
+  Globe,
 } from 'lucide-react';
 import {
   getWeatherInterpretation,
   getWindCompassDirection,
   formatCoordinates,
   reverseGeocode,
+  encodePlusCode,
+  getGoogleMapsUrl,
+  searchPlaces,
 } from '../utils/weatherUtils';
 
 const REGIONAL_SUBSTATIONS = [
@@ -31,6 +38,7 @@ const REGIONAL_SUBSTATIONS = [
     lat: 37.7749,
     lon: -122.4194,
     tag: 'Substation Alpha-1 (66kV / 11kV)',
+    plusCode: '849VQHFJ+X6',
   },
   {
     id: 'SUB_HYD',
@@ -39,6 +47,7 @@ const REGIONAL_SUBSTATIONS = [
     lat: 17.3850,
     lon: 78.4867,
     tag: 'SRLDC Southern Regional Dispatch',
+    plusCode: '7J9W9FPP+2M',
   },
   {
     id: 'SUB_NYC',
@@ -47,6 +56,7 @@ const REGIONAL_SUBSTATIONS = [
     lat: 40.7128,
     lon: -74.0060,
     tag: 'NYISO Sector Central',
+    plusCode: '87G8P27F+4R',
   },
   {
     id: 'SUB_LON',
@@ -55,6 +65,7 @@ const REGIONAL_SUBSTATIONS = [
     lat: 51.5074,
     lon: -0.1278,
     tag: 'National Grid UK Interconnect',
+    plusCode: '9C3XGV4C+XV',
   },
   {
     id: 'SUB_TYO',
@@ -63,6 +74,7 @@ const REGIONAL_SUBSTATIONS = [
     lat: 35.6762,
     lon: 139.6503,
     tag: 'TEPCO Microgrid Hub',
+    plusCode: '8Q7XMMG2+F4',
   },
   {
     id: 'SUB_SYD',
@@ -71,6 +83,7 @@ const REGIONAL_SUBSTATIONS = [
     lat: -33.8688,
     lon: 151.2093,
     tag: 'AEMO Pacific Solar Farm',
+    plusCode: '4RRH46J5+FF',
   },
 ];
 
@@ -78,36 +91,91 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
   const [isLoading, setIsLoading] = useState(false);
   const [activeStationId, setActiveStationId] = useState('SUB_SF');
   const [resolvedPlaceName, setResolvedPlaceName] = useState('San Francisco, California, United States');
+  const [activePlusCode, setActivePlusCode] = useState('849VQHFJ+X6');
+  const [activeCoordinates, setActiveCoordinates] = useState({ lat: 37.7749, lon: -122.4194 });
   const [coordinatesLabel, setCoordinatesLabel] = useState('37.7749° N &bull; 122.4194° W');
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [weatherDetails, setWeatherDetails] = useState(null);
   const [error, setError] = useState(null);
 
-  // Store onWeatherLoaded in a ref to avoid infinite re-render dependency loops
+  // Search autocomplete state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchDropdownRef = useRef(null);
+
+  // Store onWeatherLoaded in a ref to avoid infinite re-render loops
   const onWeatherLoadedRef = useRef(onWeatherLoaded);
   useEffect(() => {
     onWeatherLoadedRef.current = onWeatherLoaded;
   }, [onWeatherLoaded]);
 
-  // Core weather fetcher from Open-Meteo
-  const fetchWeather = async (lat, lon, customPlaceName = null, stationId = null) => {
+  // Handle outside clicks to close search dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchDropdownRef.current && !searchDropdownRef.current.contains(e.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounced search query handler
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const results = await searchPlaces(searchQuery);
+        setSearchResults(results);
+      } catch (err) {
+        console.warn('Place search failed:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Core weather fetcher from Open-Meteo Satellite Feed
+  const fetchWeather = async (lat, lon, customPlaceName = null, stationId = null, accuracy = null) => {
     setIsLoading(true);
     setError(null);
     if (stationId) {
       setActiveStationId(stationId);
     }
+    if (accuracy !== undefined) {
+      setGpsAccuracy(accuracy);
+    }
+    setActiveCoordinates({ lat, lon });
 
     try {
-      // Step 1: Resolve exact human-readable location place name
+      // Step 1: Resolve high-precision location, address, and Google Plus Code
       let place = customPlaceName;
+      let plusCode = encodePlusCode(lat, lon);
+      let geocodeSource = 'Substation Preset';
+
       if (!place) {
-        place = await reverseGeocode(lat, lon);
+        const geoResult = await reverseGeocode(lat, lon);
+        place = geoResult.placeName || String(geoResult);
+        plusCode = geoResult.plusCode || plusCode;
+        geocodeSource = geoResult.source || 'GNSS Geocoding';
       }
 
       setResolvedPlaceName(place);
+      setActivePlusCode(plusCode);
       const coordsHtml = formatCoordinates(lat, lon);
       setCoordinatesLabel(coordsHtml);
 
-      // Step 2: Query high-precision Open-Meteo satellite forecast
+      // Step 2: Query high-precision satellite telemetry
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,weather_code,surface_pressure,wind_speed_10m,shortwave_radiation,direct_normal_irradiance&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=3`;
 
       const res = await fetch(url, { method: 'GET' });
@@ -181,8 +249,11 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       const fullMeta = {
         stationId: stationId || 'CUSTOM',
         placeName: place,
+        plusCode,
         coordinates: { lat, lon },
         coordinatesLabel: coordsHtml,
+        accuracyRadius: accuracy,
+        geocodeSource,
         currentTemp,
         feelsLike,
         currentHumidity,
@@ -212,7 +283,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         onWeatherLoadedRef.current(formatted24h, place, fullMeta);
       }
     } catch (err) {
-      console.warn('Weather sync error, using localized baseline:', err.message);
+      console.warn('Weather sync error, using localized calibration:', err.message);
       setError(`Satellite weather sync encountered a temporary issue (${err.message}). Showing localized calibration.`);
 
       const fallback24h = Array.from({ length: 24 }, (_, idx) => {
@@ -237,11 +308,14 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         };
       });
 
+      const fallbackPlus = encodePlusCode(lat, lon);
       const fallbackMeta = {
         stationId: stationId || 'SUB_SF',
         placeName: customPlaceName || 'Substation Alpha-1 (San Francisco, CA)',
+        plusCode: fallbackPlus,
         coordinates: { lat, lon },
         coordinatesLabel: formatCoordinates(lat, lon),
+        accuracyRadius: accuracy,
         currentTemp: 24.5,
         feelsLike: 25.2,
         currentHumidity: 58,
@@ -265,6 +339,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       };
 
       setResolvedPlaceName(fallbackMeta.placeName);
+      setActivePlusCode(fallbackPlus);
       setCoordinatesLabel(fallbackMeta.coordinatesLabel);
       setWeatherDetails(fallbackMeta);
 
@@ -278,34 +353,40 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
 
   // Substation Preset Button Click Handler
   const handleSelectSubstation = (station) => {
-    fetchWeather(station.lat, station.lon, `${station.name} (${station.tag})`, station.id);
+    fetchWeather(station.lat, station.lon, `${station.name} (${station.tag})`, station.id, null);
   };
 
-  // GPS Device Sync Button Click Handler
+  // High-Accuracy GPS Device Sync Button Click Handler
   const handleGpsSync = () => {
     setError(null);
     setIsLoading(true);
 
     if (typeof window === 'undefined' || !navigator?.geolocation) {
-      setError('Geolocation not supported by this browser. Defaulting to Substation Alpha-1.');
+      setError('Hardware geolocation not supported by this browser. Defaulting to Substation Alpha-1.');
       const def = REGIONAL_SUBSTATIONS[0];
-      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id);
+      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = Number(pos.coords.latitude.toFixed(4));
-        const lon = Number(pos.coords.longitude.toFixed(4));
-        fetchWeather(lat, lon, null, 'LIVE_GPS');
+        // High-precision coordinates (5 decimal places = ~1m resolution)
+        const lat = Number(pos.coords.latitude.toFixed(5));
+        const lon = Number(pos.coords.longitude.toFixed(5));
+        const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+        fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
       },
       (err) => {
-        console.warn('Geolocation permission prompt denied or skipped:', err.message);
-        setError('Location permission was not granted. Defaulting to Substation Alpha-1 (San Francisco, USA).');
+        console.warn('Geolocation permission prompt denied or timed out:', err.message);
+        setError('Location permission was not granted or signal timed out. Defaulting to Substation Alpha-1 (San Francisco, USA).');
         const def = REGIONAL_SUBSTATIONS[0];
-        fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id);
+        fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
       },
-      { timeout: 8000, enableHighAccuracy: true }
+      {
+        enableHighAccuracy: true,
+        maximumAge: 0, // Guarantees fresh hardware GNSS/Wi-Fi fix instead of stale cache
+        timeout: 10000,
+      }
     );
   };
 
@@ -318,25 +399,26 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const lat = Number(pos.coords.latitude.toFixed(4));
-          const lon = Number(pos.coords.longitude.toFixed(4));
-          fetchWeather(lat, lon, null, 'LIVE_GPS');
+          const lat = Number(pos.coords.latitude.toFixed(5));
+          const lon = Number(pos.coords.longitude.toFixed(5));
+          const accuracy = pos.coords.accuracy ? Math.round(pos.coords.accuracy) : null;
+          fetchWeather(lat, lon, null, 'LIVE_GPS', accuracy);
         },
         () => {
           const def = REGIONAL_SUBSTATIONS[0];
-          fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id);
+          fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
         },
-        { enableHighAccuracy: false, timeout: 5000 }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 6000 }
       );
     } else {
       const def = REGIONAL_SUBSTATIONS[0];
-      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id);
+      fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
     }
   }, []);
 
   return (
     <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-4 sm:p-6 flex flex-col gap-5">
-      {/* Top Banner: Header, Location Place Name & Action Buttons */}
+      {/* Top Banner: Header, Location Place Name & Controls */}
       <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         {/* Title, Place Name & Identity */}
         <div className="flex items-start gap-3.5 min-w-0">
@@ -359,11 +441,43 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
                 <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="break-words">{resolvedPlaceName || 'Resolving location...'}</span>
               </div>
+
+              {/* Live GPS badge with physical precision radius */}
               {activeStationId === 'LIVE_GPS' && (
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold shrink-0">
-                  LIVE DEVICE GPS
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold shrink-0 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+                  LIVE GNSS DEVICE
                 </span>
               )}
+
+              {/* Hardware GNSS Accuracy Pill */}
+              {gpsAccuracy != null && activeStationId === 'LIVE_GPS' && (
+                <span
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold shrink-0 border ${
+                    gpsAccuracy <= 20
+                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
+                      : gpsAccuracy <= 100
+                      ? 'bg-amber-950/80 text-amber-300 border-amber-700/80'
+                      : 'bg-orange-950/80 text-orange-300 border-orange-700/80'
+                  }`}
+                  title="Physical horizontal accuracy radius from GNSS/Wi-Fi receiver"
+                >
+                  &plusmn;{gpsAccuracy}m Accuracy
+                </span>
+              )}
+
+              {/* Google Plus Code Badge */}
+              {activePlusCode && (
+                <div
+                  className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/80 shadow-xs shrink-0"
+                  title="Google Open Location Code (Plus Code)"
+                >
+                  <Crosshair className="w-3 h-3 text-indigo-400" />
+                  <span>{activePlusCode}</span>
+                </div>
+              )}
+
+              {/* Formatted Coordinates */}
               {coordinatesLabel && (
                 <span
                   className="text-[11px] text-slate-400 font-mono hidden md:inline shrink-0"
@@ -374,20 +488,34 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           </div>
         </div>
 
-        {/* GPS Sync & Refresh Trigger */}
+        {/* Action Controls: Google Maps Link & High-Accuracy GPS Sync */}
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end shrink-0">
+          {/* Direct Google Maps Navigation / Satellite Exploration */}
+          <a
+            href={getGoogleMapsUrl(activeCoordinates.lat, activeCoordinates.lon)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-950/80 hover:border-cyan-500/80 transition-all shadow-md group cursor-pointer"
+            title="Open exact coordinates in Google Maps (Satellite & 3D view)"
+          >
+            <Globe className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
+            <span>Google Maps</span>
+            <ExternalLink className="w-3 h-3 text-cyan-400/80" />
+          </a>
+
+          {/* High-Accuracy GPS Sync Trigger */}
           <button
             type="button"
             onClick={handleGpsSync}
             disabled={isLoading || isStreaming}
-            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none cursor-pointer border-none active:scale-95 ${
+            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none cursor-pointer border-none active:scale-95 ${
               isLoading || isStreaming ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
             {isLoading && activeStationId === 'LIVE_GPS' ? (
               <>
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                <span>Acquiring Satellites...</span>
+                <span>Acquiring Fix...</span>
               </>
             ) : (
               <>
@@ -399,31 +527,102 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         </div>
       </div>
 
-      {/* Preset Global Substation Bar - Fully Functional One-Click Switcher */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 pt-1.5 border-t border-white/5">
-        <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-          <MapPin className="w-3 h-3 text-cyan-400" />
-          Substations:
-        </span>
-        {REGIONAL_SUBSTATIONS.map((station) => {
-          const isSelected = activeStationId === station.id;
-          return (
-            <button
-              key={station.id}
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleSelectSubstation(station)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
-                isSelected
-                  ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
-                  : 'bg-slate-900/70 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
-              }`}
-            >
-              <span>{station.name}</span>
-              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-            </button>
-          );
-        })}
+      {/* Middle Row: Place Search Autocomplete & Substation Quick Switcher */}
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2 border-t border-white/5">
+        {/* Preset Global Substation Bar */}
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 shrink-0">
+          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-cyan-400" />
+            Substations:
+          </span>
+          {REGIONAL_SUBSTATIONS.map((station) => {
+            const isSelected = activeStationId === station.id;
+            return (
+              <button
+                key={station.id}
+                type="button"
+                disabled={isLoading}
+                onClick={() => handleSelectSubstation(station)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
+                    : 'bg-slate-900/70 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
+                }`}
+              >
+                <span>{station.name}</span>
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Global Place & Substation Search Autocomplete */}
+        <div ref={searchDropdownRef} className="relative flex-1 max-w-md">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              placeholder="Search any city, substation, or grid location..."
+              className="w-full pl-9 pr-8 py-1.5 bg-slate-950/80 border border-white/10 rounded-xl text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/80 focus:ring-1 focus:ring-amber-400/50"
+            />
+            {isSearching ? (
+              <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin absolute right-2.5 top-1/2 -translate-y-1/2" />
+            ) : searchQuery ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchResults([]);
+                  setIsSearchOpen(false);
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+          </div>
+
+          {/* Autocomplete Results Dropdown */}
+          {isSearchOpen && searchResults.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-950/95 border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl">
+              <div className="p-2 border-b border-white/10 text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider flex items-center justify-between">
+                <span>Select Target Coordinates</span>
+                <span className="text-cyan-400">{searchResults.length} Found</span>
+              </div>
+              <div className="max-h-60 overflow-y-auto divide-y divide-white/5 font-mono">
+                {searchResults.map((res) => (
+                  <button
+                    key={res.id}
+                    type="button"
+                    onClick={() => {
+                      fetchWeather(res.lat, res.lon, res.displayName, res.id, null);
+                      setSearchQuery('');
+                      setIsSearchOpen(false);
+                    }}
+                    className="w-full text-left p-2.5 hover:bg-amber-500/15 transition-colors cursor-pointer flex items-center justify-between gap-2 group"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
+                        {res.displayName}
+                      </div>
+                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                        <span>{res.lat}&deg;, {res.lon}&deg;</span>
+                        <span className="text-indigo-400 font-bold">&bull; Plus Code: {res.plusCode}</span>
+                      </div>
+                    </div>
+                    <MapPin className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 shrink-0" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Accurate Live Meteorological Statistics Cards */}
@@ -532,6 +731,18 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           </div>
         </div>
       )}
+
+      {/* Required Attribution & Operational Standards Footer */}
+      <div className="flex flex-wrap items-center justify-between text-[10px] font-mono text-slate-500 border-t border-white/5 pt-2 px-1">
+        <div className="flex items-center gap-2">
+          <span>Geocoding &amp; Mapping: Google Maps Platform &bull; WMO Satellite Radar</span>
+          <span className="hidden sm:inline text-slate-600">&bull;</span>
+          <span className="hidden sm:inline">Open Location Code</span>
+        </div>
+        <div className="text-slate-400">
+          IEC 60076 Convective Derating Standards
+        </div>
+      </div>
 
       {error && (
         <div className="w-full text-xs text-amber-300 bg-amber-950/70 border border-amber-800/80 p-3 rounded-2xl flex items-center justify-between gap-2 animate-fadeIn">
