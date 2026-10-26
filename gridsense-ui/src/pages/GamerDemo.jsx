@@ -118,6 +118,7 @@ const GAME_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-game-discharge',
@@ -137,6 +138,7 @@ const GAME_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-game-grid',
@@ -156,6 +158,7 @@ const GAME_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-game-loadshed',
@@ -175,6 +178,7 @@ const GAME_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
 ];
 
@@ -361,6 +365,7 @@ export default function GamerDemo() {
           scrollOffset={100}
           disableBeacon={true}
           disableScrollParentFix={true}
+          beaconComponent={() => null}
           disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}

@@ -188,6 +188,7 @@ const DASHBOARD_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-ocr-scanner',
@@ -209,6 +210,7 @@ const DASHBOARD_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-failure-gauge',
@@ -230,6 +232,7 @@ const DASHBOARD_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-3d-twin',
@@ -251,6 +254,7 @@ const DASHBOARD_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
   {
     target: '#tour-load-curve',
@@ -272,6 +276,7 @@ const DASHBOARD_TOUR_STEPS = [
       </div>
     ),
     disableBeacon: true,
+    skipBeacon: true,
   },
 ];
 
@@ -1054,6 +1059,7 @@ export default function Dashboard() {
           scrollOffset={100}
           disableBeacon={true}
           disableScrollParentFix={true}
+          beaconComponent={() => null}
           disableOverlayClose={false}
           spotlightClicks={false}
           callback={handleTourCallback}
