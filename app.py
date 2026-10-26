@@ -19,7 +19,7 @@ def after_request_cors(response):
 
 # QuickML Endpoint & Authentication Configuration
 QUICKML_ENDPOINT_KEY = "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
-QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "91576000000013024")
+QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
 QUICKML_ENDPOINT_URL = os.environ.get(
     "QUICKML_ENDPOINT_URL",
     f"https://api.catalyst.zoho.in/quickml/v1/project/{QUICKML_PROJECT_ID}/endpoints/predict"
