@@ -360,6 +360,8 @@ export default function Dashboard() {
   const abortControllerRef = useRef(null);
   const stopRequestedRef = useRef(false);
   const fastForwardRef = useRef(false);
+  // Dedicated run-guard to strictly prevent duplicate simultaneous simulation streams
+  const isRunningRef = useRef(false);
 
   // Today's ISO date string
   const todayStr = useMemo(() => {
@@ -374,6 +376,8 @@ export default function Dashboard() {
   const runStreamingSimulation = useCallback(
     async (sourceItems, datasetName = null, isDemoScenario = false) => {
       if (!sourceItems || sourceItems.length === 0) return;
+      if (isRunningRef.current) return;
+      isRunningRef.current = true;
 
       setIsStreaming(true);
       setError(null);
@@ -540,7 +544,13 @@ export default function Dashboard() {
           anomalyReason,
         };
 
-        setForecastData((prev) => [...prev, newPoint]);
+        setForecastData((prev) => {
+          // Strictly prevent duplicate hour or timestamp entries
+          const filtered = prev.filter(
+            (p) => p.hour !== newPoint.hour && p.timestamp !== newPoint.timestamp
+          );
+          return [...filtered, newPoint];
+        });
         setLastUpdated(new Date().toLocaleTimeString());
 
         if (i < itemsToProcess.length - 1 && !fastForwardRef.current) {
@@ -549,12 +559,14 @@ export default function Dashboard() {
       }
 
       setIsStreaming(false);
+      isRunningRef.current = false;
       if (datasetName) setLoadedCsvName(datasetName);
     },
     [settings, isCyberattack, climateDelta, speakAlert]
   );
 
   const handleStartSimulation = useCallback(() => {
+    if (isStreaming || isRunningRef.current) return;
     if (csvData && csvData.length > 0) {
       runStreamingSimulation(csvData, loadedCsvName, false);
       return;
@@ -563,14 +575,16 @@ export default function Dashboard() {
       generateHourlyWeather(todayStr, hour)
     );
     runStreamingSimulation(standardItems, null, false);
-  }, [csvData, loadedCsvName, runStreamingSimulation, todayStr]);
+  }, [csvData, isStreaming, loadedCsvName, runStreamingSimulation, todayStr]);
 
   const handlePlayDemoScenario = useCallback(() => {
+    if (isStreaming || isRunningRef.current) return;
     runStreamingSimulation(HACKATHON_DEMO_DATA, 'Hackathon Demo Scenario', true);
-  }, [runStreamingSimulation]);
+  }, [isStreaming, runStreamingSimulation]);
 
   const handleStopSimulation = useCallback(() => {
     stopRequestedRef.current = true;
+    isRunningRef.current = false;
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -1441,7 +1455,10 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <HourlyTable forecastData={forecastData} />
+        {/* 24-Hour Forecast Schedule Breakdown with Responsive Laptop/Mobile Overflow Protection */}
+        <div className="w-full overflow-x-auto">
+          <HourlyTable forecastData={forecastData} />
+        </div>
       </div>
 
       {/* Floating Voice Command Button & Feedback Bar */}

@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen, onClose, isVisible = true, onToggleCol
       )}
 
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-950/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between transition-transform duration-300 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 w-72 bg-slate-950/95 backdrop-blur-2xl border-r border-white/10 flex flex-col justify-between transition-transform duration-300 ${
           isVisible ? 'lg:translate-x-0' : 'lg:-translate-x-full'
         } ${
           isOpen ? 'translate-x-0' : '-translate-x-full'

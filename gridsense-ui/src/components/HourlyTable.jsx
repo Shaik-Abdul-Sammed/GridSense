@@ -6,11 +6,23 @@ export default function HourlyTable({ forecastData = [] }) {
   const [filterMode, setFilterMode] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Critical fix: Deduplicate data by timestamp / hour to prevent doubled points
+  const uniqueData = useMemo(() => {
+    if (!Array.isArray(forecastData)) return [];
+    return Array.from(
+      new Map(
+        forecastData
+          .filter(Boolean)
+          .map((item) => [item.timestamp || item.hour || JSON.stringify(item), item])
+      ).values()
+    );
+  }, [forecastData]);
+
   const filteredData = useMemo(() => {
     try {
-      if (!Array.isArray(forecastData)) return [];
+      if (!Array.isArray(uniqueData)) return [];
 
-      return forecastData.filter((row) => {
+      return uniqueData.filter((row) => {
         if (!row) return false;
 
         const hourStr = String(row.hour || '');
@@ -51,19 +63,19 @@ export default function HourlyTable({ forecastData = [] }) {
       });
     } catch (err) {
       console.error('Error filtering hourly table data:', err);
-      return forecastData;
+      return uniqueData;
     }
-  }, [forecastData, filterMode, searchQuery]);
+  }, [uniqueData, filterMode, searchQuery]);
 
-  if (!forecastData || forecastData.length === 0) return null;
+  if (!uniqueData || uniqueData.length === 0) return null;
 
   return (
-    <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-5">
+    <div className="w-full overflow-hidden bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-4 sm:p-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h3 className="text-base font-bold text-white">24-Hour Forecast Schedule Breakdown</h3>
           <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">
-            {filteredData.length} of {forecastData.length} Points
+            {filteredData.length} of {uniqueData.length} Points
           </span>
         </div>
         <button
