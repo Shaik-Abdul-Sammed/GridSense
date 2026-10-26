@@ -161,6 +161,15 @@ html:not(.dark) .bg-amber-950 {
 }
 
 /* Joyride Cyber-Glassmorphism Styles & Global Overrides */
+.react-joyride__beacon,
+button[data-action="beacon"],
+[data-test-id="beacon"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .__floater,
 .__floater__body,
 .react-joyride__tooltip {

@@ -15,7 +15,6 @@ import {
   Sunrise,
   Sunset,
   Navigation,
-  Search,
   ExternalLink,
   Crosshair,
   Globe,
@@ -28,7 +27,6 @@ import {
   reverseGeocode,
   encodePlusCode,
   getGoogleMapsUrl,
-  searchPlaces,
 } from '../utils/weatherUtils';
 
 const REGIONAL_SUBSTATIONS = [
@@ -103,17 +101,6 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
   // Prominent warning when location permission is blocked or denied
   const [geoDeniedWarning, setGeoDeniedWarning] = useState(false);
 
-  // Manual city search field state (Open-Meteo Geocoding)
-  const [cityInput, setCityInput] = useState('');
-  const [isSearchingCity, setIsSearchingCity] = useState(false);
-
-  // Search autocomplete state for global search dropdown
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const searchDropdownRef = useRef(null);
-
   // GNSS Watcher reference for cleanup
   const gnssWatchIdRef = useRef(null);
   const bestGnssFixRef = useRef(null);
@@ -132,74 +119,6 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       }
     };
   }, []);
-
-  // Handle outside clicks to close search dropdown
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (searchDropdownRef.current && !searchDropdownRef.current.contains(e.target)) {
-        setIsSearchOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Debounced search query handler for dropdown
-  useEffect(() => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const results = await searchPlaces(searchQuery);
-        setSearchResults(results);
-      } catch (err) {
-        console.warn('Place search failed:', err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 280);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery]);
-
-  // Manual City Search Handler (Open-Meteo Geocoding API count=1)
-  const handleManualCitySearch = async (e) => {
-    if (e) e.preventDefault();
-    const city = cityInput.trim();
-    if (!city) return;
-
-    setIsSearchingCity(true);
-    setError(null);
-    setGeoDeniedWarning(false);
-
-    try {
-      const res = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
-      );
-      if (!res.ok) {
-        throw new Error(`Geocoding HTTP ${res.status}`);
-      }
-      const data = await res.json();
-      if (data.results && data.results.length > 0) {
-        const first = data.results[0];
-        const displayName = [first.name, first.admin1, first.country].filter(Boolean).join(', ');
-        await fetchWeather(first.latitude, first.longitude, displayName, `CITY_${first.id}`);
-        setCityInput('');
-      } else {
-        setError(`Location "${city}" not found. Please try another city or check spelling.`);
-      }
-    } catch (err) {
-      console.warn('City search failed:', err.message);
-      setError(`Failed to search city (${err.message}). Check internet connectivity.`);
-    } finally {
-      setIsSearchingCity(false);
-    }
-  };
 
   // Core weather fetcher from Open-Meteo Satellite Feed
   const fetchWeather = async (lat, lon, customPlaceName = null, stationId = null, accuracy = null) => {
@@ -580,7 +499,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           <div className="flex items-center gap-2.5 font-bold">
             <span className="text-xl shrink-0">⚠️</span>
             <span>
-              Location Access Denied. Showing default substation location (San Francisco). Please enable location permissions in your browser or search for your city.
+              Location Access Denied. Showing default substation location (San Francisco). Please enable location permissions in your browser.
             </span>
           </div>
           <button
@@ -665,32 +584,8 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
           </div>
         </div>
 
-        {/* Action Controls: Search City Input, Locate GPS & Google Maps */}
+        {/* Action Controls: Locate GPS & Google Maps */}
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end shrink-0">
-          {/* Manual City Search Input Field & Button */}
-          <form
-            onSubmit={handleManualCitySearch}
-            className="flex items-center gap-1.5 flex-1 sm:flex-none"
-          >
-            <div className="relative flex-1 sm:w-48">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              <input
-                type="text"
-                value={cityInput}
-                onChange={(e) => setCityInput(e.target.value)}
-                placeholder="Search City (e.g. London)..."
-                className="w-full pl-8 pr-2.5 py-2 bg-slate-950/90 border border-amber-500/40 rounded-xl text-xs font-mono text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 shadow-inner"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading || isSearchingCity || !cityInput.trim()}
-              className="px-3.5 py-2 rounded-xl text-xs font-mono font-bold text-amber-300 bg-amber-950/80 hover:bg-amber-900 border border-amber-600/70 transition-all cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed shrink-0 shadow-md"
-            >
-              {isSearchingCity ? 'Searching...' : 'Search City'}
-            </button>
-          </form>
-
           {/* High-Accuracy Multi-Sample GPS Sync Trigger */}
           <button
             type="button"
@@ -735,103 +630,31 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         </div>
       </div>
 
-      {/* Middle Row: Place Search Autocomplete & Substation Quick Switcher */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-2 border-t border-white/5">
-        {/* Preset Global Substation Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 shrink-0">
-          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-            <MapPin className="w-3 h-3 text-cyan-400" />
-            Substations:
-          </span>
-          {REGIONAL_SUBSTATIONS.map((station) => {
-            const isSelected = activeStationId === station.id;
-            return (
-              <button
-                key={station.id}
-                type="button"
-                disabled={isLoading}
-                onClick={() => handleSelectSubstation(station)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
-                    : 'bg-slate-900/70 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
-                }`}
-              >
-                <span>{station.name}</span>
-                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Global Place, Substation & Coordinate Search Autocomplete */}
-        <div ref={searchDropdownRef} className="relative flex-1 max-w-md">
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => setIsSearchOpen(true)}
-              placeholder="Filter stations or coordinates (e.g. 37.77, -122.41)..."
-              className="w-full pl-9 pr-8 py-1.5 bg-slate-950/80 border border-white/10 rounded-xl text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-400/80 focus:ring-1 focus:ring-amber-400/50"
-            />
-            {isSearching ? (
-              <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin absolute right-2.5 top-1/2 -translate-y-1/2" />
-            ) : searchQuery ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setSearchResults([]);
-                  setIsSearchOpen(false);
-                }}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            ) : null}
-          </div>
-
-          {/* Autocomplete Results Dropdown */}
-          {isSearchOpen && searchResults.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-slate-950/95 border border-white/15 rounded-2xl shadow-2xl overflow-hidden z-50 backdrop-blur-xl">
-              <div className="p-2 border-b border-white/10 text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider flex items-center justify-between">
-                <span>Select Target Coordinates</span>
-                <span className="text-cyan-400">{searchResults.length} Found</span>
-              </div>
-              <div className="max-h-60 overflow-y-auto divide-y divide-white/5 font-mono">
-                {searchResults.map((res) => (
-                  <button
-                    key={res.id}
-                    type="button"
-                    onClick={() => {
-                      fetchWeather(res.lat, res.lon, res.displayName, res.id, null);
-                      setSearchQuery('');
-                      setIsSearchOpen(false);
-                      setGeoDeniedWarning(false);
-                    }}
-                    className="w-full text-left p-2.5 hover:bg-amber-500/15 transition-colors cursor-pointer flex items-center justify-between gap-2 group"
-                  >
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-white group-hover:text-amber-300 truncate">
-                        {res.displayName}
-                      </div>
-                      <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <span>{res.lat}&deg;, {res.lon}&deg;</span>
-                        <span className="text-indigo-400 font-bold">&bull; Plus Code: {res.plusCode}</span>
-                      </div>
-                    </div>
-                    <MapPin className="w-3.5 h-3.5 text-slate-500 group-hover:text-amber-400 shrink-0" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Middle Row: Regional Substation Quick Switcher */}
+      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-2 pb-1 border-t border-white/5">
+        <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+          <MapPin className="w-3 h-3 text-cyan-400" />
+          Substations:
+        </span>
+        {REGIONAL_SUBSTATIONS.map((station) => {
+          const isSelected = activeStationId === station.id;
+          return (
+            <button
+              key={station.id}
+              type="button"
+              disabled={isLoading}
+              onClick={() => handleSelectSubstation(station)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
+                isSelected
+                  ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
+                  : 'bg-slate-900/70 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
+              }`}
+            >
+              <span>{station.name}</span>
+              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+            </button>
+          );
+        })}
       </div>
 
       {/* Accurate Live Meteorological Statistics Cards */}
