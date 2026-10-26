@@ -1,7 +1,18 @@
 import os
 import math
+import logging
 import requests
 from flask import Flask, request, g, jsonify
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Configure structured logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -24,7 +35,11 @@ def after_request_cors(response):
     return response
 
 # QuickML Endpoint & Authentication Configuration
-QUICKML_ENDPOINT_KEY = "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
+QUICKML_ENDPOINT_KEY = os.environ.get(
+    "QUICKML_ENDPOINT_KEY",
+    "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
+)
+CATALYST_ORG = os.environ.get("CATALYST_ORG", "60093168651")
 QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
 QUICKML_ENDPOINT_URL = os.environ.get(
     "QUICKML_ENDPOINT_URL",
@@ -33,7 +48,7 @@ QUICKML_ENDPOINT_URL = os.environ.get(
 
 QUICKML_HEADERS = {
     "X-QUICKML-ENDPOINT-KEY": QUICKML_ENDPOINT_KEY,
-    "CATALYST-ORG": "60093168651",
+    "CATALYST-ORG": CATALYST_ORG,
     "Environment": "Development",
     "Content-Type": "application/json",
 }
@@ -135,7 +150,7 @@ def call_quickml_api(features_dict):
             elif isinstance(result, (int, float)):
                 return float(result)
         except Exception as sdk_err:
-            print(f"[QuickML Catalyst SDK Notice] {sdk_err}. Trying REST fallback...")
+            logger.info(f"[QuickML Catalyst SDK Notice] {sdk_err}. Trying REST fallback...")
 
     # Approach 2: Direct REST call with verified Zoho Catalyst QuickML endpoint
     headers = dict(QUICKML_HEADERS)
@@ -167,9 +182,9 @@ def call_quickml_api(features_dict):
             elif isinstance(result, list) and len(result) > 0:
                 return float(result[0])
 
-        print(f"[QuickML REST Status] HTTP {response.status_code}: {response.text[:200]}. Engaging fallback simulation.")
+        logger.info(f"[QuickML REST Status] HTTP {response.status_code}: {response.text[:200]}. Engaging fallback simulation.")
     except Exception as e:
-        print(f"[QuickML Fallback Engaged] API request failed: {e}. Executing resilient local model.")
+        logger.info(f"[QuickML Fallback Engaged] API request failed: {e}. Executing resilient local model.")
 
     return fallback_simulation(features_dict, hour)
 
@@ -200,7 +215,7 @@ def handle_options():
 # 4. Forecast endpoint with POST handling and logging
 @app.route('/forecast', methods=['POST'])
 def get_forecast():
-    print("--- RECEIVED FORECAST REQUEST ---")
+    logger.info("--- RECEIVED FORECAST REQUEST ---")
     data = request.get_json(silent=True) or {}
 
     # Extract timestamp or default to current simulation slot

@@ -1,19 +1,22 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
-import Analytics from './pages/Analytics';
-import History from './pages/History';
-import Settings from './pages/Settings';
-import Marketplace from './pages/Marketplace';
-import GamerDemo from './pages/GamerDemo';
-import ImpactPage from './pages/ImpactPage';
-import DigitalTwinPage from './pages/DigitalTwinPage';
-import DroneFleetPage from './pages/DroneFleetPage';
-import FieldTechARPage from './pages/FieldTechARPage';
-import WeatherSyncPage from './pages/WeatherSyncPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import { SettingsProvider } from './context/SettingsContext';
 import { ThemeProvider } from './context/ThemeContext';
+
+// Dynamic code splitting via React.lazy() to accelerate initial page load
+const Analytics = lazy(() => import('./pages/Analytics'));
+const History = lazy(() => import('./pages/History'));
+const Settings = lazy(() => import('./pages/Settings'));
+const Marketplace = lazy(() => import('./pages/Marketplace'));
+const ImpactPage = lazy(() => import('./pages/ImpactPage'));
+const GamerDemo = lazy(() => import('./pages/GamerDemo'));
+const DigitalTwinPage = lazy(() => import('./pages/DigitalTwinPage'));
+const DroneFleetPage = lazy(() => import('./pages/DroneFleetPage'));
+const FieldTechARPage = lazy(() => import('./pages/FieldTechARPage'));
+const WeatherSyncPage = lazy(() => import('./pages/WeatherSyncPage'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
 console.log("ACTIVE API URL:", API_URL);
@@ -42,30 +45,41 @@ export default function App() {
           )}
 
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<Dashboard />} />
-                <Route path="analytics" element={<Analytics />} />
-                <Route path="history" element={<History />} />
-                <Route path="marketplace" element={<Marketplace />} />
-                <Route path="settings" element={<Settings />} />
+            <Suspense
+              fallback={
+                <div className="h-screen flex items-center justify-center text-cyan-500 font-mono text-sm bg-slate-950">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 border-2 border-cyan-500 border-t-transparent rounded-full animate-spin" />
+                    <span>Loading Module...</span>
+                  </div>
+                </div>
+              }
+            >
+              <Routes>
+                <Route path="/" element={<Layout />}>
+                  <Route index element={<Dashboard />} />
+                  <Route path="analytics" element={<Analytics />} />
+                  <Route path="history" element={<History />} />
+                  <Route path="marketplace" element={<Marketplace />} />
+                  <Route path="settings" element={<Settings />} />
 
-                {/* Hackathon Interactive Features & Gamer Demo Routes */}
-                <Route path="impact" element={<ImpactPage />} />
-                <Route path="pitch" element={<ImpactPage />} />
-                <Route path="innovation" element={<ImpactPage />} />
-                <Route path="defender" element={<GamerDemo />} />
-                <Route path="game" element={<GamerDemo />} />
-                <Route path="gamer" element={<GamerDemo />} />
-                <Route path="twin" element={<DigitalTwinPage />} />
-                <Route path="substation3d" element={<DigitalTwinPage />} />
-                <Route path="drones" element={<DroneFleetPage />} />
-                <Route path="ar" element={<FieldTechARPage />} />
-                <Route path="weather" element={<WeatherSyncPage />} />
+                  {/* Hackathon Interactive Features & Gamer Demo Routes */}
+                  <Route path="impact" element={<ImpactPage />} />
+                  <Route path="pitch" element={<ImpactPage />} />
+                  <Route path="innovation" element={<ImpactPage />} />
+                  <Route path="defender" element={<GamerDemo />} />
+                  <Route path="game" element={<GamerDemo />} />
+                  <Route path="gamer" element={<GamerDemo />} />
+                  <Route path="twin" element={<DigitalTwinPage />} />
+                  <Route path="substation3d" element={<DigitalTwinPage />} />
+                  <Route path="drones" element={<DroneFleetPage />} />
+                  <Route path="ar" element={<FieldTechARPage />} />
+                  <Route path="weather" element={<WeatherSyncPage />} />
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Route>
-            </Routes>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </SettingsProvider>
       </ThemeProvider>
