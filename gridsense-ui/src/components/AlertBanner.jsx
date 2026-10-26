@@ -12,7 +12,7 @@ export default function AlertBanner({
   const displayPeakKw = Number(maxDemand || 200).toFixed(1);
   const displayCurrentKw = Number(currentDemand || 0).toFixed(1);
 
-  // Scenario 1: Active overload right now (currentDemand >= 200 kW) -> Massive flashing red banner
+  // Scenario 1: Active hour is >= 200 kW (or Cyberattack) -> Massive pulsing red alert
   if (isCurrentOverload) {
     return (
       <div
@@ -34,11 +34,11 @@ export default function AlertBanner({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl md:text-2xl font-black tracking-wider uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
-                  🚨 CRITICAL OVERLOAD: Active demand is {displayCurrentKw} kW (exceeds 200kW)!
+                  🚨 CRITICAL OVERLOAD: Peak demand of {displayPeakKw} kW occurred at {displayPeakHour}.
                 </h2>
               </div>
               <p className="text-xs md:text-sm text-red-100 font-semibold mt-1">
-                Active feeder load has breached safe continuous limits. Emergency battery storage dispatch engaged to prevent transformer burnout.
+                Active feeder demand ({displayCurrentKw} kW) exceeds continuous safe threshold. Emergency battery storage dispatch engaged to prevent transformer burnout.
               </p>
             </div>
           </div>
@@ -53,7 +53,7 @@ export default function AlertBanner({
     );
   }
 
-  // Scenario 2: Future overload expected, but currently normal -> Smaller, non-pulsing yellow warning
+  // Scenario 2: Active hour is safe (< 200 kW), but future hour breaches 200 kW -> Smaller non-pulsing yellow warning
   if (hasFutureOverload) {
     return (
       <div
@@ -72,7 +72,7 @@ export default function AlertBanner({
             <span className="font-mono font-black text-amber-100">
               {displayPeakKw} kW
             </span>{' '}
-            expected at <span className="font-mono font-bold text-amber-100">{displayPeakHour}</span>. Current load ({displayCurrentKw} kW) is within normal limits.
+            expected at <span className="font-mono font-bold text-amber-100">{displayPeakHour}</span>. Current active load ({displayCurrentKw} kW) is within normal limits.
           </div>
         </div>
 

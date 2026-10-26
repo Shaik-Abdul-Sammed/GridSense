@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Tesseract from 'tesseract.js';
 import {
   Scan,
@@ -18,6 +18,18 @@ export default function MeterScanner({ onOverrideLoad, currentLoad }) {
   const [errorMessage, setErrorMessage] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
+  const isMountedRef = useRef(true);
+
+  // Clean up object URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   // Run Tesseract OCR on selected image
   const processImageFile = async (file) => {
@@ -30,7 +42,12 @@ export default function MeterScanner({ onOverrideLoad, currentLoad }) {
     setStatusMessage('Scanning meter via OCR...');
 
     const objectUrl = URL.createObjectURL(file);
-    setPreviewUrl(objectUrl);
+    setPreviewUrl((prev) => {
+      if (prev && prev.startsWith('blob:')) {
+        URL.revokeObjectURL(prev);
+      }
+      return objectUrl;
+    });
 
     try {
       const result = await Tesseract.recognize(file, 'eng', {
@@ -70,7 +87,9 @@ export default function MeterScanner({ onOverrideLoad, currentLoad }) {
       setDetectedDemand(fallbackReading);
       setStatusMessage(`Optical Reading Synthesized: ${fallbackReading} kW`);
     } finally {
-      setIsScanning(false);
+      if (isMountedRef.current) {
+        setIsScanning(false);
+      }
     }
   };
 

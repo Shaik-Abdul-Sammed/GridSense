@@ -1,7 +1,12 @@
 import { useState, useMemo } from 'react';
-import { AlertTriangle, Filter, Search, Zap, Sun, Battery } from 'lucide-react';
+import PropTypes from 'prop-types';
+import { AlertTriangle, Filter, Search, Zap, Sun, Battery, RotateCcw } from 'lucide-react';
 
-export default function HourlyTable({ forecastData = [] }) {
+export default function HourlyTable({
+  forecastData = [],
+  selectedHour = null,
+  onSelectHour = null,
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const [filterMode, setFilterMode] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,11 +77,22 @@ export default function HourlyTable({ forecastData = [] }) {
   return (
     <div className="w-full overflow-hidden bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-4 sm:p-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-base font-bold text-white">24-Hour Forecast Schedule Breakdown</h3>
           <span className="text-xs px-2 py-0.5 rounded bg-slate-700 text-slate-300 font-mono">
             {filteredData.length} of {uniqueData.length} Points
           </span>
+          {selectedHour && (
+            <button
+              type="button"
+              onClick={() => onSelectHour && onSelectHour(null)}
+              className="inline-flex items-center gap-1 text-[11px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/50 hover:bg-cyan-900/60 cursor-pointer transition-colors"
+              title="Click to reset inspection to latest live hour"
+            >
+              <span>Inspecting: {selectedHour}</span>
+              <RotateCcw className="w-3 h-3 text-cyan-400" />
+            </button>
+          )}
         </div>
         <button
           type="button"
@@ -118,7 +134,7 @@ export default function HourlyTable({ forecastData = [] }) {
               </span>
               {[
                 { id: 'ALL', label: 'All Hours', icon: null },
-                { id: 'OVERLOAD', label: 'Overload / High', icon: AlertTriangle },
+                { id: 'OVERLOAD', label: 'Overload (>=200kW)', icon: AlertTriangle },
                 { id: 'PEAK', label: 'Peak (18-22h)', icon: Zap },
                 { id: 'SOLAR', label: 'Solar Active', icon: Sun },
                 { id: 'STORAGE', label: 'BESS Dispatch', icon: Battery },
@@ -144,7 +160,7 @@ export default function HourlyTable({ forecastData = [] }) {
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-white/5">
-            <table className="w-full text-left text-xs text-slate-300">
+            <table className="w-full text-left text-xs text-slate-300 min-w-[680px]">
               <thead className="bg-slate-950/90 text-slate-400 uppercase tracking-wider text-[11px] font-semibold border-b border-slate-700">
                 <tr>
                   <th className="py-2.5 px-3">Hour</th>
@@ -161,23 +177,36 @@ export default function HourlyTable({ forecastData = [] }) {
               <tbody className="divide-y divide-slate-700/50 font-mono">
                 {filteredData.map((row, idx) => {
                   const hourInt = parseInt(String(row.hour || '').split(':')[0], 10);
-                  const isOverload =
-                    row.alert === 'CRITICAL_OVERLOAD' ||
-                    Number(row.predicted_demand_kw || row.demand || 0) >= 200;
+                  const safeDemand = Number(row.predicted_demand_kw ?? row.demand ?? 0);
+                  const isOverload = row.alert === 'CRITICAL_OVERLOAD' || safeDemand >= 200;
                   const isPeak = !isNaN(hourInt) && hourInt >= 18 && hourInt <= 22;
                   const isAnomaly = !!row.isAnomaly;
                   const mode = row.grid_mode || row.mode || 'MAIN_GRID_MODE';
+                  const isSelected = selectedHour === row.hour;
 
                   return (
                     <tr
-                      key={idx}
-                      className={`hover:bg-slate-800/40 transition-colors ${
-                        isOverload ? 'bg-red-950/30 text-red-200' : ''
-                      } ${isPeak ? 'bg-amber-950/20' : ''}`}
+                      key={row.timestamp || row.hour || idx}
+                      onClick={() => onSelectHour && onSelectHour(isSelected ? null : row.hour)}
+                      className={`transition-colors cursor-pointer select-none ${
+                        isSelected
+                          ? 'bg-cyan-950/70 border-l-4 border-cyan-400 text-white'
+                          : isOverload
+                          ? 'bg-red-950/30 text-red-200 hover:bg-red-950/50'
+                          : isPeak
+                          ? 'bg-amber-950/20 hover:bg-slate-800/60'
+                          : 'hover:bg-slate-800/40'
+                      }`}
+                      title="Click row to inspect this hour's telemetry in dashboard"
                     >
                       <td className="py-2 px-3 font-bold text-white flex items-center gap-1.5">
-                        {row.hour}
-                        {isPeak && (
+                        <span>{row.hour}</span>
+                        {isSelected && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-cyan-400 text-slate-950 leading-none">
+                            INSPECTING
+                          </span>
+                        )}
+                        {isPeak && !isSelected && (
                           <span className="text-[9px] px-1.5 py-0.5 rounded font-sans font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 leading-none">
                             PEAK
                           </span>
@@ -255,3 +284,9 @@ export default function HourlyTable({ forecastData = [] }) {
     </div>
   );
 }
+
+HourlyTable.propTypes = {
+  forecastData: PropTypes.arrayOf(PropTypes.object),
+  selectedHour: PropTypes.string,
+  onSelectHour: PropTypes.func,
+};

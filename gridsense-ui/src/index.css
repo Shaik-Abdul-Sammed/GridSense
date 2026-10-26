@@ -142,6 +142,28 @@ html:not(.dark) .bg-amber-950 {
   }
 }
 
+/* iOS Safari WebKit Backdrop Filter Glassmorphism Support */
+.backdrop-blur-3xl,
+.backdrop-blur-2xl,
+.backdrop-blur-xl,
+.backdrop-blur-lg,
+.backdrop-blur-md,
+.backdrop-blur-sm,
+.backdrop-blur {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
 .animate-flow-dash {
   stroke-dasharray: 6 6;
   animation: flowDash 0.8s linear infinite;

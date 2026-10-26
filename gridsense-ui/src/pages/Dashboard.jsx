@@ -1497,7 +1497,11 @@ export default function Dashboard() {
 
         {/* 24-Hour Forecast Schedule Breakdown with Responsive Laptop/Mobile Overflow Protection */}
         <div className="w-full overflow-x-auto">
-          <HourlyTable forecastData={forecastData} />
+          <HourlyTable
+            forecastData={forecastData}
+            selectedHour={selectedHour}
+            onSelectHour={setSelectedHour}
+          />
         </div>
       </div>
 

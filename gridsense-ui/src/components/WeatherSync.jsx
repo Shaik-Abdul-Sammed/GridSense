@@ -148,8 +148,11 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // GNSS Watcher reference for cleanup
+  // GNSS Watcher and abort controller references for cleanup
   const gnssWatchIdRef = useRef(null);
+  const weatherAbortControllerRef = useRef(null);
+  const cityAbortControllerRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // Store onWeatherLoaded in a ref to avoid infinite re-render loops
   const onWeatherLoadedRef = useRef(onWeatherLoaded);
@@ -157,9 +160,13 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     onWeatherLoadedRef.current = onWeatherLoaded;
   }, [onWeatherLoaded]);
 
-  // Clean up any active GNSS watcher on unmount
+  // Clean up any active GNSS watcher and pending fetch requests on unmount
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
+      weatherAbortControllerRef.current?.abort();
+      cityAbortControllerRef.current?.abort();
       if (gnssWatchIdRef.current != null && typeof navigator !== 'undefined' && navigator.geolocation) {
         navigator.geolocation.clearWatch(gnssWatchIdRef.current);
       }
@@ -178,6 +185,10 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     }
     setActiveCoordinates({ lat, lon });
 
+    weatherAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    weatherAbortControllerRef.current = controller;
+
     try {
       // Step 1: Resolve high-precision location, address, and Google Plus Code
       let place = customPlaceName;
@@ -191,6 +202,8 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         geocodeSource = geoResult.source || 'GNSS Geocoding';
       }
 
+      if (!isMountedRef.current) return;
+
       setResolvedPlaceName(place);
       setActivePlusCode(plusCode);
       const coordsHtml = formatCoordinates(lat, lon);
@@ -199,7 +212,7 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       // Step 2: Query high-precision satellite telemetry including real-time solar irradiance & UV
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,uv_index,shortwave_radiation,direct_normal_irradiance&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m,shortwave_radiation,direct_normal_irradiance,diffuse_radiation&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=3`;
 
-      const res = await fetch(url, { method: 'GET' });
+      const res = await fetch(url, { method: 'GET', signal: controller.signal });
       if (!res.ok) {
         throw new Error(`Open-Meteo returned HTTP ${res.status}`);
       }
@@ -317,6 +330,8 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         onWeatherLoadedRef.current(formatted24h, place, fullMeta);
       }
     } catch (err) {
+      if (err.name === 'AbortError') return;
+      if (!isMountedRef.current) return;
       console.warn('Weather sync error, using localized calibration:', err.message);
       setError(`Satellite weather sync encountered a temporary issue (${err.message}). Showing localized calibration.`);
 
@@ -384,8 +399,10 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
         onWeatherLoadedRef.current(fallback24h, fallbackMeta.placeName, fallbackMeta);
       }
     } finally {
-      setIsLoading(false);
-      setIsAcquiringGnss(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+        setIsAcquiringGnss(false);
+      }
     }
   };
 
@@ -464,12 +481,18 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
     setGeoDeniedWarning(false);
     setIsLoading(true);
 
+    cityAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    cityAbortControllerRef.current = controller;
+
     try {
       const res = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`,
+        { signal: controller.signal }
       );
       if (!res.ok) throw new Error(`Geocoding HTTP ${res.status}`);
       const data = await res.json();
+      if (!isMountedRef.current) return;
       if (!data?.results || data.results.length === 0) {
         setError(`⚠️ Could not locate city "${query}". Please check the spelling.`);
         setIsLoading(false);
@@ -480,8 +503,10 @@ export default function WeatherSync({ onWeatherLoaded, isStreaming }) {
       const lat = Number(city.latitude.toFixed(5));
       const lon = Number(city.longitude.toFixed(5));
       await fetchWeather(lat, lon, displayName, `CITY_${city.id}`, null);
-      setManualCity('');
+      if (isMountedRef.current) setManualCity('');
     } catch (err) {
+      if (err.name === 'AbortError') return;
+      if (!isMountedRef.current) return;
       console.warn('City geocoding error:', err);
       setError(`Failed to geocode "${query}". Please check connection.`);
       setIsLoading(false);
