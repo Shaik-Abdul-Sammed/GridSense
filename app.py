@@ -1,7 +1,7 @@
 import os
 import math
 import requests
-from flask import Flask, request, g, jsonify, current_app
+from flask import Flask, request, g, jsonify
 
 try:
     from flask_cors import CORS
