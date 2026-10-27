@@ -533,6 +533,7 @@ export default function Dashboard() {
         const alert = isDynamicOverload ? 'CRITICAL_OVERLOAD' : 'NONE';
 
         if (alert === 'CRITICAL_OVERLOAD' && !isCyberattack) {
+          setIsBannerDismissed(false);
           triggerSmsAlert({
             hour: hourLabel,
             demand: predicted_demand_kw,
@@ -624,6 +625,8 @@ export default function Dashboard() {
 
   const handlePlayDemoScenario = useCallback(() => {
     if (isStreaming || isRunningRef.current) return;
+    setIsBannerDismissed(false);
+    setSelectedHour(null);
     unlockAudio();
     speakAlert('GridSense voice telemetry online. Monitoring active grid.', true, 0);
     runStreamingSimulation(HACKATHON_DEMO_DATA, 'Hackathon Demo Scenario', true);
@@ -1002,16 +1005,17 @@ export default function Dashboard() {
   }, [forecastData, selectedHour]);
 
   const currentDemandVal = Number(latestPrediction?.predicted_demand_kw) || 0;
+  const criticalThreshold = Number(settings?.criticalThreshold) || 200;
   const isCurrentOverload =
     Boolean(
       isCyberattack ||
-      currentDemandVal >= (settings.criticalThreshold || 200)
+      currentDemandVal >= criticalThreshold
     );
 
   const hasFutureOverload =
     !isCurrentOverload &&
     forecastData.some(
-      (item) => Number(item.predicted_demand_kw) >= (settings.criticalThreshold || 200)
+      (item) => Number(item.predicted_demand_kw) >= criticalThreshold
     );
 
   // Voice alert whenever active red critical overload warning triggers

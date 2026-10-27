@@ -420,7 +420,7 @@ export default function Substation3D({
             enableDamping={true}
             dampingFactor={0.05}
             autoRotate={autoRotate}
-            autoRotateSpeed={0.8}
+            autoRotateSpeed={3.2} // 4x speedup (increased from 0.8) for a dynamic, smooth 3D camera orbit
             maxPolarAngle={Math.PI / 2.1} // Prevent going below ground plane
             minDistance={4}
             maxDistance={18}
