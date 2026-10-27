@@ -21,6 +21,7 @@ import {
   Globe,
   Radio,
   Zap,
+  ChevronDown,
 } from 'lucide-react';
 import {
   getWeatherInterpretation,
@@ -33,62 +34,33 @@ import {
   POPULAR_GLOBAL_HUBS,
 } from '../utils/weatherUtils';
 
-const REGIONAL_SUBSTATIONS = [
-  {
-    id: 'SUB_SF',
-    name: 'San Francisco, USA',
-    shortName: 'San Francisco',
-    lat: 37.7749,
-    lon: -122.4194,
-    tag: 'Substation Alpha-1 (66kV / 11kV)',
-    plusCode: '849VQHFJ+X6',
-  },
-  {
-    id: 'SUB_HYD',
-    name: 'Hyderabad, India',
-    shortName: 'Hyderabad',
-    lat: 17.3850,
-    lon: 78.4867,
-    tag: 'SRLDC Southern Regional Dispatch',
-    plusCode: '7J9W9FPP+2M',
-  },
-  {
-    id: 'SUB_NYC',
-    name: 'New York, USA',
-    shortName: 'New York',
-    lat: 40.7128,
-    lon: -74.0060,
-    tag: 'NYISO Sector Central',
-    plusCode: '87G8P27F+4R',
-  },
-  {
-    id: 'SUB_LON',
-    name: 'London, UK',
-    shortName: 'London',
-    lat: 51.5074,
-    lon: -0.1278,
-    tag: 'National Grid UK Interconnect',
-    plusCode: '9C3XGV4C+XV',
-  },
-  {
-    id: 'SUB_TYO',
-    name: 'Tokyo, Japan',
-    shortName: 'Tokyo',
-    lat: 35.6762,
-    lon: 139.6503,
-    tag: 'TEPCO Microgrid Hub',
-    plusCode: '8Q7XMMG2+F4',
-  },
-  {
-    id: 'SUB_SYD',
-    name: 'Sydney, Australia',
-    shortName: 'Sydney',
-    lat: -33.8688,
-    lon: 151.2093,
-    tag: 'AEMO Pacific Solar Farm',
-    plusCode: '4RRH46J5+FF',
-  },
-];
+const PRESET_LOCATIONS = {
+  // 🇮🇳 Major Indian Power Grid Hubs
+  HUB_HYD: { name: 'Hyderabad, Telangana, India', lat: 17.3850, lon: 78.4867, tag: 'SRLDC Southern Regional Dispatch' },
+  HUB_BLR: { name: 'Bengaluru, Karnataka, India', lat: 12.9716, lon: 77.5946, tag: 'BESCOM Smart Microgrid Hub' },
+  HUB_MUM: { name: 'Mumbai, Maharashtra, India', lat: 19.0760, lon: 72.8777, tag: 'Tata Power Western Grid' },
+  HUB_DEL: { name: 'New Delhi, Delhi, India', lat: 28.6139, lon: 77.2090, tag: 'NLDC National Load Dispatch' },
+  HUB_VTZ: { name: 'Visakhapatnam, Andhra Pradesh, India', lat: 17.6868, lon: 83.2185, tag: 'APEPDCL Coastal Smart Substation' },
+  HUB_VJA: { name: 'Vijayawada, Andhra Pradesh, India', lat: 16.5062, lon: 80.6480, tag: 'APTRANSCO State Load Dispatch' },
+  HUB_MAA: { name: 'Chennai, Tamil Nadu, India', lat: 13.0827, lon: 80.2707, tag: 'TANGEDCO Southern Interconnect' },
+  SUB_TIRUPATI: { name: 'Tirupati, Andhra Pradesh, India', lat: 13.6245, lon: 79.4310, tag: 'SVU Substation Feeder' },
+
+  // 🌍 Global Smart Grid Centers
+  HUB_SF: { name: 'San Francisco, California, USA', lat: 37.7749, lon: -122.4194, tag: 'CAISO Alpha-1 Substation' },
+  HUB_LON: { name: 'London, England, United Kingdom', lat: 51.5074, lon: -0.1278, tag: 'National Grid UK Interconnect' },
+  HUB_NYC: { name: 'New York, New York, USA', lat: 40.7128, lon: -74.0060, tag: 'NYISO Sector Central' },
+  HUB_TYO: { name: 'Tokyo, Japan', lat: 35.6762, lon: 139.6503, tag: 'TEPCO Megawatt Microgrid' },
+  HUB_SYD: { name: 'Sydney, New South Wales, Australia', lat: -33.8688, lon: 151.2093, tag: 'AEMO Pacific Solar Farm' },
+  HUB_DXB: { name: 'Dubai, United Arab Emirates', lat: 25.2048, lon: 55.2708, tag: 'DEWA Solar Park 400kV' },
+  HUB_BER: { name: 'Berlin, Germany', lat: 52.5200, lon: 13.4050, tag: '50Hertz Transmission Center' },
+  HUB_SIN: { name: 'Singapore, Singapore', lat: 1.3521, lon: 103.8198, tag: 'EMA Jurong Island Microgrid' },
+
+  // ⚡ Regional Grid Feeders
+  SUB_ALPHA: { name: 'Substation Alpha-1 (Main Bus)', lat: 37.7749, lon: -122.4194, tag: 'Primary 230kV Feeder' },
+  SUB_BETA: { name: 'Substation Beta-4 (Industrial)', lat: 37.7833, lon: -122.4167, tag: 'Industrial 66kV Feeder' },
+  SUB_GAMMA: { name: 'Gamma Solar Farm (50MW Array)', lat: 37.7600, lon: -122.4300, tag: 'Utility Solar Generation' },
+  SUB_DELTA: { name: 'Delta BESS Substation (20MWh)', lat: 37.7900, lon: -122.4000, tag: 'Battery Dispatch Reserve' },
+};
 
 export default function WeatherSync({ onWeatherLoaded }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -423,6 +395,26 @@ export default function WeatherSync({ onWeatherLoaded }) {
     }
   };
 
+  // Dropdown City & Substation Selection Handler
+  const handleDropdownSelect = (e) => {
+    const key = e.target.value;
+    if (!key || key === 'CUSTOM') return;
+    const loc = PRESET_LOCATIONS[key];
+    if (loc) {
+      if (gnssWatchIdRef.current != null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(gnssWatchIdRef.current);
+        gnssWatchIdRef.current = null;
+      }
+      setIsAcquiringGnss(false);
+      setGeoDeniedWarning(false);
+      setIsSearchOpen(false);
+      setSearchQuery('');
+      setSearchResults([]);
+      setSelectedSearchIndex(-1);
+      fetchWeather(loc.lat, loc.lon, `${loc.name} (${loc.tag})`, key, null);
+    }
+  };
+
   // Search result selection handler
   const handleSelectSearchResult = (result) => {
     if (gnssWatchIdRef.current != null && navigator.geolocation) {
@@ -559,8 +551,8 @@ export default function WeatherSync({ onWeatherLoaded }) {
 
     // Load default Alpha-1 substation on initial mount.
     // Geolocation is triggered strictly on user click via handleGpsSync to satisfy iOS Safari & Android Chrome policies.
-    const def = REGIONAL_SUBSTATIONS[0];
-    fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, def.id, null);
+    const def = PRESET_LOCATIONS.HUB_SF;
+    fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, 'HUB_SF', null);
   }, []);
 
   return (
@@ -584,14 +576,14 @@ export default function WeatherSync({ onWeatherLoaded }) {
         </div>
       )}
 
-      {/* Top Banner: Location Header, Place Name & Action Buttons */}
-      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pb-3 border-b border-white/5">
-        {/* Title, Place Name & Telemetry Badges */}
-        <div className="flex items-start gap-3 min-w-0 flex-1 w-full">
-          <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 shrink-0 shadow-lg shadow-amber-950/40">
+      {/* Top Banner: Location Header & Action Buttons */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+        {/* Title & Satellite Indicator */}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 sm:p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 shrink-0 shadow-lg shadow-amber-950/40">
             <Compass className="w-5 h-5 sm:w-6 sm:h-6 animate-spin-slow" />
           </div>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-sm sm:text-base font-black text-white tracking-tight font-mono uppercase">
                 Satellite Weather Ingestion &bull; Live Telemetry
@@ -600,71 +592,20 @@ export default function WeatherSync({ onWeatherLoaded }) {
                 WMO &bull; Dual-Engine GPS
               </span>
             </div>
-
-            {/* Prominent Live Location Place Name & Badges */}
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1.5">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-bold font-mono text-xs sm:text-sm bg-emerald-950/50 px-2.5 py-1 rounded-xl border border-emerald-800/60 shadow-xs max-w-full">
-                <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="break-words truncate max-w-[280px] sm:max-w-md" title={resolvedPlaceName}>
-                  {resolvedPlaceName || 'Resolving location...'}
-                </span>
-              </div>
-
-              {/* Live GPS badge with physical precision radius */}
-              {activeStationId === 'LIVE_GPS' && (
-                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold shrink-0 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
-                  LIVE GNSS DEVICE
-                </span>
-              )}
-
-              {/* Hardware GNSS Accuracy Pill */}
-              {gpsAccuracy != null && activeStationId === 'LIVE_GPS' && (
-                <span
-                  className={`text-[9px] font-mono px-2 py-0.5 rounded font-bold shrink-0 border flex items-center gap-1 ${
-                    gpsAccuracy <= 20
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
-                      : gpsAccuracy <= 100
-                      ? 'bg-amber-950/80 text-amber-300 border-amber-700/80'
-                      : 'bg-orange-950/80 text-orange-300 border-orange-700/80'
-                  }`}
-                  title="Physical horizontal accuracy radius from GNSS/Wi-Fi receiver"
-                >
-                  <Radio className="w-2.5 h-2.5 animate-pulse" />
-                  &plusmn;{gpsAccuracy}m Accuracy
-                </span>
-              )}
-
-              {/* Google Plus Code Badge */}
-              {activePlusCode && (
-                <div
-                  className="flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/80 shadow-xs shrink-0"
-                  title="Google Open Location Code (Plus Code) for precise substation micro-location"
-                >
-                  <Crosshair className="w-3 h-3 text-indigo-400" />
-                  <span>{activePlusCode}</span>
-                </div>
-              )}
-
-              {/* Formatted Coordinates */}
-              {coordinatesLabel && (
-                <span
-                  className="text-[11px] text-slate-400 font-mono hidden md:inline shrink-0"
-                  dangerouslySetInnerHTML={{ __html: coordinatesLabel }}
-                />
-              )}
-            </div>
+            <p className="text-[11px] font-mono text-slate-400 mt-0.5 truncate">
+              Continuous solar irradiance, ambient temperature &amp; thermal derating sync
+            </p>
           </div>
         </div>
 
-        {/* Action Controls: Locate GPS & Google Maps Satellite Link (Arranged without overflow) */}
-        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full xl:w-auto shrink-0">
+        {/* Action Controls: Locate GPS, Dropdown City Selector & Google Maps Satellite Link */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full xl:w-auto shrink-0 justify-start sm:justify-end">
           {/* High-Accuracy GPS Sync Button */}
           <button
             type="button"
             onClick={handleGpsSync}
             disabled={isAcquiringGnss}
-            className={`flex-1 sm:flex-initial min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none border-none active:scale-95 cursor-pointer whitespace-nowrap ${
+            className={`flex-1 sm:flex-initial min-h-[40px] inline-flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none border-none active:scale-95 cursor-pointer whitespace-nowrap ${
               isAcquiringGnss ? 'opacity-70 cursor-wait' : 'hover:shadow-amber-500/30'
             }`}
           >
@@ -686,18 +627,120 @@ export default function WeatherSync({ onWeatherLoaded }) {
             )}
           </button>
 
+          {/* Feature: City & Substation Dropdown Selection Menu */}
+          <div className="relative flex-1 sm:flex-initial min-w-[210px] sm:min-w-[250px]">
+            <select
+              value={PRESET_LOCATIONS[activeStationId] ? activeStationId : 'CUSTOM'}
+              onChange={handleDropdownSelect}
+              className="w-full min-h-[40px] pl-8 pr-7 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/95 text-amber-300 border border-amber-500/40 hover:border-amber-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all cursor-pointer shadow-md shadow-amber-950/40 appearance-none truncate"
+              title="Select city or substation from dropdown list"
+            >
+              <option value="CUSTOM" disabled>
+                {activeStationId === 'LIVE_GPS' ? '📍 Live GNSS Station Active' : '📍 Select Grid Hub / City Preset...'}
+              </option>
+              <optgroup label="🇮🇳 Major Indian Power Grid Hubs">
+                <option value="HUB_HYD">Hyderabad &bull; Telangana (17.38°N)</option>
+                <option value="HUB_BLR">Bengaluru &bull; Karnataka (12.97°N)</option>
+                <option value="HUB_MUM">Mumbai &bull; Maharashtra (19.08°N)</option>
+                <option value="HUB_DEL">New Delhi &bull; NCR (28.61°N)</option>
+                <option value="HUB_VTZ">Visakhapatnam &bull; AP (17.69°N)</option>
+                <option value="HUB_VJA">Vijayawada &bull; AP (16.51°N)</option>
+                <option value="HUB_MAA">Chennai &bull; Tamil Nadu (13.08°N)</option>
+                <option value="SUB_TIRUPATI">Tirupati &bull; AP (13.62°N)</option>
+              </optgroup>
+              <optgroup label="🌍 Global Smart Grid Centers">
+                <option value="HUB_SF">San Francisco &bull; CAISO Alpha-1</option>
+                <option value="HUB_LON">London &bull; UK National Grid</option>
+                <option value="HUB_NYC">New York &bull; NYISO Central</option>
+                <option value="HUB_TYO">Tokyo &bull; TEPCO Megawatt</option>
+                <option value="HUB_SYD">Sydney &bull; AEMO Pacific Solar</option>
+                <option value="HUB_DXB">Dubai &bull; DEWA Solar Park 400kV</option>
+                <option value="HUB_BER">Berlin &bull; 50Hertz Transmission</option>
+                <option value="HUB_SIN">Singapore &bull; Jurong Microgrid</option>
+              </optgroup>
+              <optgroup label="⚡ Regional Grid Feeders">
+                <option value="SUB_ALPHA">Substation Alpha-1 (230kV Feeder)</option>
+                <option value="SUB_BETA">Substation Beta-4 (Industrial 66kV)</option>
+                <option value="SUB_GAMMA">Gamma Solar Farm (50MW PV)</option>
+                <option value="SUB_DELTA">Delta BESS Substation (20MWh)</option>
+              </optgroup>
+            </select>
+            <MapPin className="w-3.5 h-3.5 text-amber-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <ChevronDown className="w-3.5 h-3.5 text-amber-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
           {/* Direct Google Maps Navigation / Satellite Exploration */}
           <a
             href={getGoogleMapsUrl(activeCoordinates.lat, activeCoordinates.lon)}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex-1 sm:flex-initial min-h-[42px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-950/80 hover:border-cyan-500/80 transition-all shadow-md group cursor-pointer shrink-0 whitespace-nowrap"
+            className="flex-1 sm:flex-initial min-h-[40px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-950/80 hover:border-cyan-500/80 transition-all shadow-md group cursor-pointer shrink-0 whitespace-nowrap"
             title="Open exact coordinates in Google Maps (Satellite & 3D view)"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
             <span>Google Maps</span>
             <ExternalLink className="w-3 h-3 text-cyan-400/80" />
           </a>
+        </div>
+      </div>
+
+      {/* Prominent Active Substation Telemetry Metadata Strip */}
+      <div className="bg-slate-950/70 border border-white/5 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          {/* Resolved Place Name Pill */}
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-800/70 shadow-xs max-w-full">
+            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate max-w-[240px] sm:max-w-md" title={resolvedPlaceName}>
+              {resolvedPlaceName || 'Resolving location...'}
+            </span>
+          </div>
+
+          {/* Live GNSS Status */}
+          {activeStationId === 'LIVE_GPS' && (
+            <span className="text-[10px] px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800 font-bold shrink-0 flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+              LIVE GNSS SATELLITE
+            </span>
+          )}
+
+          {/* Formatted GNSS Accuracy with Regional/Precision Label */}
+          {gpsAccuracy != null && activeStationId === 'LIVE_GPS' && (
+            <span
+              className={`text-[10px] px-2 py-0.5 rounded font-bold shrink-0 border flex items-center gap-1 ${
+                gpsAccuracy <= 20
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
+                  : gpsAccuracy <= 1000
+                  ? 'bg-amber-950/80 text-amber-300 border-amber-700/80'
+                  : 'bg-slate-900 text-slate-300 border-slate-700/80'
+              }`}
+              title="Physical horizontal accuracy radius from GNSS/network receiver"
+            >
+              <Radio className="w-2.5 h-2.5 animate-pulse" />
+              {gpsAccuracy > 1000
+                ? `&plusmn;${Math.round(gpsAccuracy / 1000)} km (Regional IP)`
+                : `&plusmn;${Math.round(gpsAccuracy)}m (Precision GNSS)`}
+            </span>
+          )}
+        </div>
+
+        {/* Coordinates & Plus Code */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {activePlusCode && (
+            <div
+              className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-950/80 text-indigo-300 border border-indigo-800/80 shadow-xs"
+              title="Google Open Location Code (Plus Code) for precise substation micro-location"
+            >
+              <Crosshair className="w-3 h-3 text-indigo-400" />
+              <span>{activePlusCode}</span>
+            </div>
+          )}
+
+          {coordinatesLabel && (
+            <span
+              className="text-[11px] text-slate-400 hidden sm:inline"
+              dangerouslySetInnerHTML={{ __html: coordinatesLabel }}
+            />
+          )}
         </div>
       </div>
 
@@ -715,8 +758,9 @@ export default function WeatherSync({ onWeatherLoaded }) {
                   setIsSearchOpen(true);
                 }}
                 onFocus={() => {
-                  if (searchQuery.trim().length >= 2 || searchResults.length > 0) {
-                    setIsSearchOpen(true);
+                  setIsSearchOpen(true);
+                  if (searchResults.length === 0) {
+                    setSearchResults(POPULAR_GLOBAL_HUBS);
                   }
                 }}
                 onKeyDown={handleSearchKeyDown}

@@ -88,7 +88,7 @@ export default function Layout() {
         }`}
       >
         {/* Top Header Bar */}
-        <header className="sticky top-0 z-30 bg-slate-950/70 backdrop-blur-xl border-b border-white/10 px-4 sm:px-6 py-3.5 flex items-center justify-between transition-colors">
+        <header className="sticky top-0 z-30 bg-slate-950/95 backdrop-blur-md border-b border-white/10 px-4 sm:px-6 py-3 flex items-center justify-between transition-colors shadow-md shadow-slate-950/50">
           <div className="flex items-center gap-3">
             {/* Desktop Sidebar Collapse / Expand Toggle */}
             <button

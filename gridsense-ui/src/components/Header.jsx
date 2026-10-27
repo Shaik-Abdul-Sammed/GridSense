@@ -72,23 +72,23 @@ export default function Header({
     : '50.00';
 
   return (
-    <header className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pb-6 border-b border-white/10">
+    <header className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-3.5 pb-4 border-b border-white/10">
       {/* Brand & Substation Identity */}
       <div className="flex items-center gap-3">
-        <div className="p-3 bg-gradient-to-tr from-cyan-600 via-cyan-500 to-emerald-400 rounded-xl shadow-lg shadow-cyan-500/20 text-white flex items-center justify-center">
-          <Zap className="w-8 h-8" />
+        <div className="p-2.5 sm:p-3 bg-gradient-to-tr from-cyan-600 via-cyan-500 to-emerald-400 rounded-xl shadow-lg shadow-cyan-500/20 text-white flex items-center justify-center shrink-0">
+          <Zap className="w-6 h-6 sm:w-7 sm:h-7" />
         </div>
-        <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-black tracking-tight text-white">
-              GridSense Dashboard
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+              GridSense Command Center
             </h1>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-cyan-950/90 text-cyan-300 border border-cyan-400/50 shadow-xs shrink-0">
+            <span className="inline-flex items-center gap-1.5 text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-cyan-950/90 text-cyan-300 border border-cyan-400/50 shadow-xs shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
               v3.0 DIGITAL TWIN
             </span>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-400 mt-0.5 truncate">
             Autonomous Digital Twin &bull; P2P Energy Marketplace &bull; Neural SCADA Controller
           </p>
         </div>
