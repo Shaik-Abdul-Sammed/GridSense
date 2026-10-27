@@ -119,22 +119,31 @@ export function getGoogleMapsUrl(lat, lon) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lon}`)}`;
 }
 
+// In-memory cache for reverse geocoding to prevent repetitive network lookups
+const reverseGeocodeCache = new Map();
+
 /**
  * Multi-Tier High-Precision Reverse Geocoding:
- * Tier 1: Google Maps Geocoding API (if VITE_GOOGLE_MAPS_API_KEY is configured).
- * Tier 2: BigDataCloud Reverse Geocode Client (CORS supported, neighborhood & plusCode).
- * Tier 3: OpenStreetMap Nominatim reverse geocoding fallback.
- * Tier 4: Formatted coordinate representation.
+ * Tier 1: In-memory coordinate cache (instant, 0ms).
+ * Tier 2: BigDataCloud Reverse Geocode Client (fast 2s timeout).
+ * Tier 3: OpenStreetMap Nominatim reverse geocoding fallback (fast 2s timeout).
+ * Tier 4: Formatted GNSS coordinate representation & Plus Code (guaranteed, instant).
  */
 export async function reverseGeocode(lat, lon) {
   const plusCodeDefault = encodePlusCode(lat, lon);
+  const cacheKey = `${Number(lat).toFixed(3)},${Number(lon).toFixed(3)}`;
+
+  if (reverseGeocodeCache.has(cacheKey)) {
+    return reverseGeocodeCache.get(cacheKey);
+  }
+
   const googleKey = typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_MAPS_API_KEY;
 
   // Tier 1: Google Maps Geocoding API (if key is configured)
   if (googleKey) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
       const res = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lon}&key=${googleKey}&solution_id=gmp_git_agentskills_v1`,
         { signal: controller.signal }
@@ -146,7 +155,7 @@ export async function reverseGeocode(lat, lon) {
           const first = data.results[0];
           const address = first.formatted_address;
           const gPlusCode = data.plus_code?.global_code || plusCodeDefault;
-          return {
+          const result = {
             placeName: address,
             plusCode: gPlusCode,
             source: 'Google Maps Geocoding',
@@ -154,17 +163,19 @@ export async function reverseGeocode(lat, lon) {
               return address;
             },
           };
+          reverseGeocodeCache.set(cacheKey, result);
+          return result;
         }
       }
-    } catch (err) {
-      console.warn('Google Maps Geocoding skipped, falling to Tier 2:', err.message);
+    } catch {
+      // Quiet fallback
     }
   }
 
   // Tier 2: BigDataCloud Reverse Geocoding with Neighborhood & Google Plus Code
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(
       `https://api-bdc.io/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
       { signal: controller.signal }
@@ -185,7 +196,7 @@ export async function reverseGeocode(lat, lon) {
       const resolvedCode = data.plusCode || plusCodeDefault;
       if (parts.length > 0) {
         const placeName = parts.join(', ');
-        return {
+        const result = {
           placeName,
           plusCode: resolvedCode,
           locality,
@@ -197,16 +208,18 @@ export async function reverseGeocode(lat, lon) {
             return placeName;
           },
         };
+        reverseGeocodeCache.set(cacheKey, result);
+        return result;
       }
     }
-  } catch (err) {
-    console.warn('api-bdc geocode fallback engaged:', err.message);
+  } catch {
+    // Graceful fallback to next tier without console pollution
   }
 
   // Tier 3: Secondary fallback: OpenStreetMap Nominatim
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
     const res = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14`,
       { signal: controller.signal }
@@ -226,7 +239,7 @@ export async function reverseGeocode(lat, lon) {
         const parts = [neighborhood, city, state, country].filter(Boolean);
         if (parts.length > 0) {
           const placeName = parts.join(', ');
-          return {
+          const result = {
             placeName,
             plusCode: plusCodeDefault,
             city,
@@ -237,18 +250,20 @@ export async function reverseGeocode(lat, lon) {
               return placeName;
             },
           };
+          reverseGeocodeCache.set(cacheKey, result);
+          return result;
         }
       }
     }
-  } catch (nomErr) {
-    console.warn('Nominatim reverse geocode skipped:', nomErr.message);
+  } catch {
+    // Graceful fallback to coordinate representation
   }
 
-  // Tier 4: Coordinate fallback
+  // Tier 4: Coordinate fallback (Instant & 100% reliable)
   const latStr = lat >= 0 ? `${lat.toFixed(4)}°N` : `${Math.abs(lat).toFixed(4)}°S`;
   const lonStr = lon >= 0 ? `${lon.toFixed(4)}°E` : `${Math.abs(lon).toFixed(4)}°W`;
   const fallbackPlace = `Station (${latStr}, ${lonStr})`;
-  return {
+  const fallbackResult = {
     placeName: fallbackPlace,
     plusCode: plusCodeDefault,
     source: 'GPS Grid Coordinates',
@@ -256,6 +271,8 @@ export async function reverseGeocode(lat, lon) {
       return fallbackPlace;
     },
   };
+  reverseGeocodeCache.set(cacheKey, fallbackResult);
+  return fallbackResult;
 }
 
 /**

@@ -190,29 +190,46 @@ export default function WeatherSync({ onWeatherLoaded }) {
     weatherAbortControllerRef.current = controller;
 
     try {
-      // Step 1: Resolve high-precision location, address, and Google Plus Code
+      // Step 1: Set coordinates and default plus code immediately
       let place = customPlaceName;
       let plusCode = encodePlusCode(lat, lon);
-      let geocodeSource = 'Substation Preset';
-
-      if (!place) {
-        const geoResult = await reverseGeocode(lat, lon);
-        place = geoResult.placeName || String(geoResult);
-        plusCode = geoResult.plusCode || plusCode;
-        geocodeSource = geoResult.source || 'GNSS Geocoding';
-      }
-
-      if (!isMountedRef.current) return;
-
-      setResolvedPlaceName(place);
-      setActivePlusCode(plusCode);
+      let geocodeSource = customPlaceName ? 'Substation Preset' : 'GNSS Geocoding';
       const coordsHtml = formatCoordinates(lat, lon);
       setCoordinatesLabel(coordsHtml);
 
-      // Step 2: Query high-precision satellite telemetry including real-time solar irradiance & UV
+      // Start reverse geocoding in parallel if no custom place name provided
+      const geoPromise = !place
+        ? reverseGeocode(lat, lon)
+        : Promise.resolve({ placeName: place, plusCode, source: geocodeSource });
+
+      if (place) {
+        setResolvedPlaceName(place);
+        setActivePlusCode(plusCode);
+      } else {
+        const fallbackPlace = `Station (${coordsHtml})`;
+        setResolvedPlaceName(fallbackPlace);
+        setActivePlusCode(plusCode);
+        place = fallbackPlace;
+      }
+
+      // Step 2: Query high-precision satellite telemetry in parallel with geocoding
       const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m,wind_direction_10m,surface_pressure,uv_index,shortwave_radiation,direct_normal_irradiance&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,weather_code,surface_pressure,wind_speed_10m,wind_direction_10m,shortwave_radiation,direct_normal_irradiance,diffuse_radiation&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,uv_index_max&timezone=auto&forecast_days=3`;
 
-      const res = await fetch(url, { method: 'GET', signal: controller.signal });
+      const [res, geoResult] = await Promise.all([
+        fetch(url, { method: 'GET', signal: controller.signal }),
+        geoPromise.catch(() => null),
+      ]);
+
+      if (!isMountedRef.current) return;
+
+      if (geoResult?.placeName) {
+        place = geoResult.placeName;
+        plusCode = geoResult.plusCode || plusCode;
+        geocodeSource = geoResult.source || geocodeSource;
+        setResolvedPlaceName(place);
+        setActivePlusCode(plusCode);
+      }
+
       if (!res.ok) {
         throw new Error(`Open-Meteo returned HTTP ${res.status}`);
       }
