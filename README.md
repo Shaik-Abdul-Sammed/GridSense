@@ -10,11 +10,12 @@
 [![Zoho QuickML](https://img.shields.io/badge/AI%2FML-Zoho%20QuickML%20AutoML-00C853?style=for-the-badge&logo=brain&logoColor=white)](https://catalyst.zoho.com/quickml)
 [![Tailwind CSS v4](https://img.shields.io/badge/Styling-Tailwind%20CSS%20v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
 [![Three.js](https://img.shields.io/badge/3D%20Engine-Three.js%20%7C%20WebGL-black?style=for-the-badge&logo=three.js&logoColor=white)](https://threejs.org/)
+[![Recharts](https://img.shields.io/badge/Charts-Recharts%20v2-22c55e?style=for-the-badge&logo=chartdotjs&logoColor=white)](https://recharts.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg?style=for-the-badge)](LICENSE)
 
 **An enterprise-grade, autonomous energy management system (EMS) combining machine learning load forecasting, 3D digital twins, augmented reality field diagnostics, and resilient microgrid dispatch.**
 
-[Live Frontend (Slate)](https://gridsense-ui-zjbtthvz.onslate.in) • [Live API (AppSail)](https://appsail-50047147234.development.catalystappsail.in/forecast) • [Architecture](#-system-architecture) • [Engineering Rationale](#-algorithms--engineering-rationale) • [Run Locally](#-setup--run-instructions)
+[Live Frontend (Slate)](https://gridsense-ui-zjbtthvz.onslate.in) • [Live API (AppSail)](https://appsail-50047147234.development.catalystappsail.in/forecast) • [GitHub Repository](https://github.com/Shaik-Abdul-Sammed/GridSense) • [Key Features](#-key-features) • [Engineering Rationale](#-algorithms--engineering-rationale) • [Run Locally](#-setup--run-instructions)
 
 </div>
 
@@ -33,7 +34,7 @@
 ## 📖 Project Overview
 
 Modern electrical distribution grids face severe operational instability caused by three intersecting challenges:
-1. **Intermittent Distributed Renewables**: Volatile photovoltaic (PV) solar and wind generation leading to sudden reverse power flows and duck curves.
+1. **Intermittent Distributed Renewables**: Volatile photovoltaic (PV) solar and wind generation leading to sudden reverse power flows and steep duck curves.
 2. **Dense Localized Load Surges**: EV fast-charging clusters and industrial loads creating unpredicted peak spikes that stress distribution feeders.
 3. **Aging Physical Assets**: Substation transformers operating beyond design thresholds without continuous thermal health monitoring.
 
@@ -85,6 +86,41 @@ Traditional **Supervisory Control and Data Acquisition (SCADA)** architectures a
 
 ---
 
+## ⚡ Key Features
+
+### 1. Interactive Energy Distribution Pie Charts (`GridEnergyDistribution.jsx`)
+* **Real-Time Multi-Perspective Energy Breakdown**: High-contrast interactive Recharts Donut Pie Charts with 3 distinct sub-views:
+  * **Source Mix (`SOURCE_MIX`)**: Visualizes instant real-time contribution percentages across **Solar PV Generation**, **BESS Battery Storage Discharge**, and **Main Utility Feeder Supply**.
+  * **Operational Mode Share (`MODE_SHARE`)**: Analyzes historical and forward 24-hour dispatch states (`MAIN_GRID_MODE` vs. `RENEWABLE_STORAGE_MODE` vs. `CRITICAL_OVERLOAD`).
+  * **Load Demand Tiers (`TIER_BREAKDOWN`)**: Slices demand into Baseload (<120 kW), Normal Daytime (120–160 kW), Heavy Storage Transition (160–200 kW), and Peak Surge (≥200 kW).
+* **Live Telemetry Center HUD**: Center of the donut features dynamic central load metrics with real-time status pulses, allocation badges, and numerical kilowatt readouts.
+* **Unified Dashboard Deck**: Operators can toggle seamlessly between `Both Views`, `24h Curve`, and `Pie Charts` without page reload.
+
+### 2. Smart Weather Hub Dropdown & Dual-Engine GPS (`WeatherSync.jsx`)
+* **Curated Dropdown Selection Menu**: One-click dropdown selector providing instant access to major Indian power grid centers, global utility interconnects, and local substation feeders:
+  * **Major Indian Power Hubs**: Hyderabad (`17.38°N, 78.48°E` • Southern Regional Load Dispatch), Bengaluru (`12.97°N, 77.59°E` • BESCOM Smart Microgrid), Mumbai (`19.08°N, 72.88°E` • Tata Power Western Grid), New Delhi (`28.61°N, 77.21°E` • NLDC National Center), Visakhapatnam (`17.69°N, 83.22°E` • APEPDCL Coastal Substation), Vijayawada (`16.51°N, 80.65°E` • APTRANSCO SLDC), Chennai (`13.08°N, 80.27°E` • TANGEDCO 400kV), and Tirupati (`13.62°N, 79.43°E` • SVU Feeder).
+  * **Global Interconnects**: San Francisco (CAISO Alpha-1), London (National Grid UK), New York (NYISO Central), Tokyo (TEPCO Megawatt), Sydney (AEMO Pacific Solar), Dubai (DEWA Solar Park 400kV), Berlin (50Hertz), and Singapore (EMA Jurong Island).
+  * **Regional Substations**: Substation Alpha-1 (230kV Feeder), Substation Beta-4 (Industrial 66kV), Gamma Solar Farm (50MW PV), and Delta BESS Substation (20MWh).
+* **Dual-Engine Geocoder**: Combines the high-accuracy **Photon OpenStreetMap API** (`photon.komoot.io`) with **Open-Meteo Geocoding** fallback, resolving exact coordinates, colloquial city aliases, and Google Plus Codes.
+* **Smart GPS Accuracy Formatting**: Automatically formats physical receiver accuracy, displaying `±Xm (Precision GNSS)` for high accuracy or `±X km (Regional IP)` for wide-area cellular IP connections, eliminating confusing raw meter readouts.
+
+### 3. AR Field Tech Thermal HUD & Diagnostic Presets (`FieldTechAR.jsx`)
+* **Instant Evaluation Presets (No Camera Permissions Required)**:
+  * **📷 Simulate Normal Asset**: Bypasses webcam constraints, rendering a healthy transformer at a nominal **45°C** with cool radiometric color palettes and nominal status telemetry.
+  * **🔥 Simulate Critical Overload**: Simulates a severe transformer bushing hotspot at **92°C** with false-color FLIR FLIR heatmaps, glowing defect pins, and an automated step-by-step remediation protocol.
+* **Prominent Exit Button**: Includes an accessible `✕ Close Camera` button that stops all active WebRTC video tracks (`track.stop()`) and safely navigates back to the main command center.
+* **Radiometric FLIR Shader & OCR Tagging**: Real-time canvas pixel manipulation converting optical video into false-color thermal gradients with bounding boxes and defect annotations.
+
+### 4. Self-Healing Dynamic Import Chunk Handler (`ErrorBoundary.jsx`)
+* **Automatic Cache-Buster**: Detects stale runtime module chunks (`"dynamically imported module"` error) caused by continuous cloud redeployments on Catalyst Slate.
+* **Zero-Intervention Reload**: Automatically triggers a clean browser reload after 1 second, displaying *"New update detected. Reloading Command Center..."*, ensuring judges and operators always execute the latest build without manual cache clearing.
+
+### 5. Multimodal Voice Telemetry & Emergency Audio Chimes
+* **Automatic Voice Greetings**: Initiates voice telemetry readouts upon user-gesture demo initiation (*"GridSense voice telemetry online. Monitoring active grid."*).
+* **SCADA Emergency Buzzer**: Generates synthesized Web Audio dual-tone emergency buzzer pulses (`880Hz / 440Hz`) alongside audible speech synthesis alerts during critical red overloads.
+
+---
+
 ## 🛠️ Complete Tech Stack
 
 | Domain | Technology | Purpose & Implementation |
@@ -93,12 +129,12 @@ Traditional **Supervisory Control and Data Acquisition (SCADA)** architectures a
 | **Build Tooling** | **Vite 6** | Ultra-fast HMR and automated manual chunking for optimal client performance |
 | **Styling & Design** | **Tailwind CSS v4** | Hardware-accelerated CSS variables, glassmorphic dark palette, responsive grids |
 | **3D Digital Twin** | **Three.js & WebGL** | Spatial 3D substation rendering with dynamic particle energy flow vectors |
-| **Field AR Engine** | **WebRTC & Canvas** | Live device camera feed with radiometric FLIR thermal imaging filters |
+| **Data Visualization**| **Recharts** | Reactive diurnal load curves, capacity thresholds, and multi-mode energy distribution pie charts |
+| **Field AR Engine** | **WebRTC & Canvas** | Live device camera feed with radiometric FLIR thermal imaging filters and simulation presets |
 | **Optical Meter OCR**| **Tesseract.js** | In-browser WebAssembly neural OCR extracting numerical readings from utility meters |
-| **Data Visualization**| **Recharts** | Reactive load curves, solar irradiance overlays, and dynamic peak capacity bars |
 | **Backend Runtime** | **Python 3.13** | AppSail container runtime executing microgrid transition policies |
 | **Web Framework** | **Flask & Flask-CORS** | Clean RESTful endpoints (`/forecast`, `/`) with preflight CORS resolution |
-| **Cloud Compute** | **Zoho Catalyst AppSail** | Managed serverless container hosting the high-performance Python backend |
+| **Cloud Compute** | **Zoho Catalyst AppSail** | Managed serverless container hosting the high-performance Python backend (:9000) |
 | **Static Hosting** | **Zoho Catalyst Slate** | Global edge hosting providing SSL, asset caching, and domain routing |
 | **Machine Learning**| **Zoho QuickML AutoML** | Cloud-native multi-variable regression model predicting hourly kW load |
 
@@ -145,7 +181,7 @@ Traditional **Supervisory Control and Data Acquisition (SCADA)** architectures a
 │                                                GRID MANAGEMENT SUBSYSTEMS                                                │
 ├──────────────────────────────┬───────────────────────────────┬──────────────────────────────┬────────────────────────────┤
 │   3D WebGL Digital Twin      │   AR Field Diagnostics HUD    │   Tesseract.js OCR Engine    │   P2P Microgrid Exchange   │
-│   Interactive Substation     │   FLIR Thermal & Remediations │   Analog / Digital Meter Ingest│   Transactive Double-Auction │
+│   Interactive Substation     │   FLIR Thermal & Presets      │   Analog / Digital Meter OCR │   Transactive Double-Auction │
 └──────────────────────────────┴───────────────────────────────┴──────────────────────────────┴────────────────────────────┘
 ```
 
@@ -186,6 +222,7 @@ else:
     alert_state = "NONE"
 ```
 
+* **Nominal Load Assurance**: Nominal loads (e.g. 143.0 kW or 145.2 kW during midday) operate strictly in `MAIN_GRID_MODE` with `alert_state = NONE`. Critical red alarms are reserved exclusively for loads that breach the physical safety threshold ($\ge 200.0\text{ kW}$) or active cyberattack simulations.
 * **Battery State-of-Charge (SOC) Dynamics**:
   - In `RENEWABLE_STORAGE_MODE`, the BESS discharges at a steady peak-shaving rate: $\text{SOC}_{t} = \max(10\%, \text{SOC}_{t-1} - 4.2\%)$.
   - In `MAIN_GRID_MODE`, excess grid/solar generation recharges the battery bank: $\text{SOC}_{t} = \min(100\%, \text{SOC}_{t-1} + 3.5\%)$.
@@ -206,9 +243,10 @@ Distribution transformers degrade primarily due to paper insulation thermal brea
 | Capability | Legacy Grid System (SCADA / Utility EMS) | Standard Hackathon App (Basic CRUD) | GridSense (Our Solution) |
 | :--- | :--- | :--- | :--- |
 | **Demand Forecasting** | ❌ Manual day-ahead regression spreadsheets with 12–24h latency. | ⚠️ Hardcoded mock JSON without dynamic cloud endpoints. | ✅ **Real-Time Zoho QuickML AutoML**: Sub-second regression factoring live GHI/DNI solar flux, humidity, and temperature. |
-| **Data Ingestion** | ❌ Proprietary closed protocols; manual clipboard meter entry. | ⚠️ Simple CSV upload with zero schema validation or edge resilience. | ✅ **Multi-Modal Tri-Ingestion**: In-browser **Tesseract.js OCR**, drag-and-drop CSV validation, and **GNSS Satellite GPS** geocoding. |
+| **Data Ingestion** | ❌ Proprietary closed protocols; manual clipboard meter entry. | ⚠️ Simple CSV upload with zero schema validation or edge resilience. | ✅ **Multi-Modal Tri-Ingestion**: In-browser **Tesseract.js OCR**, drag-and-drop CSV validation, and **Dual-Engine GPS** geocoding. |
+| **Weather & Solar Sync** | ❌ Fixed static weather lookups requiring manual coordinates. | ⚠️ Static weather APIs with broken local city resolution. | ✅ **Dual-Engine Geocoder & Presets**: Photon OpenStreetMap + Open-Meteo, with instant dropdown presets for Indian power hubs. |
 | **Failure Prediction** | ❌ Reactive alarms only *after* transformer oil boiling and breaker trips. | ❌ Arbitrary `if (temp > 80)` checks with zero physical basis. | ✅ **IEC 60076-7 Thermal Degradation**: Computes real-time Arrhenius aging, winding hotspots, and Remaining Useful Life (RUL). |
-| **UI/UX & Operations** | ❌ 1990s desktop terminals restricted to physical utility control rooms. | ⚠️ Generic web tables with basic dashboard templates. | ✅ **Next-Gen Spatial Interface**: Interactive 3D WebGL Twin, mobile WebRTC AR FLIR diagnostic HUD, and Joyride onboarding. |
+| **UI/UX & Operations** | ❌ 1990s desktop terminals restricted to physical utility control rooms. | ⚠️ Generic web tables with basic dashboard templates. | ✅ **Next-Gen Spatial Interface**: Interactive 3D WebGL Twin, mobile WebRTC AR FLIR diagnostic HUD with 45°C/92°C presets, and Joyride onboarding. |
 | **Emergency Response** | ❌ Manual operator dispatch; slow phone tree coordination. | ❌ Static alert banners with no automated action. | ✅ **Autonomous BESS Dispatch & Gamified Drill**: Instant automated peak shaving, audio synthesis voice alerts, and "Grid Defender" drill. |
 
 ---
@@ -234,63 +272,68 @@ Distribution transformers degrade primarily due to paper insulation thermal brea
 
 ```
 hulk/
-├── app.py                      # Flask REST microservice deployed on Zoho Catalyst AppSail (:9000)
-├── predict.py                  # Zoho QuickML inference connector and validation bridge
-├── test_eval.py                # Official test verification & automated evaluation script
-├── catalyst.json               # Zoho Catalyst project descriptor (AppSail + Slate routing)
-├── app-config.json             # AppSail runtime startup command and environment configuration
-├── .catalystignore             # Excludes node_modules and UI code to keep deployment bundle < 3 MB
-├── .env                        # Local backend environment variables (QuickML keys & Org IDs)
-├── train_telemetry.csv         # 24-hour microgrid training telemetry dataset
-├── sample_test_input.csv       # Verification dataset with hourly sensor records
-├── lib/                        # Pre-packaged Python runtime dependencies for AppSail
-└── gridsense-ui/               # Production React 19 + Vite 6 + Tailwind CSS v4 Frontend
-    ├── index.html              # HTML5 entrypoint with responsive viewport and fonts
-    ├── package.json            # Node.js manifest with zero-vulnerability dependencies
-    ├── vite.config.js          # Vite configuration with code splitting and manual chunking
+├── app.py                          # Flask REST microservice deployed on Zoho Catalyst AppSail (:9000)
+├── predict.py                      # Zoho QuickML inference connector and validation bridge
+├── test_eval.py                    # Official test verification & automated evaluation script
+├── catalyst.json                   # Zoho Catalyst project descriptor (AppSail + Slate routing)
+├── app-config.json                 # AppSail runtime startup command and environment configuration
+├── .catalystignore                 # Excludes node_modules and UI code to keep deployment bundle < 3 MB
+├── .env                            # Local backend environment variables (QuickML keys & Org IDs)
+├── train_telemetry.csv             # 24-hour microgrid training telemetry dataset
+├── sample_test_input.csv           # Verification dataset with hourly sensor records
+├── lib/                            # Pre-packaged Python runtime dependencies for AppSail
+└── gridsense-ui/                   # Production React 19 + Vite 6 + Tailwind CSS v4 Frontend
+    ├── index.html                  # HTML5 entrypoint with responsive viewport and fonts
+    ├── package.json                # Node.js manifest with zero-vulnerability dependencies
+    ├── vite.config.js              # Vite configuration with code splitting and manual chunking
+    ├── .env                        # Frontend environment variables (VITE_API_URL)
     ├── src/
-    │   ├── main.jsx            # Application mount with global crash boundary
-    │   ├── App.jsx             # React Router routing with React.lazy() dynamic code-splitting
-    │   ├── index.css           # Tailwind CSS v4 imports, Joyride overrides, glassmorphism styles
+    │   ├── main.jsx                # Application mount with global ErrorBoundary
+    │   ├── App.jsx                 # React Router routing with React.lazy() dynamic code-splitting
+    │   ├── index.css               # Tailwind CSS v4 imports, Joyride overrides, glassmorphic dark palette
     │   ├── pages/
-    │   │   ├── Dashboard.jsx       # Real-Time Telemetry, 3D Canvas, Controls, and PDF Shift Export
-    │   │   ├── Analytics.jsx       # QuickML Residuals, Feature Importance, Metrics Breakdown
+    │   │   ├── Dashboard.jsx       # Real-Time Telemetry, 3D Canvas, Energy Distribution, Controls, and PDF Export
+    │   │   ├── Analytics.jsx       # QuickML Residuals, Feature Importance (Bar/Pie), Metrics Breakdown
     │   │   ├── History.jsx         # Dispatch Audit Trail, Event Log Filtering, Incident Log
     │   │   ├── Settings.jsx        # Transition Controller Thresholds & System Parameters
     │   │   ├── Marketplace.jsx     # P2P Energy Trading Ledger, Order Book, Matching Engine
     │   │   ├── GamerDemo.jsx       # Grid Defender Tactical Blackout Defense Arena
-    │   │   ├── ImpactPage.jsx      # Hackathon Pitch Deck, ESG Impact Metrics, Carbon Abatement
+    │   │   ├── ImpactPage.jsx      # Hackathon Pitch Deck, ESG Impact Metrics, Carbon Abatement Pie Chart
     │   │   ├── DigitalTwinPage.jsx # Full-screen 3D Substation Digital Twin with Spatial Controls
     │   │   ├── DroneFleetPage.jsx  # Autonomous Drone Fleet Hub with GPS Radar & Inspection Routes
     │   │   ├── FieldTechARPage.jsx # AR Field Technician FLIR Diagnostic HUD with Defect Pins
     │   │   └── WeatherSyncPage.jsx # Satellite Weather Radar & Convective Grid Analytics
     │   ├── components/
-    │   │   ├── Substation3D.jsx        # WebGL 3D Substation & Particle Energy Streams (Three.js)
-    │   │   ├── FieldTechAR.jsx         # WebRTC Camera HUD, FLIR Thermal Scanner, Remediation Actions
-    │   │   ├── DroneFleet.jsx          # Autonomous UAV Fleet Telemetry, Radar, and Mission Planner
-    │   │   ├── MeterScanner.jsx        # Client-Side Tesseract.js Optical Meter OCR Engine
-    │   │   ├── GridDefenderModal.jsx   # Tactical Blackout Defense Game Engine with Audio Synthesis
-    │   │   ├── WeatherSync.jsx         # Multi-sample GNSS Geolocation, Plus Codes, Global Search
-    │   │   ├── LoadCurveChart.jsx      # Recharts Demand vs Capacity with Interactive Zoom
-    │   │   ├── PowerFlowDiagram.jsx    # SVG Animated Microgrid Bus Topology & Power Vectoring
-    │   │   ├── ControlPanel.jsx        # Simulation Controls, Speed Slider, CSV Ingestion
-    │   │   ├── HourlyTable.jsx         # Deduplicated 24-Hour Telemetry Table with Search & Badges
-    │   │   ├── BatteryGauge.jsx        # Circular SVG Battery State-of-Charge (SOC) Indicator
-    │   │   ├── GridStateBadge.jsx      # Glowing Status Pill for Main Grid vs Renewable vs Islanded
-    │   │   ├── MetricsOverview.jsx     # KPI Metric Cards (Peak Load, Generation, Battery, Efficiency)
-    │   │   ├── Header.jsx              # Command Center Navigation, Tour Trigger, Voice Indicator
-    │   │   ├── Sidebar.jsx             # Collapsible Navigation Sidebar with Layer-40 Z-Index
-    │   │   └── Layout.jsx              # Responsive Shell with Sidebar Persistence & Shortcuts
+    │   │   ├── AlertBanner.jsx            # Real-time critical overload & anomaly banner with dismiss
+    │   │   ├── BatteryGauge.jsx           # Circular SVG Battery State-of-Charge (SOC) Indicator
+    │   │   ├── ControlPanel.jsx           # Simulation Controls, Speed Slider, CSV Ingestion, PDF/JSON Exports
+    │   │   ├── DroneFleet.jsx             # Autonomous UAV Fleet Telemetry, Radar, and Mission Planner
+    │   │   ├── ErrorBoundary.jsx          # Self-healing dynamic import crash boundary with auto-reload
+    │   │   ├── FieldTechAR.jsx            # WebRTC Camera HUD, FLIR Thermal Scanner, 45°C/92°C Presets, Close Button
+    │   │   ├── GridDefenderModal.jsx      # Tactical Blackout Defense Game Engine with Audio Synthesis
+    │   │   ├── GridEnergyDistribution.jsx # Interactive Recharts Donut Pie Charts (Source Mix, Modes, Tiers)
+    │   │   ├── GridStateBadge.jsx         # Glowing Status Pill for Main Grid vs Renewable vs Islanded
+    │   │   ├── Header.jsx                 # Command Center Navigation, Tour Trigger, Voice Indicator, Tickers
+    │   │   ├── HourlyTable.jsx            # Deduplicated 24-Hour Telemetry Table with Search & Filter Badges
+    │   │   ├── Layout.jsx                 # Responsive Shell with Sidebar Persistence & Opaque Header
+    │   │   ├── LoadCurveChart.jsx         # Recharts Demand vs Capacity with Interactive Zoom & Overlays
+    │   │   ├── MeterScanner.jsx           # Client-Side Tesseract.js Optical Meter OCR Engine
+    │   │   ├── MetricsOverview.jsx        # KPI Metric Cards (Peak Load, Generation, Battery, Efficiency)
+    │   │   ├── PowerFlowDiagram.jsx       # SVG Animated Microgrid Bus Topology & Power Vectoring
+    │   │   ├── Sidebar.jsx                # Collapsible Navigation Sidebar with Layer-40 Z-Index
+    │   │   ├── Substation3D.jsx           # WebGL 3D Substation & Particle Energy Streams (Three.js)
+    │   │   ├── TourTooltip.jsx            # Custom Hackathon Guided Tour Tooltip Component
+    │   │   └── WeatherSync.jsx            # Multi-sample GNSS Geolocation, Plus Codes, Hub Dropdown, Search
     │   ├── hooks/
-    │   │   ├── useVoiceCommands.js     # Web Speech Recognition Hook for Hands-Free Grid Control
-    │   │   └── useVoiceAlerts.js       # SpeechSynthesis Hook for Audio Alarms & Voice Synthesis
+    │   │   ├── useVoiceCommands.js        # Web Speech Recognition Hook for Hands-Free Grid Control
+    │   │   └── useVoiceAlerts.js          # SpeechSynthesis Hook with Emergency SCADA Buzzer Chime
     │   ├── utils/
-    │   │   ├── failurePredictor.js     # Rolling Transformer Thermal/Mechanical Stress & RUL Model
-    │   │   ├── weatherUtils.js         # Google Plus Codes, Multi-Tier Reverse Geocode, Place Search
-    │   │   └── demoData.js             # High-Stress Simulation Datasets & Weather Scenarios
+    │   │   ├── failurePredictor.js        # Rolling Transformer Thermal/Mechanical Stress & RUL Model
+    │   │   ├── weatherUtils.js            # Google Plus Codes, Multi-Tier Reverse Geocode, Dual-Engine Search
+    │   │   └── demoData.js                # High-Stress Simulation Datasets & Weather Scenarios
     │   └── context/
-    │       ├── SettingsContext.jsx     # Global Reactive Settings Store with LocalStorage Sync
-    │       └── ThemeContext.jsx        # Futuristic Glassmorphic Dark Mode Theme Provider
+    │       ├── SettingsContext.jsx        # Global Reactive Settings Store with LocalStorage Sync
+    │       └── ThemeContext.jsx           # Futuristic Glassmorphic Dark Mode Theme Provider
 ```
 
 ---
@@ -323,12 +366,21 @@ cd GridSense
 ---
 
 ### Step 2: Configure Environment Variables
+
+#### Backend Environment Variables
 Create a `.env` file in the project root (`hulk/.env`):
 ```env
 # Zoho Catalyst & QuickML Credentials
 QUICKML_ENDPOINT_KEY=f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54
 CATALYST_ORG=60093168651
 CATALYST_PROJECT_ID=89804000000013023
+```
+
+#### Frontend Environment Variables
+Create a `.env` file in the frontend directory (`gridsense-ui/.env`):
+```env
+# Live Zoho Catalyst AppSail REST Endpoint (or http://localhost:9000/forecast for local development)
+VITE_API_URL=https://appsail-50047147234.development.catalystappsail.in/forecast
 ```
 
 ---
