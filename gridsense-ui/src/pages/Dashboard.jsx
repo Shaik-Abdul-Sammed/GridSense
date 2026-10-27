@@ -14,6 +14,8 @@ import {
   AlertTriangle,
   Camera,
   Activity,
+  CloudSun,
+  Sliders,
 } from 'lucide-react';
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
@@ -357,6 +359,12 @@ export default function Dashboard() {
 
   // SMS/Email Alert state
   const [smsAlert, setSmsAlert] = useState(null);
+
+  // Operator Alert Banner Dismissal state
+  const [isBannerDismissed, setIsBannerDismissed] = useState(false);
+
+  // Ingestion & Simulation Tools Suboptions Selector: 'ALL' | 'CONTROLS' | 'WEATHER' | 'OCR' | 'CLIMATE'
+  const [activeToolsTab, setActiveToolsTab] = useState('ALL');
 
   // CSV Ingestion State
   const [csvData, setCsvData] = useState(null);
@@ -957,6 +965,11 @@ export default function Dashboard() {
       (item) => Number(item.predicted_demand_kw) >= (settings.criticalThreshold || 200)
     );
 
+  // Automatically reset dismissed state when operator changes inspected hour or triggers a fault
+  useEffect(() => {
+    setIsBannerDismissed(false);
+  }, [selectedHour, isCyberattack]);
+
   const latestSoc = useMemo(() => {
     if (!latestPrediction) return '100.0';
     if (latestPrediction.battery_soc !== undefined && latestPrediction.battery_soc !== null) {
@@ -1149,96 +1162,158 @@ export default function Dashboard() {
         onStartTour={handleStartTour}
       />
 
-      {/* Feature 2: "What-If" Climate Simulator Interactive Slider Bar */}
-      <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20 shrink-0">
-            <ThermometerSnowflake className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-bold text-white tracking-tight font-mono uppercase">
-                &ldquo;What-If&rdquo; Climate Simulator
-              </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800 shrink-0">
-                HEATWAVE STRESS TEST
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Simulate extreme heatwaves. Elevates ambient temperatures and triggers severe HVAC cooling loads.
-            </p>
-          </div>
+      {/* =========================================================================
+          Ingestion & Simulation Tools Suboptions Bar
+          Prevents clumsy vertical stacking on mobile devices and enables focused workflow
+         ========================================================================= */}
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 px-2 py-1">
+          <Layers className="w-4 h-4 text-cyan-400" />
+          <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+            Control Suboptions:
+          </span>
         </div>
 
-        {/* Climate Delta Slider Controls */}
-        <div className="flex items-center gap-4 w-full md:w-auto justify-end">
-          <div className="flex items-center gap-3 w-full md:w-64">
-            <input
-              type="range"
-              min="0"
-              max="6"
-              step="0.5"
-              value={climateDelta}
-              onChange={(e) => handleClimateDeltaChange(Number(e.target.value))}
-              className="w-full accent-amber-400 cursor-pointer"
-            />
-            <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-white/10 font-mono text-xs font-black min-w-[75px] text-center shrink-0">
-              <span className={climateDelta > 0 ? 'text-amber-400' : 'text-slate-400'}>
-                +{climateDelta.toFixed(1)}&deg;C
-              </span>
-            </div>
-          </div>
-
-          {climateDelta > 0 && (
-            <button
-              type="button"
-              onClick={() => handleClimateDeltaChange(0)}
-              className="px-2.5 py-1.5 rounded-lg text-[10px] font-mono text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
-            >
-              Reset
-            </button>
-          )}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 py-1 w-full sm:w-auto font-mono text-xs">
+          {[
+            { id: 'CONTROLS', label: 'Simulation Controls', icon: Activity, badge: isStreaming ? 'Active' : null },
+            { id: 'WEATHER', label: 'Weather Sync', icon: CloudSun, badge: 'GPS/City' },
+            { id: 'OCR', label: 'Meter OCR', icon: Camera, badge: 'Camera/Upload' },
+            { id: 'CLIMATE', label: 'Heatwave Stress', icon: ThermometerSnowflake, badge: climateDelta > 0 ? `+${climateDelta}°C` : null },
+            { id: 'ALL', label: 'View All Tools', icon: Sliders, badge: null },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const isTabActive = activeToolsTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveToolsTab(tab.id)}
+                className={`min-h-[42px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                  isTabActive
+                    ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-950/60 font-black'
+                    : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span
+                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                      isTabActive ? 'bg-slate-950 text-cyan-300' : 'bg-slate-900 text-slate-300 border border-white/10'
+                    }`}
+                  >
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Feature 2: "What-If" Climate Simulator Interactive Slider Bar */}
+      {(activeToolsTab === 'ALL' || activeToolsTab === 'CLIMATE') && (
+        <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-fadeIn">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/20 shrink-0">
+              <ThermometerSnowflake className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white tracking-tight font-mono uppercase">
+                  &ldquo;What-If&rdquo; Climate Simulator
+                </h3>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded font-bold bg-amber-950 text-amber-300 border border-amber-800 shrink-0">
+                  HEATWAVE STRESS TEST
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Simulate extreme heatwaves. Elevates ambient temperatures and triggers severe HVAC cooling loads.
+              </p>
+            </div>
+          </div>
+
+          {/* Climate Delta Slider Controls */}
+          <div className="flex items-center gap-4 w-full md:w-auto justify-end">
+            <div className="flex items-center gap-3 w-full md:w-64">
+              <input
+                type="range"
+                min="0"
+                max="6"
+                step="0.5"
+                value={climateDelta}
+                onChange={(e) => handleClimateDeltaChange(Number(e.target.value))}
+                className="w-full accent-amber-400 cursor-pointer"
+              />
+              <div className="px-3 py-1.5 rounded-xl bg-slate-950 border border-white/10 font-mono text-xs font-black min-w-[75px] text-center shrink-0">
+                <span className={climateDelta > 0 ? 'text-amber-400' : 'text-slate-400'}>
+                  +{climateDelta.toFixed(1)}&deg;C
+                </span>
+              </div>
+            </div>
+
+            {climateDelta > 0 && (
+              <button
+                type="button"
+                onClick={() => handleClimateDeltaChange(0)}
+                className="min-h-[40px] px-2.5 py-1.5 rounded-lg text-[10px] font-mono text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Feature 1: Live Location Weather Ingestion */}
-      <WeatherSync onWeatherLoaded={handleWeatherLoaded} isStreaming={isStreaming} />
+      {(activeToolsTab === 'ALL' || activeToolsTab === 'WEATHER') && (
+        <div className="animate-fadeIn">
+          <WeatherSync onWeatherLoaded={handleWeatherLoaded} isStreaming={isStreaming} />
+        </div>
+      )}
 
       {/* Control Section: Drag & Drop CSV + Demo Scenario + PDF & JSON Exports */}
-      <ControlPanel
-        onStartSimulation={handleStartSimulation}
-        onStopSimulation={handleStopSimulation}
-        onFastForward={handleFastForward}
-        isStreaming={isStreaming}
-        currentStep={currentStep}
-        totalSteps={totalSteps}
-        apiUrl={API_URL}
-        error={error}
-        onClearError={() => setError(null)}
-        onGenerateMock={handleInstantMock}
-        onCsvLoaded={handleCsvLoaded}
-        loadedCsvName={loadedCsvName}
-        forecastData={forecastData}
-        onPlayDemoScenario={handlePlayDemoScenario}
-        onExportPDF={handleExportPDF}
-        isExportingPdf={isExportingPdf}
-        onExportJSON={handleExportJSON}
-      />
+      {(activeToolsTab === 'ALL' || activeToolsTab === 'CONTROLS') && (
+        <div className="animate-fadeIn">
+          <ControlPanel
+            onStartSimulation={handleStartSimulation}
+            onStopSimulation={handleStopSimulation}
+            onFastForward={handleFastForward}
+            isStreaming={isStreaming}
+            currentStep={currentStep}
+            totalSteps={totalSteps}
+            apiUrl={API_URL}
+            error={error}
+            onClearError={() => setError(null)}
+            onGenerateMock={handleInstantMock}
+            onCsvLoaded={handleCsvLoaded}
+            loadedCsvName={loadedCsvName}
+            forecastData={forecastData}
+            onPlayDemoScenario={handlePlayDemoScenario}
+            onExportPDF={handleExportPDF}
+            isExportingPdf={isExportingPdf}
+            onExportJSON={handleExportJSON}
+          />
+        </div>
+      )}
 
       {/* Optical Meter Ingestion (OCR) Component */}
-      <div id="tour-ocr-scanner">
-        <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
-          <MeterScanner
-            onOverrideLoad={handleOverrideLoad}
-            currentLoad={latestPrediction?.predicted_demand_kw}
-          />
-        </Suspense>
-      </div>
+      {(activeToolsTab === 'ALL' || activeToolsTab === 'OCR') && (
+        <div id="tour-ocr-scanner" className="animate-fadeIn">
+          <Suspense fallback={<div className="animate-pulse bg-slate-800 h-64 rounded-2xl w-full"></div>}>
+            <MeterScanner
+              onOverrideLoad={handleOverrideLoad}
+              currentLoad={latestPrediction?.predicted_demand_kw}
+            />
+          </Suspense>
+        </div>
+      )}
 
       {/* Printable Report Canvas Container */}
       <div id="dashboard-report-content" className="space-y-6 rounded-2xl bg-slate-950/60 p-2 sm:p-4">
-        {/* Unmissable Alert Banner */}
-        {(isCurrentOverload || hasFutureOverload) && (
+        {/* Unmissable Alert Banner with Dismiss Cross (✕) */}
+        {!isBannerDismissed && (isCurrentOverload || hasFutureOverload) && (
           <AlertBanner
             isCurrentOverload={isCurrentOverload}
             currentDemand={currentDemandVal}
@@ -1246,7 +1321,28 @@ export default function Dashboard() {
             criticalHours={criticalHours}
             maxDemand={maxDemand}
             peakHour={peakOverloadPoint?.hour || criticalHours[0]}
+            onDismiss={() => setIsBannerDismissed(true)}
           />
+        )}
+
+        {/* Subtle Pill when Alert Banner is dismissed */}
+        {isBannerDismissed && (isCurrentOverload || hasFutureOverload) && (
+          <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-900/90 border border-white/10 text-xs font-mono shadow-md animate-fadeIn">
+            <span className="flex items-center gap-2 text-slate-300">
+              <span className={`w-2.5 h-2.5 rounded-full ${isCurrentOverload ? 'bg-rose-500 animate-ping' : 'bg-amber-400'}`} />
+              <span className="font-bold text-white">
+                {isCurrentOverload ? '🚨 Critical Overload Alert Hidden' : '⚠️ Peak Advisory Alert Hidden'}
+              </span>
+              <span className="text-slate-400 hidden sm:inline">&bull; Dismissed by operator</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsBannerDismissed(false)}
+              className="min-h-[36px] px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-400 hover:text-cyan-300 border border-cyan-500/30 font-bold cursor-pointer transition-colors"
+            >
+              Review Alert
+            </button>
+          </div>
         )}
 
         {/* Feature 1: Transformer Health Visual Gauge Banner */}

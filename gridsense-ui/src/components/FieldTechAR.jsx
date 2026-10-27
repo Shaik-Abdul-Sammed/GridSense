@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import {
   Camera,
@@ -19,6 +19,9 @@ import {
   Check,
   Radio,
   Sliders,
+  Video,
+  RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 
 const INSPECTION_FIELDS = {
@@ -48,44 +51,44 @@ const INSPECTION_FIELDS = {
           {
             id: 'REM-BESS-SHAVE',
             actionTitle: 'Dispatch BESS Peak-Shaving (-40 kW)',
-            description: 'Offload Phase-B onto BESS Pack A-3 to immediately alleviate winding stress.',
+            description: 'Injects localized battery energy to drop transformer winding load below 85% capacity.',
             iconType: 'Zap',
             resultSeverity: 'STABILIZED',
-            resultReading: '56.2°C',
-            toastMessage: '⚡ BESS Peak-Shaving (-40 kW) active. Core temperature stabilized at 56.2°C.',
+            resultReading: '63.2°C',
+            toastMessage: '⚡ BESS 40kW peak shaving active. Winding hotspot stabilized to 63.2°C.',
           },
           {
-            id: 'REM-DRONE-DISPATCH',
-            actionTitle: 'Dispatch Autonomous FLIR Drone',
-            description: 'Transmit GPS vector to Autonomous Drone #DRN-02 for close-range thermal surveillance.',
-            iconType: 'FileText',
-            resultSeverity: 'INSPECTING',
-            resultReading: '82.4°C (Monitoring)',
-            toastMessage: '📋 Work Order #WO-9942 filed. Sector A Drone #DRN-02 en route.',
+            id: 'REM-FORCE-COOL',
+            actionTitle: 'Engage Stage-2 Forced Oil Pumps (OFAF)',
+            description: 'Forces high-velocity synthetic ester oil circulation through heat exchanger banks.',
+            iconType: 'Fan',
+            resultSeverity: 'NOMINAL',
+            resultReading: '58.7°C',
+            toastMessage: '🌀 OFAF Stage-2 cooling online. Transformer core cooled to 58.7°C (Nominal).',
           },
         ],
       },
       {
         id: 'DEF-T2-OIL',
-        name: 'Dielectric Oil Pressure Drop',
+        name: 'Top Oil Dielectric Stress',
         severity: 'WARNING',
-        currentReading: '1.18 BAR',
-        normalReading: '1.80 - 2.20 BAR',
-        metricName: 'Oil Pressure',
-        iconType: 'AlertTriangle',
-        pinPosition: 'bottom-12 left-3 sm:bottom-14 sm:left-6',
-        summary: 'Dielectric oil pressure below circulation safety limit. Risk of vapor pockets.',
-        rootCause: 'Auxiliary cooling radiator pump cavitation or micro-airlock in valve V-04.',
-        impact: 'Reduced forced-oil circulation across external cooling radiator fins.',
+        currentReading: '71.5°C',
+        normalReading: '≤ 60.0°C',
+        metricName: 'Top Oil Temp',
+        iconType: 'Activity',
+        pinPosition: 'bottom-20 left-3 sm:bottom-24 sm:left-6',
+        summary: 'Top oil temperature climbing at 0.4°C/min; dissolved gas sensor (DGA) reports trace hydrogen.',
+        rootCause: 'Ambient ambient heat wave combined with peak industrial feeder demand.',
+        impact: 'Oil oxidation rate accelerated 2.4x standard aging profile.',
         remediations: [
           {
-            id: 'REM-PUMP-BOOST',
-            actionTitle: 'Trigger Emergency Radiator Pump Boost',
-            description: 'Cycle auxiliary coolant pump to 100% duty cycle and purge manifold line.',
-            iconType: 'Fan',
+            id: 'REM-TAP-AUTO',
+            actionTitle: 'Auto-Step OLTC Tap Changer (Position 7 → 5)',
+            description: 'Lowers secondary bus voltage by 2.5% to decrease magnetizing core current.',
+            iconType: 'Sliders',
             resultSeverity: 'NOMINAL',
-            resultReading: '1.88 BAR',
-            toastMessage: '❄️ Radiator pump cycled to 100%. Oil pressure restored to 1.88 BAR (Nominal).',
+            resultReading: '57.1°C',
+            toastMessage: '⚙️ On-Load Tap Changer stepped down to Pos 5. Top oil cooling to 57.1°C.',
           },
         ],
       },
@@ -93,20 +96,20 @@ const INSPECTION_FIELDS = {
   },
   BESS_INVERTER: {
     id: 'BESS_INVERTER',
-    name: 'BESS Inverter Racks',
-    code: 'BESS-INV-01',
-    type: '500kWh Containerized Inverter Rack',
-    location: 'LAT: 37.7751° N • LON: -122.4190° W • ELEV: 17m',
-    confidence: '98.8%',
+    name: 'BESS Inverter Rack B',
+    code: 'BESS-INV-02',
+    type: 'Bidirectional SiC Power Converter',
+    location: 'LAT: 37.7751° N • LON: -122.4190° W • ELEV: 19m',
+    confidence: '98.7%',
     baseSeverity: 'WARNING',
-    flirTemp: '74.5°C',
+    flirTemp: '68.9°C',
     defects: [
       {
-        id: 'DEF-BESS-IGBT',
-        name: 'IGBT Junction Thermal Drift',
+        id: 'DEF-INV-IGBT',
+        name: 'IGBT Junction Thermal Delta',
         severity: 'WARNING',
-        currentReading: '74.5°C',
-        normalReading: '≤ 60.0°C',
+        currentReading: '68.9°C',
+        normalReading: '≤ 55.0°C',
         metricName: 'IGBT Temp',
         iconType: 'Cpu',
         pinPosition: 'top-12 left-3 sm:top-14 sm:left-6',
@@ -181,21 +184,11 @@ const INSPECTION_FIELDS = {
         normalReading: '≤ 45.0°C',
         metricName: 'Contact Temp',
         iconType: 'CheckCircle2',
-        pinPosition: 'bottom-12 right-3 sm:bottom-14 sm:right-6',
-        summary: 'All vacuum interrupter contacts operating within nominal limits. SF6 pressure 5.8 bar.',
-        rootCause: 'None. Baseline scheduled diagnostic scan validates full contact conductivity.',
-        impact: 'Circuit breaker is 100% operational with zero trip alarms.',
-        remediations: [
-          {
-            id: 'REM-CB-AUDIT',
-            actionTitle: 'Log Routine Inspection to SCADA Audit Trail',
-            description: 'Record timestamped baseline calibration telemetry to the central SCADA historian.',
-            iconType: 'FileText',
-            resultSeverity: 'NOMINAL',
-            resultReading: '34.0°C (Verified)',
-            toastMessage: '📋 Audit entry #AUD-8821 logged successfully. Next scheduled scan in 7 days.',
-          },
-        ],
+        pinPosition: 'bottom-16 right-3 sm:bottom-20 sm:right-6',
+        summary: 'Dynamic resistance and SF6 gas density within standard IEC 62271 nominal envelope.',
+        rootCause: 'All three poles operating in optimal synchronized vacuum transition.',
+        impact: 'Feeder circuit breaker ready for high-speed fault isolation.',
+        remediations: [],
       },
     ],
   },
@@ -203,27 +196,27 @@ const INSPECTION_FIELDS = {
 
 const SEVERITY_CONFIG = {
   CRITICAL: {
-    badgeBg: 'bg-rose-950/90 text-rose-300 border-rose-600',
+    badgeBg: 'bg-rose-950/90 text-rose-300 border-rose-500',
     border: 'border-rose-500',
     glow: 'shadow-rose-500/50',
-    indicator: 'bg-rose-500',
+    indicator: 'bg-rose-500 animate-pulse',
     text: 'text-rose-400',
     pinBg: 'bg-slate-950/95',
   },
   WARNING: {
-    badgeBg: 'bg-amber-950/90 text-amber-300 border-amber-600',
+    badgeBg: 'bg-amber-950/90 text-amber-300 border-amber-500',
     border: 'border-amber-500',
     glow: 'shadow-amber-500/50',
-    indicator: 'bg-amber-500',
+    indicator: 'bg-amber-400 animate-pulse',
     text: 'text-amber-400',
     pinBg: 'bg-slate-950/95',
   },
   ELEVATED: {
-    badgeBg: 'bg-yellow-950/90 text-yellow-300 border-yellow-600',
-    border: 'border-yellow-500',
-    glow: 'shadow-yellow-500/50',
-    indicator: 'bg-yellow-500',
-    text: 'text-yellow-400',
+    badgeBg: 'bg-orange-950/90 text-orange-300 border-orange-500',
+    border: 'border-orange-500',
+    glow: 'shadow-orange-500/50',
+    indicator: 'bg-orange-400',
+    text: 'text-orange-400',
     pinBg: 'bg-slate-950/95',
   },
   STABILIZED: {
@@ -277,8 +270,13 @@ function renderDefectIcon(iconType, className = 'w-4 h-4 shrink-0') {
 
 export default function FieldTechAR({ isOpen = true, onClose, embedded = false }) {
   const videoRef = useRef(null);
+  const streamRef = useRef(null);
+
   const [hasCamera, setHasCamera] = useState(false);
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
+  const [cameraPermissionRequested, setCameraPermissionRequested] = useState(false);
+  const [isSimModeForced, setIsSimModeForced] = useState(false);
+
   const [isScanning, setIsScanning] = useState(false);
   const [scanResults, setScanResults] = useState(true);
   const [filterMode, setFilterMode] = useState('FLIR'); // 'FLIR', 'OPTICAL', 'NVG'
@@ -288,54 +286,97 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
   const [actionInProgress, setActionInProgress] = useState(null);
   const [toastNotification, setToastNotification] = useState(null);
 
+  // Mobile Suboptions Switcher: 'ALL', 'VIEWPORT', 'CONSOLE'
+  const [mobileSubTab, setMobileSubTab] = useState('ALL');
+
+  const showToast = useCallback((message) => {
+    setToastNotification(message);
+    setTimeout(() => {
+      setToastNotification((curr) => (curr === message ? null : curr));
+    }, 5000);
+  }, []);
+
+  // Comprehensive Camera Initializer with robust mobile/desktop fallbacks
+  const startCamera = useCallback(async () => {
+    setCameraPermissionRequested(true);
+    let stream = null;
+
+    try {
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        setHasCamera(false);
+        setCameraUnavailable(true);
+        setFilterMode('FLIR');
+        return;
+      }
+
+      // First attempt: environment-facing camera with optimal HD resolution
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch (constraintErr) {
+        console.warn('Ideal back-camera constraint failed, attempting standard camera:', constraintErr);
+        // Fallback for laptops and devices without back-facing cameras
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      streamRef.current = stream;
+
+      // Assign to permanent video element
+      if (videoRef.current && stream) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => {
+          videoRef.current?.play().catch((playErr) => {
+            console.warn('Autoplay prevented on video tag:', playErr);
+          });
+        };
+        try {
+          await videoRef.current.play();
+        } catch (pErr) {
+          console.warn('Direct play error:', pErr);
+        }
+      }
+
+      setHasCamera(true);
+      setCameraUnavailable(false);
+      setIsSimModeForced(false);
+      showToast('📷 Live Optical Camera feed connected successfully.');
+    } catch (err) {
+      console.warn('Camera feed denied, blocked, or unavailable:', err?.message || err);
+      setHasCamera(false);
+      setCameraUnavailable(true);
+      setIsSimModeForced(true);
+      setFilterMode('FLIR');
+      showToast('Thermal Simulation fallback active (Physical camera unavailable).');
+    }
+  }, [showToast]);
+
   useEffect(() => {
     if (!isOpen) {
       setIsScanning(false);
       return;
     }
 
-    let stream = null;
-    const startCamera = async () => {
-      try {
-        if (!navigator?.mediaDevices?.getUserMedia) {
-          setHasCamera(false);
-          setCameraUnavailable(true);
-          setFilterMode('FLIR');
-          return;
-        }
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          setHasCamera(true);
-          setCameraUnavailable(false);
-        }
-      } catch (err) {
-        console.warn('Camera feed unavailable or blocked:', err?.message || err);
-        setHasCamera(false);
-        setCameraUnavailable(true);
-        // Automatically engage FLIR Thermal Simulation fallback
-        setFilterMode('FLIR');
-      }
-    };
-
     startCamera();
 
     return () => {
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
-  }, [isOpen]);
-
-  const showToast = (message) => {
-    setToastNotification(message);
-    setTimeout(() => {
-      setToastNotification(null);
-    }, 4500);
-  };
+  }, [isOpen, startCamera]);
 
   const handleSimulateScan = () => {
     setIsScanning(true);
@@ -369,9 +410,10 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
 
   const currentField = INSPECTION_FIELDS[selectedFieldId] || INSPECTION_FIELDS.TRANSFORMER_T2;
 
-  // Selected defect object
-  const activeDefect =
-    currentField.defects.find((d) => d.id === activeDefectId) || currentField.defects[0];
+  // Selected defect object (or null if user closed the card)
+  const activeDefect = activeDefectId
+    ? currentField.defects.find((d) => d.id === activeDefectId) || currentField.defects[0]
+    : null;
 
   // Compute effective severity of a defect (taking remediation into account)
   const getDefectEffectiveState = (defect) => {
@@ -424,18 +466,81 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
 
   const content = (
     <div className="w-full flex flex-col space-y-4">
-      {/* Top Notification Toast */}
+      {/* Top Notification Toast with Dismiss Cross (✕) */}
       {toastNotification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 border-2 border-cyan-400 text-cyan-200 px-4 py-2.5 rounded-2xl shadow-2xl shadow-cyan-500/50 text-xs font-mono font-bold flex items-center gap-2.5 animate-bounce-once backdrop-blur-md max-w-md w-auto text-center">
-          <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
-          <span className="break-words">{toastNotification}</span>
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 border-2 border-cyan-400 text-cyan-200 px-4 py-2.5 rounded-2xl shadow-2xl shadow-cyan-500/50 text-xs font-mono font-bold flex items-center justify-between gap-3 animate-bounce-once backdrop-blur-md max-w-md w-[92vw] sm:w-auto"
+        >
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping shrink-0" />
+            <span className="break-words text-left leading-tight">{toastNotification}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setToastNotification(null)}
+            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+            aria-label="Dismiss notification"
+            title="Dismiss"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
+
+      {/* Mobile Suboptions Switcher Bar (Appears on small/medium screens to prevent clumsy stacked scrolling) */}
+      <div className="flex xl:hidden items-center justify-between p-1.5 rounded-2xl bg-slate-900/90 border border-white/10 backdrop-blur-xl">
+        <span className="text-[10px] font-mono font-bold text-slate-400 uppercase px-2 shrink-0">
+          View Mode:
+        </span>
+        <div className="flex items-center gap-1 flex-1 justify-end font-mono text-xs">
+          <button
+            type="button"
+            onClick={() => setMobileSubTab('VIEWPORT')}
+            className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              mobileSubTab === 'VIEWPORT'
+                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/60'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5" />
+            <span>AR Lens</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileSubTab('CONSOLE')}
+            className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              mobileSubTab === 'CONSOLE'
+                ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-950/60'
+                : 'text-slate-300 hover:text-white'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Diagnostics</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileSubTab('ALL')}
+            className={`min-h-[40px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+              mobileSubTab === 'ALL'
+                ? 'bg-slate-800 text-white border border-cyan-400'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            All
+          </button>
+        </div>
+      </div>
 
       {/* Main Responsive Grid Layout: Viewport on Left/Top, Diagnostics & Remediation on Right/Bottom */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
         {/* ================= COLUMN 1: AR Viewport & Camera Lens ================= */}
-        <div className="xl:col-span-7 2xl:col-span-8 bg-slate-950 border-2 border-cyan-500/70 rounded-3xl shadow-2xl shadow-cyan-950/90 overflow-hidden flex flex-col">
+        <div
+          className={`xl:col-span-7 2xl:col-span-8 bg-slate-950 border-2 border-cyan-500/70 rounded-3xl shadow-2xl shadow-cyan-950/90 overflow-hidden flex flex-col ${
+            mobileSubTab === 'CONSOLE' ? 'hidden xl:flex' : 'flex'
+          }`}
+        >
           {/* Top AR Header Bar */}
           <div className="px-4 py-3 bg-slate-900/95 border-b border-white/10 flex flex-wrap items-center justify-between gap-3 z-20">
             <div className="flex items-center gap-3 min-w-0">
@@ -458,6 +563,32 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {/* Camera Source Selector / Retry Button */}
+              {hasCamera && !isSimModeForced ? (
+                <button
+                  type="button"
+                  onClick={() => setIsSimModeForced(true)}
+                  className="min-h-[40px] px-2.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                  title="Live camera active. Click to switch to Simulated FLIR Mode"
+                >
+                  <Video className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                  <span className="hidden sm:inline">Camera Live</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSimModeForced(false);
+                    startCamera();
+                  }}
+                  className="min-h-[40px] px-2.5 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/50 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                  title={cameraUnavailable ? 'Camera denied or unavailable. Click to retry access.' : 'Click to engage physical webcam / phone camera'}
+                >
+                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>{cameraUnavailable ? 'Retry Camera' : cameraPermissionRequested && hasCamera ? 'Restore Camera' : 'Enable Camera'}</span>
+                </button>
+              )}
+
               {/* Filter Mode Selector */}
               <div className="flex items-center bg-slate-950 p-1 rounded-xl border border-white/10 text-xs font-mono">
                 {['FLIR', 'OPTICAL', 'NVG'].map((mode) => (
@@ -465,7 +596,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                     key={mode}
                     type="button"
                     onClick={() => setFilterMode(mode)}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    className={`min-h-[36px] px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center justify-center ${
                       filterMode === mode
                         ? 'bg-cyan-500 text-slate-950 shadow-md'
                         : 'text-slate-400 hover:text-white'
@@ -480,7 +611,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
                   title="Close Scanner"
                 >
                   <X className="w-5 h-5" />
@@ -489,11 +620,11 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             </div>
           </div>
 
-          {/* Inspection Field Target Selector Bar - Operator Asset Switcher */}
-          <div className="px-4 py-2 bg-slate-950/95 border-b border-cyan-500/30 flex items-center gap-2 overflow-x-auto z-20 scrollbar-none flex-nowrap">
+          {/* Inspection Field Target Selector Bar - Operator Asset Suboptions */}
+          <div className="px-4 py-2 bg-slate-950/95 border-b border-cyan-500/30 flex items-center gap-2 overflow-x-auto z-20 scrollbar-thin scrollbar-thumb-slate-700 flex-nowrap">
             <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
               <Layers className="w-3.5 h-3.5 text-cyan-400" />
-              Fields:
+              Suboptions:
             </span>
             {Object.keys(INSPECTION_FIELDS).map((fieldKey) => {
               const field = INSPECTION_FIELDS[fieldKey];
@@ -512,21 +643,17 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                       setActiveDefectId(field.defects[0].id);
                     }
                   }}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border font-mono text-xs transition-all cursor-pointer shrink-0 ${
+                  className={`min-h-[42px] flex items-center gap-2 px-3 py-1.5 rounded-xl border font-mono text-xs transition-all cursor-pointer shrink-0 ${
                     isSelected
                       ? 'bg-slate-800 border-cyan-400 text-white shadow-lg shadow-cyan-950/50'
                       : 'bg-slate-900/60 border-white/10 text-slate-400 hover:text-white hover:border-white/20'
                   }`}
                 >
-                  <span className="font-bold">{field.name}</span>
+                  <span className={`w-2 h-2 rounded-full ${style.indicator}`} />
+                  <span className="font-bold whitespace-nowrap">{field.name}</span>
                   <span
-                    className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${style.badgeBg} flex items-center gap-1`}
+                    className={`text-[8px] px-1 py-0.2 rounded border font-black uppercase ${style.badgeBg}`}
                   >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${style.indicator} ${
-                        aggregateSeverity === 'CRITICAL' ? 'animate-ping' : ''
-                      }`}
-                    />
                     {aggregateSeverity}
                   </span>
                 </button>
@@ -534,9 +661,9 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             })}
           </div>
 
-          {/* Viewport Area: Live Camera Feed or Simulated FLIR Thermal Environment */}
+          {/* AR Viewport Container */}
           <div
-            className={`relative bg-black overflow-hidden flex items-center justify-center min-h-[380px] sm:min-h-[440px] transition-colors duration-500 ${
+            className={`relative w-full h-[380px] sm:h-[460px] md:h-[500px] overflow-hidden select-none transition-colors duration-500 ${
               filterMode === 'FLIR'
                 ? 'bg-[#0d0724]'
                 : filterMode === 'NVG'
@@ -544,22 +671,27 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 : 'bg-slate-950'
             }`}
           >
-            {hasCamera ? (
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${
-                  filterMode === 'FLIR'
-                    ? 'sepia hue-rotate-180 contrast-150 saturate-200'
-                    : filterMode === 'NVG'
-                    ? 'brightness-125 contrast-150 hue-rotate-90 saturate-200'
-                    : ''
-                }`}
-              />
-            ) : (
-              /* High-Tech FLIR Thermal Simulation Canvas - Guaranteed Visuals for Hackathon Judges */
+            {/* Live Camera Video Element - Always Mounted to Guarantee Stream Display */}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+                hasCamera && !isSimModeForced
+                  ? 'opacity-100 z-10'
+                  : 'opacity-0 -z-10 pointer-events-none'
+              } ${
+                filterMode === 'FLIR'
+                  ? 'sepia hue-rotate-180 contrast-150 saturate-200'
+                  : filterMode === 'NVG'
+                  ? 'brightness-125 contrast-150 hue-rotate-90 saturate-200'
+                  : ''
+              }`}
+            />
+
+            {/* High-Tech FLIR Thermal Simulation Canvas - Guaranteed Visuals When Camera is Inactive */}
+            {(!hasCamera || isSimModeForced) && (
               <div
                 className={`absolute inset-0 flex items-center justify-center overflow-hidden transition-all duration-500 ${
                   filterMode === 'FLIR'
@@ -618,54 +750,36 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 {/* Simulated FLIR Radiometry Calibration Watermark */}
                 <div className="absolute bottom-12 left-4 text-[9px] font-mono font-bold text-amber-300/80 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60 flex items-center gap-1.5 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span>SIMULATED FLIR THERMAL RADIOMETRY &bull; 60 FPS</span>
+                  <span>FLIR RADIOMETRY: EMISSIVITY 0.95 &bull; IR OPTIC 24°</span>
                 </div>
               </div>
             )}
 
-            {/* Quick Interactive Button when Hardware Camera is Unavailable */}
-            {cameraUnavailable && (
-              <div className="absolute top-14 left-3 sm:left-4 z-30 pointer-events-auto">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilterMode('FLIR');
-                    showToast('Active: FLIR High-Precision Thermal Simulation Mode.');
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-mono text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/50 hover:bg-amber-500/30 shadow-xl backdrop-blur-md cursor-pointer transition-all active:scale-95"
-                  title="Camera access blocked or unsupported. Engaging FLIR Thermal Simulation Mode."
-                >
-                  <Thermometer className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-                  <span>Camera Unavailable - Click to use FLIR Mode</span>
-                </button>
-              </div>
-            )}
-
-            {/* Futuristic SVG HUD Graphic Overlay - Clean Compact Non-Overlapping Layout */}
-            <div className="absolute inset-0 pointer-events-none z-10 flex flex-col justify-between p-3 sm:p-4 select-none font-mono text-xs">
-              {/* Compact Top HUD Bar */}
+            {/* Tactical HUD Overlay Elements (Grid, Coordinates, Reticles) */}
+            <div className="absolute inset-0 pointer-events-none p-3 sm:p-5 flex flex-col justify-between z-20">
+              {/* Top HUD Status Row */}
               <div className="flex items-center justify-between gap-2">
-                <div className="bg-slate-950/90 px-3 py-1.5 rounded-xl border border-cyan-500/40 backdrop-blur-md shadow-md flex items-center gap-2 pointer-events-auto">
-                  <Scan className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="font-bold text-white text-[11px] truncate">
-                    {currentField.code}
-                  </span>
-                  <span className="text-[9px] text-emerald-400 font-bold hidden sm:inline">
-                    &bull; {currentField.confidence}
-                  </span>
+                <div className="bg-slate-950/90 px-2.5 py-1 rounded-lg border border-cyan-500/40 text-[10px] text-cyan-300 font-mono flex items-center gap-2 backdrop-blur-md shadow-md pointer-events-auto">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                  <span>TARGET: {currentField.code}</span>
+                  <span className="text-slate-400">|</span>
+                  <span className="text-white font-bold">{currentField.confidence} MATCH</span>
                 </div>
 
-                <div className="bg-slate-950/90 px-3 py-1.5 rounded-xl border border-cyan-500/40 backdrop-blur-md shadow-md text-[10px] text-cyan-300 font-bold pointer-events-auto shrink-0 flex items-center gap-2">
-                  <span>{filterMode} 60FPS</span>
-                  <span className="text-slate-500 hidden sm:inline">&bull;</span>
-                  <span className="text-amber-300 hidden sm:inline">IEC 60076-7</span>
+                <div className="flex items-center gap-1.5 pointer-events-auto">
+                  <div className="bg-slate-950/90 px-2 py-1 rounded-lg border border-cyan-500/40 text-[10px] text-amber-300 font-mono backdrop-blur-md">
+                    <span>MODE: {filterMode}</span>
+                  </div>
+                  <div className="bg-slate-950/90 px-2 py-1 rounded-lg border border-cyan-500/40 text-[10px] text-emerald-400 font-mono backdrop-blur-md">
+                    <span>FLIR: {currentField.flirTemp}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Central Targeting Reticle & Crosshairs */}
-              <div className="relative flex items-center justify-center my-auto">
+              {/* Central Optical Targeting Reticle */}
+              <div className="relative w-full flex-1 flex items-center justify-center">
                 <div
-                  className={`w-40 h-40 sm:w-52 sm:h-52 border-2 rounded-full flex items-center justify-center relative transition-colors ${
+                  className={`relative w-40 h-40 sm:w-52 sm:h-52 border-2 rounded-full flex items-center justify-center transition-all duration-300 ${
                     filterMode === 'FLIR'
                       ? 'border-rose-400/50'
                       : filterMode === 'NVG'
@@ -750,7 +864,13 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                   return (
                     <div
                       key={defect.id}
-                      onClick={() => setActiveDefectId(defect.id)}
+                      onClick={() => {
+                        setActiveDefectId(defect.id);
+                        if (mobileSubTab === 'VIEWPORT') {
+                          // Allow quick peek
+                          showToast(`Selected: ${defect.name} (${state.reading})`);
+                        }
+                      }}
                       className={`absolute ${defect.pinPosition} pointer-events-auto cursor-pointer p-2.5 sm:p-3 rounded-2xl border-2 ${
                         isActive ? 'border-cyan-400 ring-2 ring-cyan-400/50 scale-105' : config.border
                       } ${config.pinBg} text-white shadow-2xl ${
@@ -813,7 +933,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 <button
                   type="button"
                   onClick={handleResetScan}
-                  className="px-3 py-2 rounded-xl font-bold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 border border-white/10 transition-all cursor-pointer flex items-center gap-1.5"
+                  className="min-h-[42px] px-3 py-2 rounded-xl font-bold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 border border-white/10 transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span>Reset State</span>
@@ -824,7 +944,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 type="button"
                 onClick={handleSimulateScan}
                 disabled={isScanning}
-                className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-black text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 shadow-xl shadow-cyan-950/60 transition-all select-none cursor-pointer border-none"
+                className="min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-black text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-cyan-400 via-teal-300 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 shadow-xl shadow-cyan-950/60 transition-all select-none cursor-pointer border-none"
               >
                 <Scan className="w-4 h-4" />
                 <span>{isScanning ? 'Scanning...' : 'Rescan Telemetry'}</span>
@@ -834,7 +954,11 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
         </div>
 
         {/* ================= COLUMN 2: Diagnostics & Remediation Console ================= */}
-        <div className="xl:col-span-5 2xl:col-span-4 bg-slate-950 border-2 border-cyan-500/70 rounded-3xl shadow-2xl shadow-cyan-950/90 overflow-hidden flex flex-col">
+        <div
+          className={`xl:col-span-5 2xl:col-span-4 bg-slate-950 border-2 border-cyan-500/70 rounded-3xl shadow-2xl shadow-cyan-950/90 overflow-hidden flex flex-col ${
+            mobileSubTab === 'VIEWPORT' ? 'hidden xl:flex' : 'flex'
+          }`}
+        >
           {/* Remediation Console Header */}
           <div className="px-5 py-3.5 bg-slate-900/95 border-b border-white/10 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -879,7 +1003,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                       key={def.id}
                       type="button"
                       onClick={() => setActiveDefectId(def.id)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer shrink-0 ${
+                      className={`min-h-[38px] flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer shrink-0 ${
                         isCur
                           ? 'bg-slate-800 text-white border border-cyan-400 shadow-md'
                           : 'text-slate-400 hover:text-white'
@@ -896,27 +1020,39 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
               </div>
             )}
 
-            {/* Active Defect Metric Card */}
-            {activeDefect && (
-              <div className="space-y-4">
+            {/* Active Defect Metric Card with Dismiss Cross (✕) */}
+            {activeDefect ? (
+              <div className="space-y-4 animate-fadeIn">
                 {(() => {
                   const st = getDefectEffectiveState(activeDefect);
                   const cfg = SEVERITY_CONFIG[st.severity] || SEVERITY_CONFIG.NOMINAL;
 
                   return (
-                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-white/10 space-y-2.5 font-mono shadow-inner">
+                    <div className="p-3.5 rounded-2xl bg-slate-900 border border-white/10 space-y-2.5 font-mono shadow-inner relative">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="p-1 rounded-lg bg-cyan-500/10 text-cyan-400">
+                        <div className="flex items-center gap-2 min-w-0 pr-2">
+                          <div className="p-1 rounded-lg bg-cyan-500/10 text-cyan-400 shrink-0">
                             {renderDefectIcon(activeDefect.iconType, 'w-4 h-4')}
                           </div>
-                          <span className="text-xs font-black text-white">{activeDefect.name}</span>
+                          <span className="text-xs font-black text-white truncate">{activeDefect.name}</span>
                         </div>
-                        <span
-                          className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider ${cfg.badgeBg}`}
-                        >
-                          [{st.severity}]
-                        </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span
+                            className={`text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider ${cfg.badgeBg}`}
+                          >
+                            [{st.severity}]
+                          </span>
+                          {/* Close/Dismiss Cross (✕) on Defect Diagnosis */}
+                          <button
+                            type="button"
+                            onClick={() => setActiveDefectId(null)}
+                            className="min-h-[32px] min-w-[32px] p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center"
+                            aria-label="Close defect diagnosis"
+                            title="Close defect card"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 pt-1 border-t border-white/5">
@@ -1005,7 +1141,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                               type="button"
                               disabled={isExecuting || isAlreadyRemediated}
                               onClick={() => handleApplyRemediation(activeDefect, remediation)}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                              className={`min-h-[40px] px-3 py-1.5 rounded-xl text-xs font-mono font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                                 isAlreadyRemediated
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 cursor-default'
                                   : 'bg-gradient-to-r from-cyan-400 to-emerald-400 hover:from-cyan-300 hover:to-emerald-300 text-slate-950 shadow-md shadow-cyan-950/50'
@@ -1013,7 +1149,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                             >
                               {isExecuting ? (
                                 <>
-                                  <RotateCcw className="w-3 h-3 animate-spin" />
+                                  <RotateCcw className="w-3.5 h-3.5 animate-spin" />
                                   <span>Executing...</span>
                                 </>
                               ) : isAlreadyRemediated ? (
@@ -1034,6 +1170,33 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                     })}
                   </div>
                 </div>
+              </div>
+            ) : (
+              /* Helpful Guide Placeholder when defect card is dismissed */
+              <div className="p-6 rounded-2xl bg-slate-900/60 border border-white/5 text-center space-y-3 font-mono">
+                <div className="w-10 h-10 mx-auto rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h5 className="text-xs font-bold text-white uppercase">No Defect Card Selected</h5>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Tap any defect pin on the AR Lens or select a component below to review diagnostics.
+                  </p>
+                </div>
+                {currentField.defects.length > 0 && (
+                  <div className="pt-2 flex flex-wrap gap-2 justify-center">
+                    {currentField.defects.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => setActiveDefectId(d.id)}
+                        className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 text-xs font-bold cursor-pointer transition-colors"
+                      >
+                        Inspect {d.metricName}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
