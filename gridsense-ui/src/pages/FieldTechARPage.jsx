@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Camera, Eye, Radio, ShieldCheck, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Camera, Eye, Radio, ShieldCheck, Zap, ArrowLeft } from 'lucide-react';
 import FieldTechAR from '../components/FieldTechAR';
 
 export default function FieldTechARPage() {
@@ -30,6 +31,15 @@ export default function FieldTechARPage() {
 
         {/* Substation Telemetry Quick Badges */}
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            to="/"
+            className="px-3 py-1.5 rounded-xl bg-slate-900/90 hover:bg-slate-800 border border-white/20 text-xs font-mono font-bold text-cyan-300 hover:text-white flex items-center gap-1.5 transition-all shadow-sm"
+            title="Return to GridSense Command Center"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Dashboard</span>
+          </Link>
+
           <div className="px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs font-mono text-slate-300 flex items-center gap-2">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
             <span className="hidden sm:inline">SUBSTATION:</span>

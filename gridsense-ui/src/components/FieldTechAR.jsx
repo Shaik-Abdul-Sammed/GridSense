@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Camera,
@@ -20,7 +19,8 @@ import {
   Check,
   Radio,
   Sliders,
-  Video,
+  VideoOff,
+  Eye,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
@@ -270,7 +270,6 @@ function renderDefectIcon(iconType, className = 'w-4 h-4 shrink-0') {
 }
 
 export default function FieldTechAR({ isOpen = true, onClose, embedded = false }) {
-  const navigate = useNavigate();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -286,6 +285,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
   const [selectedFieldId, setSelectedFieldId] = useState('TRANSFORMER_T2');
   const [activeDefectId, setActiveDefectId] = useState('DEF-T2-CORE');
   const [remediatedDefects, setRemediatedDefects] = useState({});
+  const [dismissedDefectPins, setDismissedDefectPins] = useState({});
   const [actionInProgress, setActionInProgress] = useState(null);
   const [toastNotification, setToastNotification] = useState(null);
 
@@ -299,8 +299,8 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
     }, 5000);
   }, []);
 
-  // Exit Camera Handler: Stops all stream tracks and redirects to Dashboard (/)
-  const handleCloseCamera = () => {
+  // Stop Camera Feed Handler: Releases camera hardware tracks, remains on AR page, and switches to simulated FLIR thermal mode
+  const handleStopCameraFeed = () => {
     try {
       if (videoRef.current?.srcObject) {
         const stream = videoRef.current.srcObject;
@@ -317,8 +317,9 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
       console.warn('Error releasing camera tracks:', err);
     }
     setHasCamera(false);
-    if (onClose) onClose();
-    navigate('/');
+    setIsSimModeForced(true);
+    setFilterMode('FLIR');
+    showToast('📷 Camera turned off. Switched to FLIR Thermal Simulation mode.');
   };
 
   // Preset 1: Simulate Normal Asset (Cool colors, 45°C)
@@ -459,12 +460,14 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
     setTimeout(() => {
       setIsScanning(false);
       setScanResults(true);
+      setDismissedDefectPins({});
       showToast(`AI Vision: Diagnostic telemetry synchronized for ${INSPECTION_FIELDS[selectedFieldId].name}.`);
     }, 900);
   };
 
   const handleResetScan = () => {
     setRemediatedDefects({});
+    setDismissedDefectPins({});
     showToast('Diagnostic telemetry reset to live substation state.');
   };
 
@@ -645,16 +648,16 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {/* Camera Source Selector / Retry Button */}
+              {/* Camera Feed Toggle (Stays on AR page, stops hardware stream and switches to thermal FLIR simulation) */}
               {hasCamera && !isSimModeForced ? (
                 <button
                   type="button"
-                  onClick={() => setIsSimModeForced(true)}
-                  className="min-h-[40px] px-2.5 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                  title="Live camera active. Click to switch to Simulated FLIR Mode"
+                  onClick={handleStopCameraFeed}
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-mono font-black text-xs flex items-center gap-1.5 shadow-lg shadow-rose-950/70 border border-rose-400/50 cursor-pointer transition-all active:scale-95 shrink-0"
+                  title="Turn off live camera hardware feed and switch to simulated FLIR thermal mode"
                 >
-                  <Video className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
-                  <span className="hidden sm:inline">Camera Live</span>
+                  <VideoOff className="w-4 h-4" />
+                  <span>✕ Turn Off Camera</span>
                 </button>
               ) : (
                 <button
@@ -663,11 +666,11 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                     setIsSimModeForced(false);
                     startCamera();
                   }}
-                  className="min-h-[40px] px-2.5 py-1.5 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/50 text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
-                  title={cameraUnavailable ? 'Camera denied or unavailable. Click to retry access.' : 'Click to engage physical webcam / phone camera'}
+                  className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white font-mono font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-cyan-950/70 border border-cyan-400/50 cursor-pointer transition-all active:scale-95 shrink-0"
+                  title={cameraUnavailable ? 'Camera denied or unavailable. Click to retry access.' : 'Engage physical webcam / camera feed'}
                 >
-                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>{cameraUnavailable ? 'Retry Camera' : cameraPermissionRequested && hasCamera ? 'Restore Camera' : 'Enable Camera'}</span>
+                  <RefreshCw className="w-4 h-4 text-cyan-200" />
+                  <span>{cameraUnavailable ? 'Retry Camera' : cameraPermissionRequested && !hasCamera ? 'Restore Camera' : 'Turn On Camera'}</span>
                 </button>
               )}
 
@@ -689,16 +692,21 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 ))}
               </div>
 
-              {/* Prominent Exit Button: Stop camera tracks & return to Dashboard (/) */}
-              <button
-                type="button"
-                onClick={handleCloseCamera}
-                className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-mono font-black text-xs flex items-center gap-1.5 shadow-lg shadow-rose-950/70 border border-rose-400/50 cursor-pointer transition-all active:scale-95 shrink-0"
-                title="Stop camera and return to Dashboard"
-              >
-                <X className="w-4 h-4" />
-                <span>✕ Close Camera</span>
-              </button>
+              {/* Modal Close Button (Only present when FieldTechAR is loaded inside a modal popup on Dashboard) */}
+              {!embedded && onClose && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStopCameraFeed();
+                    onClose();
+                  }}
+                  className="min-h-[38px] px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-xs flex items-center gap-1.5 border border-white/20 cursor-pointer transition-all shrink-0"
+                  title="Close AR Modal"
+                >
+                  <X className="w-4 h-4" />
+                  <span>Exit Modal</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -721,6 +729,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                   onClick={() => {
                     setSelectedFieldId(fieldKey);
                     setScanResults(true);
+                    setDismissedDefectPins({});
                     if (field.defects.length > 0) {
                       setActiveDefectId(field.defects[0].id);
                     }
@@ -929,6 +938,20 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 </div>
 
                 <div className="flex items-center gap-1.5 pointer-events-auto">
+                  {Object.values(dismissedDefectPins).some(Boolean) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setDismissedDefectPins({});
+                        showToast('Restored all AR telemetry pin messages.');
+                      }}
+                      className="bg-cyan-950/90 hover:bg-cyan-900 px-2 py-1 rounded-lg border border-cyan-400 text-[10px] text-cyan-300 font-mono flex items-center gap-1 backdrop-blur-md shadow-md cursor-pointer transition-all active:scale-95"
+                      title="Restore closed pin messages"
+                    >
+                      <Eye className="w-3 h-3 text-cyan-400" />
+                      <span>Restore Pins ({Object.values(dismissedDefectPins).filter(Boolean).length})</span>
+                    </button>
+                  )}
                   <div className="bg-slate-950/90 px-2 py-1 rounded-lg border border-cyan-500/40 text-[10px] text-amber-300 font-mono backdrop-blur-md">
                     <span>MODE: {filterMode}</span>
                   </div>
@@ -1014,66 +1037,83 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
               </div>
             </div>
 
-            {/* Floating AR Inspection Defect Pins (Interactive & Clickable) */}
+            {/* Floating AR Inspection Defect Pins (Interactive & Clickable with Close Button ✕) */}
             {scanResults && (
               <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center animate-fadeIn">
-                {currentField.defects.map((defect) => {
-                  const state = getDefectEffectiveState(defect);
-                  const config = SEVERITY_CONFIG[state.severity] || SEVERITY_CONFIG.NOMINAL;
-                  const isRemediated = state.isRemediated;
-                  const isActive = activeDefectId === defect.id;
+                {currentField.defects
+                  .filter((defect) => !dismissedDefectPins[defect.id])
+                  .map((defect) => {
+                    const state = getDefectEffectiveState(defect);
+                    const config = SEVERITY_CONFIG[state.severity] || SEVERITY_CONFIG.NOMINAL;
+                    const isRemediated = state.isRemediated;
+                    const isActive = activeDefectId === defect.id;
 
-                  return (
-                    <div
-                      key={defect.id}
-                      onClick={() => {
-                        setActiveDefectId(defect.id);
-                        if (mobileSubTab === 'VIEWPORT') {
-                          // Allow quick peek
-                          showToast(`Selected: ${defect.name} (${state.reading})`);
-                        }
-                      }}
-                      className={`absolute ${defect.pinPosition} pointer-events-auto cursor-pointer p-2.5 sm:p-3 rounded-2xl border-2 ${
-                        isActive ? 'border-cyan-400 ring-2 ring-cyan-400/50 scale-105' : config.border
-                      } ${config.pinBg} text-white shadow-2xl ${
-                        config.glow
-                      } backdrop-blur-md w-auto max-w-[210px] sm:max-w-[250px] transition-all duration-300 hover:scale-105 active:scale-95 group select-none`}
-                    >
-                      <div className="flex items-center justify-between gap-1.5">
-                        <div className="flex items-center gap-1.5 text-xs font-mono font-bold min-w-0">
-                          {renderDefectIcon(defect.iconType, `w-3.5 h-3.5 ${config.text} shrink-0`)}
-                          <span className="truncate">{defect.metricName}: {state.reading}</span>
+                    return (
+                      <div
+                        key={defect.id}
+                        onClick={() => {
+                          setActiveDefectId(defect.id);
+                          if (mobileSubTab === 'VIEWPORT') {
+                            showToast(`Selected: ${defect.name} (${state.reading})`);
+                          }
+                        }}
+                        className={`absolute ${defect.pinPosition} pointer-events-auto cursor-pointer p-2.5 sm:p-3 rounded-2xl border-2 ${
+                          isActive ? 'border-cyan-400 ring-2 ring-cyan-400/50 scale-105' : config.border
+                        } ${config.pinBg} text-white shadow-2xl ${
+                          config.glow
+                        } backdrop-blur-md w-auto max-w-[210px] sm:max-w-[250px] transition-all duration-300 hover:scale-105 active:scale-95 group select-none`}
+                      >
+                        <div className="flex items-center justify-between gap-1.5">
+                          <div className="flex items-center gap-1.5 text-xs font-mono font-bold min-w-0">
+                            {renderDefectIcon(defect.iconType, `w-3.5 h-3.5 ${config.text} shrink-0`)}
+                            <span className="truncate">{defect.metricName}: {state.reading}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span
+                              className={`text-[8px] font-mono px-1 py-0.5 rounded font-black border uppercase tracking-wider shrink-0 ${config.badgeBg}`}
+                            >
+                              {state.severity}
+                            </span>
+                            {/* Close/Dismiss Pin Message (✕) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDismissedDefectPins((prev) => ({ ...prev, [defect.id]: true }));
+                                showToast(`Closed ${defect.metricName} pin message.`);
+                              }}
+                              className="p-1 -mr-1 -my-1 rounded-md text-slate-300 hover:text-white hover:bg-white/20 transition-all cursor-pointer min-h-[26px] min-w-[26px] flex items-center justify-center shrink-0"
+                              title="Close this message"
+                              aria-label={`Close ${defect.metricName} pin message`}
+                            >
+                              <X className="w-3.5 h-3.5 text-white" />
+                            </button>
+                          </div>
                         </div>
-                        <span
-                          className={`text-[8px] font-mono px-1 py-0.5 rounded font-black border uppercase tracking-wider shrink-0 ${config.badgeBg}`}
-                        >
-                          {state.severity}
-                        </span>
-                      </div>
 
-                      <p className="text-[10px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">
-                        {defect.summary}
-                      </p>
+                        <p className="text-[10px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">
+                          {defect.summary}
+                        </p>
 
-                      <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[9px] font-mono">
-                        <span className="text-cyan-300 font-bold flex items-center gap-1">
-                          {isRemediated ? (
-                            <>
-                              <Check className="w-3 h-3 text-emerald-400" />
-                              <span className="text-emerald-400">Remediated</span>
-                            </>
-                          ) : (
-                            <>
-                              <Zap className="w-3 h-3 text-amber-400 animate-pulse" />
-                              <span>Inspect Defect</span>
-                            </>
-                          )}
-                        </span>
-                        <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                        <div className="mt-2 pt-1.5 border-t border-white/10 flex items-center justify-between text-[9px] font-mono">
+                          <span className="text-cyan-300 font-bold flex items-center gap-1">
+                            {isRemediated ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-400" />
+                                <span className="text-emerald-400">Remediated</span>
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="w-3 h-3 text-amber-400 animate-pulse" />
+                                <span>Inspect Defect</span>
+                              </>
+                            )}
+                          </span>
+                          <ChevronRight className="w-3 h-3 text-slate-400 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all" />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -1091,6 +1131,21 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             </div>
 
             <div className="flex items-center gap-2">
+              {Object.values(dismissedDefectPins).some(Boolean) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDismissedDefectPins({});
+                    showToast('Restored all floating AR pin messages.');
+                  }}
+                  className="min-h-[42px] px-3 py-2 rounded-xl font-bold text-xs tracking-wider uppercase text-cyan-300 bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 transition-all cursor-pointer flex items-center gap-1.5"
+                  title="Restore closed pin messages"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>Restore Pins ({Object.values(dismissedDefectPins).filter(Boolean).length})</span>
+                </button>
+              )}
+
               {Object.keys(remediatedDefects).length > 0 && (
                 <button
                   type="button"
