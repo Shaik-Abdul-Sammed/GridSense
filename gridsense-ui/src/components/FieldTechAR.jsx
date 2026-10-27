@@ -44,7 +44,7 @@ const INSPECTION_FIELDS = {
         normalReading: '≤ 65.0°C',
         metricName: 'Core Temp',
         iconType: 'Thermometer',
-        pinPosition: 'top-12 right-3 sm:top-14 sm:right-6',
+        pinPosition: 'top-24 right-3 sm:top-24 sm:right-6',
         summary: 'Exceeds IEC 60076-7 Class-A thermal threshold (65°C). Accelerated paper insulation degradation.',
         rootCause: 'Phase-B harmonic eddy current concentration under continuous 112% overload.',
         impact: 'High risk of dielectric breakdown and thermal runaway if sustained > 28 min.',
@@ -77,7 +77,7 @@ const INSPECTION_FIELDS = {
         normalReading: '≤ 60.0°C',
         metricName: 'Top Oil Temp',
         iconType: 'Activity',
-        pinPosition: 'bottom-20 left-3 sm:bottom-24 sm:left-6',
+        pinPosition: 'bottom-16 left-3 sm:bottom-18 sm:left-6',
         summary: 'Top oil temperature climbing at 0.4°C/min; dissolved gas sensor (DGA) reports trace hydrogen.',
         rootCause: 'Ambient ambient heat wave combined with peak industrial feeder demand.',
         impact: 'Oil oxidation rate accelerated 2.4x standard aging profile.',
@@ -113,7 +113,7 @@ const INSPECTION_FIELDS = {
         normalReading: '≤ 55.0°C',
         metricName: 'IGBT Temp',
         iconType: 'Cpu',
-        pinPosition: 'top-12 left-3 sm:top-14 sm:left-6',
+        pinPosition: 'top-24 left-3 sm:top-24 sm:left-6',
         summary: 'Inverter Bridge 2 IGBT module temperature elevated above optimal operating margin.',
         rootCause: 'Filter intake partial blockage with dust particles reducing forced convective airflow.',
         impact: 'Inverter output de-rating by 15% to prevent thermal shutdown.',
@@ -149,7 +149,7 @@ const INSPECTION_FIELDS = {
         normalReading: '≤ 15 pC',
         metricName: 'Partial Discharge',
         iconType: 'Zap',
-        pinPosition: 'top-12 right-3 sm:top-14 sm:right-6',
+        pinPosition: 'top-24 right-3 sm:top-24 sm:right-6',
         summary: 'Acoustic and RF sensors detect 120 pC partial discharge pulses along shed skirt.',
         rootCause: 'Surface salt contamination and ambient humidity creating micro-tracking paths.',
         impact: 'Progressive porcelain glaze degradation and flashover hazard.',
@@ -286,6 +286,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
   const [activeDefectId, setActiveDefectId] = useState('DEF-T2-CORE');
   const [remediatedDefects, setRemediatedDefects] = useState({});
   const [dismissedDefectPins, setDismissedDefectPins] = useState({});
+  const [isHotspotDismissed, setIsHotspotDismissed] = useState(false);
   const [actionInProgress, setActionInProgress] = useState(null);
   const [toastNotification, setToastNotification] = useState(null);
 
@@ -367,6 +368,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
     setHasCamera(false);
     setIsSimModeForced(true);
     setSimulationPreset('CRITICAL');
+    setIsHotspotDismissed(false);
     setFilterMode('FLIR');
     setSelectedFieldId('TRANSFORMER_T2');
     setActiveDefectId('DEF-T2-CORE');
@@ -461,6 +463,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
       setIsScanning(false);
       setScanResults(true);
       setDismissedDefectPins({});
+      setIsHotspotDismissed(false);
       showToast(`AI Vision: Diagnostic telemetry synchronized for ${INSPECTION_FIELDS[selectedFieldId].name}.`);
     }, 900);
   };
@@ -468,6 +471,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
   const handleResetScan = () => {
     setRemediatedDefects({});
     setDismissedDefectPins({});
+    setIsHotspotDismissed(false);
     showToast('Diagnostic telemetry reset to live substation state.');
   };
 
@@ -838,11 +842,24 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                     : 'bg-gradient-to-tr from-slate-950 via-slate-900 to-black'
                 }`}
               >
-                {/* Critical Hotspot Detected Overlay Warning Banner */}
-                {simulationPreset === 'CRITICAL' && (
-                  <div className="absolute top-12 sm:top-14 left-1/2 -translate-x-1/2 px-4 py-2 rounded-2xl bg-rose-600/95 border-2 border-white text-white font-mono font-black text-xs sm:text-sm tracking-wider uppercase shadow-2xl shadow-rose-950 ring-4 ring-rose-500/60 animate-bounce z-30 flex items-center gap-2">
-                    <span className="text-base sm:text-lg select-none">🔥</span>
-                    <span>CRITICAL HOTSPOT DETECTED (92°C)</span>
+                {/* Critical Hotspot Detected Overlay Warning Banner with Dismiss ✕ */}
+                {simulationPreset === 'CRITICAL' && !isHotspotDismissed && (
+                  <div className="absolute top-12 sm:top-14 left-1/2 -translate-x-1/2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl bg-rose-600/95 border-2 border-white text-white font-mono font-black text-xs sm:text-sm tracking-wider uppercase shadow-2xl shadow-rose-950 ring-4 ring-rose-500/60 animate-bounce z-30 flex items-center gap-2 max-w-[90%] sm:max-w-none">
+                    <span className="text-base sm:text-lg select-none shrink-0">🔥</span>
+                    <span className="truncate">CRITICAL HOTSPOT DETECTED (92°C)</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsHotspotDismissed(true);
+                        showToast('Dismissed critical hotspot alert banner.');
+                      }}
+                      className="p-1 -mr-1 rounded-lg hover:bg-white/20 text-white transition-all cursor-pointer min-h-[26px] min-w-[26px] flex items-center justify-center shrink-0 ml-1 border border-white/30"
+                      title="Close alert banner"
+                      aria-label="Close critical hotspot alert"
+                    >
+                      <X className="w-3.5 h-3.5 text-white" />
+                    </button>
                   </div>
                 )}
 
@@ -1061,16 +1078,16 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                           isActive ? 'border-cyan-400 ring-2 ring-cyan-400/50 scale-105' : config.border
                         } ${config.pinBg} text-white shadow-2xl ${
                           config.glow
-                        } backdrop-blur-md w-auto max-w-[210px] sm:max-w-[250px] transition-all duration-300 hover:scale-105 active:scale-95 group select-none`}
+                        } backdrop-blur-md w-[220px] sm:w-[260px] max-w-[calc(100vw-3rem)] transition-all duration-300 hover:scale-105 active:scale-95 group select-none`}
                       >
-                        <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-white/10">
                           <div className="flex items-center gap-1.5 text-xs font-mono font-bold min-w-0">
                             {renderDefectIcon(defect.iconType, `w-3.5 h-3.5 ${config.text} shrink-0`)}
-                            <span className="truncate">{defect.metricName}: {state.reading}</span>
+                            <span className="truncate">{defect.metricName}</span>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0">
+                          <div className="flex items-center gap-1.5 shrink-0">
                             <span
-                              className={`text-[8px] font-mono px-1 py-0.5 rounded font-black border uppercase tracking-wider shrink-0 ${config.badgeBg}`}
+                              className={`text-[8px] font-mono px-1.5 py-0.5 rounded font-black border uppercase tracking-wider shrink-0 ${config.badgeBg}`}
                             >
                               {state.severity}
                             </span>
@@ -1089,6 +1106,12 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                               <X className="w-3.5 h-3.5 text-white" />
                             </button>
                           </div>
+                        </div>
+
+                        {/* Telemetry Reading Metric & Limit */}
+                        <div className="flex items-baseline justify-between pt-1 font-mono">
+                          <span className="text-sm font-black text-white tracking-wide">{state.reading}</span>
+                          <span className="text-[9px] text-slate-400">Limit: {defect.normalReading}</span>
                         </div>
 
                         <p className="text-[10px] text-slate-300 mt-1 line-clamp-2 leading-relaxed">
