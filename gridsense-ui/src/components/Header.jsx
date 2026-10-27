@@ -8,6 +8,9 @@ import {
   Volume2,
   VolumeX,
   Compass,
+  Mic,
+  MicOff,
+  Radio,
 } from 'lucide-react';
 
 export default function Header({
@@ -19,8 +22,10 @@ export default function Header({
   onTriggerCyberattack,
   isVoiceMuted = false,
   onToggleVoiceMute,
-  isAudioUnlocked = false,
-  onUnlockAudio,
+  isVoiceListening = false,
+  onToggleVoiceListening,
+  isVoiceSupported = false,
+  voiceFeedback = '',
   ambientTemp = 26.5,
   humidityPct = 55,
   solarIrradiance = 350,
@@ -94,176 +99,202 @@ export default function Header({
         </div>
       </div>
 
-      {/* Tickers & Real-time Gauges (Arranged cleanly to prevent overflow on mobile & laptops) */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 self-stretch xl:self-auto justify-start xl:justify-end">
-        {/* Real-time Ambient Weather Status with Degrees */}
-        <div
-          title={`Substation Microclimate: ${formattedTemp}°C | ${weatherCondition} | Humidity: ${humNum}% | Solar DNI: ${solarNum} W/m²`}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all bg-slate-900/80 border-white/10 text-amber-300"
-        >
-          <span className="text-base select-none leading-none">{weatherIcon}</span>
-          <div className="flex items-center gap-1.5">
-            <span className="font-extrabold text-sm text-amber-400">
-              {formattedTemp}°C
-            </span>
-            <span className="text-[10px] text-slate-300 hidden sm:inline">
-              {weatherCondition}
-            </span>
-            <span className="text-[10px] text-cyan-400 font-mono hidden md:inline border-l border-white/10 pl-1.5">
-              💧 {humNum}%
-            </span>
-          </div>
-        </div>
-
-        {/* Feature 4: Live Dynamic Tariff Ticker */}
-        <div
-          title={
-            isTariffSpike
-              ? 'PEAK SURGE TARIFF: High regional demand has triggered emergency dynamic tariff!'
-              : 'Dynamic market clearing tariff based on real-time feeder demand'
-          }
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all ${
-            isTariffSpike
-              ? 'bg-rose-950/80 border-rose-500/80 text-rose-300 shadow-lg shadow-rose-950/60 animate-pulse'
-              : 'bg-slate-900/80 border-white/10 text-cyan-300'
-          }`}
-        >
-          <TrendingUp className={`w-4 h-4 ${isTariffSpike ? 'text-rose-400' : 'text-emerald-400'}`} />
-          <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-            <div className="flex items-center gap-1">
-              <span className="text-[10px] text-slate-400">TARIFF:</span>
-              <span className="font-black text-sm">${currentTariff}</span>
-              <span className="text-[10px] text-slate-400">/kWh</span>
-            </div>
-            <div className="hidden md:flex items-center gap-1 text-[10px] text-emerald-400 font-bold border-l border-white/10 pl-2">
-              <DollarSign className="w-3 h-3" />
-              <span>BESS Saved: ${peakSavings}/h</span>
+      {/* Right Column: Two Balanced Tiers for Telemetry Gauges & Operator Controls */}
+      <div className="flex flex-col items-start xl:items-end gap-2.5 self-stretch xl:self-auto w-full xl:w-auto">
+        {/* Tier 1: Real-Time Grid Telemetry Monitors */}
+        <div className="flex flex-wrap items-center gap-2 justify-start xl:justify-end w-full">
+          {/* Real-time Ambient Weather Status with Degrees */}
+          <div
+            title={`Substation Microclimate: ${formattedTemp}°C | ${weatherCondition} | Humidity: ${humNum}% | Solar DNI: ${solarNum} W/m²`}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all bg-slate-900/80 border-white/10 text-amber-300 shadow-xs"
+          >
+            <span className="text-base select-none leading-none">{weatherIcon}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-extrabold text-sm text-amber-400">
+                {formattedTemp}°C
+              </span>
+              <span className="text-[10px] text-slate-300 hidden sm:inline">
+                {weatherCondition}
+              </span>
+              <span className="text-[10px] text-cyan-400 font-mono hidden md:inline border-l border-white/10 pl-1.5">
+                💧 {humNum}%
+              </span>
             </div>
           </div>
-        </div>
 
-        {/* Feature 4: Grid Frequency Monitor */}
-        <div
-          title={
-            isCyberattack
-              ? 'MAIN GRID DISCONNECTED UNDER CYBERATTACK'
-              : isOverloaded
-              ? 'Generator frequency decaying under severe overload stress!'
-              : 'Grid generator frequency is nominal and synchronized'
-          }
-          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all ${
-            isCyberattack || isOverloaded
-              ? 'bg-rose-950/80 border-rose-500/60 text-rose-300 shadow-lg shadow-rose-950/50 animate-pulse'
-              : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
-          }`}
-        >
-          <Activity
-            className={`w-4 h-4 ${
-              isCyberattack || isOverloaded ? 'text-rose-400 animate-bounce' : 'text-emerald-400'
+          {/* Feature 4: Live Dynamic Tariff Ticker */}
+          <div
+            title={
+              isTariffSpike
+                ? 'PEAK SURGE TARIFF: High regional demand has triggered emergency dynamic tariff!'
+                : 'Dynamic market clearing tariff based on real-time feeder demand'
+            }
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all shadow-xs ${
+              isTariffSpike
+                ? 'bg-rose-950/80 border-rose-500/80 text-rose-300 shadow-lg shadow-rose-950/60 animate-pulse'
+                : 'bg-slate-900/80 border-white/10 text-cyan-300'
             }`}
-          />
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-sm tracking-wider">
-              {simulatedFrequency} Hz
-            </span>
-            <span className="text-[10px] hidden sm:inline text-slate-300">
-              {isCyberattack ? 'ISLANDED' : isOverloaded ? 'FREQ DROP' : 'NOMINAL'}
-            </span>
+          >
+            <TrendingUp className={`w-4 h-4 ${isTariffSpike ? 'text-rose-400' : 'text-emerald-400'}`} />
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] text-slate-400">TARIFF:</span>
+                <span className="font-black text-sm">${currentTariff}</span>
+                <span className="text-[10px] text-slate-400">/kWh</span>
+              </div>
+              <div className="hidden md:flex items-center gap-1 text-[10px] text-emerald-400 font-bold border-l border-white/10 pl-2">
+                <DollarSign className="w-3 h-3" />
+                <span>BESS Saved: ${peakSavings}/h</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Live API Status */}
-        <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs">
-          <span className="relative flex h-2.5 w-2.5">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                isOnline ? 'bg-emerald-400' : 'bg-amber-400'
-              }`}
-            />
-            <span
-              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                isOnline ? 'bg-emerald-500' : 'bg-amber-500'
-              }`}
-            />
-          </span>
-          <span className="text-slate-300 font-mono text-[11px]">
-            {isOnline ? 'API Connected' : 'Local Fallback'}
-          </span>
-        </div>
-
-        {/* Feature 2: Cyberattack / Fault Injection Quick Trigger */}
-        {onTriggerCyberattack && (
-          <button
-            type="button"
-            onClick={onTriggerCyberattack}
+          {/* Feature 4: Grid Frequency Monitor */}
+          <div
             title={
               isCyberattack
-                ? 'Neutralize cyberattack and restore main grid telemetry'
-                : 'Simulate adversary SCADA penetration forcing emergency islanded mode'
+                ? 'MAIN GRID DISCONNECTED UNDER CYBERATTACK'
+                : isOverloaded
+                ? 'Generator frequency decaying under severe overload stress!'
+                : 'Grid generator frequency is nominal and synchronized'
             }
-            className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
-              isCyberattack
-                ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-400 animate-pulse'
-                : 'bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border-rose-700/60'
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all shadow-xs ${
+              isCyberattack || isOverloaded
+                ? 'bg-rose-950/80 border-rose-500/60 text-rose-300 shadow-lg shadow-rose-950/50 animate-pulse'
+                : 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
             }`}
           >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>{isCyberattack ? '🛡️ Restore Grid' : '⚠️ Cyberattack'}</span>
-          </button>
-        )}
-
-        {/* Mobile / Direct User-Gesture Voice Audio Unlocker Button */}
-        {!isAudioUnlocked && onUnlockAudio && (
-          <button
-            type="button"
-            onClick={onUnlockAudio}
-            title="Enable AI Voice Alerts (Requires user gesture on mobile browsers)"
-            className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 shadow-lg shadow-amber-500/20 border border-amber-400/50 flex items-center gap-1.5 cursor-pointer select-none transition-all animate-pulse"
-          >
-            <Volume2 className="w-3.5 h-3.5 text-slate-950" />
-            <span>🔊 Enable Voice</span>
-          </button>
-        )}
-
-        {/* Feature 4: Automated AI Voice Alert Mute/Unmute Toggle */}
-        {onToggleVoiceMute && (
-          <button
-            type="button"
-            onClick={onToggleVoiceMute}
-            title={isVoiceMuted ? 'Unmute AI Audio Voice Alerts' : 'Mute AI Audio Voice Alerts'}
-            className={`p-2 rounded-xl border transition-all cursor-pointer select-none ${
-              isVoiceMuted
-                ? 'bg-slate-850 text-slate-500 border-white/5 hover:text-slate-300'
-                : 'bg-cyan-950/80 text-cyan-300 border-cyan-800/80 shadow-md shadow-cyan-950/50'
-            }`}
-            aria-label="Toggle voice alerts"
-          >
-            {isVoiceMuted ? (
-              <VolumeX className="w-4 h-4 text-slate-500" />
-            ) : (
-              <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
-            )}
-          </button>
-        )}
-
-        {/* Hackathon Guided UI Tour */}
-        {onStartTour && (
-          <button
-            type="button"
-            onClick={onStartTour}
-            title="Start Interactive Hackathon UI Tour"
-            className="group px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 hover:text-black shadow-lg shadow-cyan-500/25 border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer select-none transition-all"
-          >
-            <Compass className="w-3.5 h-3.5 text-slate-950 transition-transform group-hover:rotate-45" />
-            <span>Start Guided Tour</span>
-          </button>
-        )}
-
-        {lastUpdated && (
-          <div className="text-xs text-slate-400 font-mono bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10 hidden md:block">
-            Sync: {lastUpdated}
+            <Activity
+              className={`w-4 h-4 ${
+                isCyberattack || isOverloaded ? 'text-rose-400 animate-bounce' : 'text-emerald-400'
+              }`}
+            />
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-sm tracking-wider">
+                {simulatedFrequency} Hz
+              </span>
+              <span className="text-[10px] hidden sm:inline text-slate-300">
+                {isCyberattack ? 'ISLANDED' : isOverloaded ? 'FREQ DROP' : 'NOMINAL'}
+              </span>
+            </div>
           </div>
-        )}
+
+          {/* Live API Status */}
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/80 border border-white/10 text-xs shadow-xs">
+            <span className="relative flex h-2.5 w-2.5">
+              <span
+                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isOnline ? 'bg-emerald-400' : 'bg-amber-400'
+                }`}
+              />
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  isOnline ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}
+              />
+            </span>
+            <span className="text-slate-300 font-mono text-[11px]">
+              {isOnline ? 'API Connected' : 'Local Fallback'}
+            </span>
+          </div>
+        </div>
+
+        {/* Tier 2: Operator Action Controls */}
+        <div className="flex flex-wrap items-center gap-2 justify-start xl:justify-end w-full">
+          {/* Cyberattack / Fault Injection Quick Trigger */}
+          {onTriggerCyberattack && (
+            <button
+              type="button"
+              onClick={onTriggerCyberattack}
+              title={
+                isCyberattack
+                  ? 'Neutralize cyberattack and restore main grid telemetry'
+                  : 'Simulate adversary SCADA penetration forcing emergency islanded mode'
+              }
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                isCyberattack
+                  ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white border-rose-400 animate-pulse'
+                  : 'bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border-rose-700/60'
+              }`}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" />
+              <span>{isCyberattack ? '🛡️ Restore Grid' : '⚠️ Cyberattack'}</span>
+            </button>
+          )}
+
+          {/* Automated AI Voice Alert Mute/Unmute Toggle */}
+          {onToggleVoiceMute && (
+            <button
+              type="button"
+              onClick={onToggleVoiceMute}
+              title={isVoiceMuted ? 'Unmute AI Audio Voice Alerts' : 'Mute AI Audio Voice Alerts'}
+              className={`p-2 rounded-xl border transition-all cursor-pointer select-none ${
+                isVoiceMuted
+                  ? 'bg-slate-850 text-slate-500 border-white/5 hover:text-slate-300'
+                  : 'bg-cyan-950/80 text-cyan-300 border-cyan-800/80 shadow-md shadow-cyan-950/50'
+              }`}
+              aria-label="Toggle voice alerts"
+            >
+              {isVoiceMuted ? (
+                <VolumeX className="w-4 h-4 text-slate-500" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-cyan-400 animate-pulse" />
+              )}
+            </button>
+          )}
+
+          {/* Hands-Free Voice Control Mic Button (Docked cleanly in header) */}
+          {isVoiceSupported && onToggleVoiceListening && (
+            <div className="relative flex items-center">
+              {voiceFeedback && (
+                <div className="absolute right-0 bottom-full mb-2 whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-900/95 border border-cyan-400 text-xs font-mono text-cyan-300 shadow-2xl backdrop-blur-md flex items-center gap-1.5 animate-fadeIn z-50">
+                  <Radio className="w-3 h-3 text-cyan-400 animate-pulse shrink-0" />
+                  <span>{voiceFeedback}</span>
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={onToggleVoiceListening}
+                title={
+                  isVoiceListening
+                    ? 'Voice listening active. Click to pause.'
+                    : 'Activate Voice Commands (e.g. "Simulate overload", "Run forecast")'
+                }
+                className={`p-2 rounded-xl border transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                  isVoiceListening
+                    ? 'bg-gradient-to-r from-rose-600 to-amber-500 text-white border-rose-400 ring-2 ring-rose-500/50 animate-pulse shadow-md shadow-rose-950/60'
+                    : 'bg-cyan-950/80 hover:bg-cyan-900/80 text-cyan-300 border-cyan-800/80 shadow-md shadow-cyan-950/50'
+                }`}
+                aria-label="Toggle voice command microphone"
+              >
+                {isVoiceListening ? (
+                  <Mic className="w-4 h-4 text-white animate-bounce" />
+                ) : (
+                  <MicOff className="w-4 h-4 text-cyan-400" />
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Hackathon Guided UI Tour */}
+          {onStartTour && (
+            <button
+              type="button"
+              onClick={onStartTour}
+              title="Start Interactive Hackathon UI Tour"
+              className="group px-3 py-1.5 rounded-xl text-xs font-mono font-bold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 hover:text-black shadow-lg shadow-cyan-500/25 border border-cyan-400/40 flex items-center gap-1.5 cursor-pointer select-none transition-all"
+            >
+              <Compass className="w-3.5 h-3.5 text-slate-950 transition-transform group-hover:rotate-45" />
+              <span>Start Guided Tour</span>
+            </button>
+          )}
+
+          {lastUpdated && (
+            <div className="text-xs text-slate-400 font-mono bg-slate-900/60 px-3 py-1.5 rounded-xl border border-white/10 hidden md:block">
+              Sync: {lastUpdated}
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
@@ -278,8 +309,10 @@ Header.propTypes = {
   onTriggerCyberattack: PropTypes.func,
   isVoiceMuted: PropTypes.bool,
   onToggleVoiceMute: PropTypes.func,
-  isAudioUnlocked: PropTypes.bool,
-  onUnlockAudio: PropTypes.func,
+  isVoiceListening: PropTypes.bool,
+  onToggleVoiceListening: PropTypes.func,
+  isVoiceSupported: PropTypes.bool,
+  voiceFeedback: PropTypes.string,
   ambientTemp: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   humidityPct: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   solarIrradiance: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),

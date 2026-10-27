@@ -63,16 +63,10 @@ function playToneChime(isPositive = true, isEmergency = false) {
 }
 
 export function useVoiceAlerts() {
-  const [isMuted, setIsMuted] = useState(() => {
-    try {
-      return localStorage.getItem('gridsense_voice_muted') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isMuted, setIsMuted] = useState(false);
 
-  // Mobile browsers (iOS Safari, Android Chrome) block speech synthesis unless unlocked by a direct user gesture
-  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
+  // Audio is enabled and primed by default
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(true);
 
   const lastSpokenRef = useRef(0);
   const synthRef = useRef(null);
@@ -136,6 +130,24 @@ export function useVoiceAlerts() {
     }
     playToneChime(true);
   }, []);
+
+  // Automatically prime audio context on first user tap/click anywhere
+  useEffect(() => {
+    const handleFirstInteraction = () => {
+      unlockAudio();
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+    };
+    window.addEventListener('click', handleFirstInteraction, { once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { once: true });
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction);
+      window.removeEventListener('touchstart', handleFirstInteraction);
+      window.removeEventListener('keydown', handleFirstInteraction);
+    };
+  }, [unlockAudio]);
 
   const speakAlert = useCallback(
     (text, forced = false, cooldownMs = 15000) => {

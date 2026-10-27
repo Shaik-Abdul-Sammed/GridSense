@@ -1,11 +1,8 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { Joyride, STATUS } from 'react-joyride';
 import {
-  Mic,
-  MicOff,
   BellRing,
   X,
-  Radio,
   ShieldAlert,
   Gamepad2,
   Box,
@@ -371,7 +368,6 @@ export default function Dashboard() {
     isMuted: isVoiceMuted,
     toggleMute: toggleVoiceMute,
     speakAlert,
-    isAudioUnlocked,
     unlockAudio,
   } = useVoiceAlerts();
 
@@ -625,11 +621,6 @@ export default function Dashboard() {
     );
     runStreamingSimulation(standardItems, null, false);
   }, [csvData, isStreaming, loadedCsvName, runStreamingSimulation, todayStr, unlockAudio]);
-
-  const handleUnlockAudio = useCallback(() => {
-    unlockAudio();
-    speakAlert('GridSense voice telemetry online. Monitoring active grid.', true, 0);
-  }, [unlockAudio, speakAlert]);
 
   const handlePlayDemoScenario = useCallback(() => {
     if (isStreaming || isRunningRef.current) return;
@@ -1228,8 +1219,10 @@ export default function Dashboard() {
         onTriggerCyberattack={handleToggleCyberattack}
         isVoiceMuted={isVoiceMuted}
         onToggleVoiceMute={toggleVoiceMute}
-        isAudioUnlocked={isAudioUnlocked}
-        onUnlockAudio={handleUnlockAudio}
+        isVoiceListening={isListening}
+        onToggleVoiceListening={toggleListening}
+        isVoiceSupported={isSupported}
+        voiceFeedback={feedback}
         ambientTemp={latestPrediction?.ambient_temp_c ?? 26.5}
         humidityPct={latestPrediction?.humidity_pct ?? 55}
         solarIrradiance={latestPrediction?.solar_irradiance_wm2 ?? 350}
@@ -1240,15 +1233,15 @@ export default function Dashboard() {
           Ingestion & Simulation Tools Suboptions Bar
           Prevents clumsy vertical stacking on mobile devices and enables focused workflow
          ========================================================================= */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 px-2 py-1">
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 px-2 py-1 shrink-0">
           <Layers className="w-4 h-4 text-cyan-400" />
           <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
             Control Suboptions:
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-1.5 py-1 w-full sm:w-auto font-mono text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 w-full xl:flex-1 font-mono text-xs">
           {[
             { id: 'CONTROLS', label: 'Simulation Controls', icon: Activity, badge: isStreaming ? 'Active' : null },
             { id: 'WEATHER', label: 'Weather Sync', icon: CloudSun, badge: 'GPS/City' },
@@ -1263,17 +1256,17 @@ export default function Dashboard() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveToolsTab(tab.id)}
-                className={`flex-1 sm:flex-initial min-h-[42px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 select-none text-center ${
+                className={`w-full min-h-[42px] px-2.5 sm:px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none text-center ${
                   isTabActive
                     ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-950/60 font-black'
                     : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="whitespace-nowrap">{tab.label}</span>
+                <span className="truncate">{tab.label}</span>
                 {tab.badge && (
                   <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-black shrink-0 ${
+                    className={`text-[9px] px-1.5 py-0.5 rounded-full font-black shrink-0 ${
                       isTabActive ? 'bg-slate-950 text-cyan-300' : 'bg-slate-900 text-slate-300 border border-white/10'
                     }`}
                   >
@@ -1746,39 +1739,6 @@ export default function Dashboard() {
           />
         </div>
       </div>
-
-      {/* Floating Voice Command Button & Feedback Bar */}
-      {isSupported && (
-        <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2 pointer-events-auto">
-          {feedback && (
-            <div className="px-3.5 py-2 rounded-xl bg-slate-900/90 border border-cyan-500/40 text-xs text-cyan-300 shadow-2xl backdrop-blur-xl animate-fadeIn flex items-center gap-2 max-w-xs font-medium">
-              <Radio className="w-3.5 h-3.5 text-cyan-400 animate-pulse shrink-0" />
-              <span>{feedback}</span>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={toggleListening}
-            title={
-              isListening
-                ? 'Voice listening active. Click to mute.'
-                : 'Activate voice commands (e.g. "Start forecast", "Show analytics")'
-            }
-            className={`p-3.5 rounded-full shadow-2xl transition-all cursor-pointer flex items-center justify-center select-none active:scale-95 ${
-              isListening
-                ? 'bg-gradient-to-tr from-rose-600 to-amber-500 text-white ring-4 ring-rose-500/50 animate-pulse shadow-rose-950/80'
-                : 'bg-gradient-to-tr from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-cyan-950/80 border border-cyan-400/40'
-            }`}
-          >
-            {isListening ? (
-              <Mic className="w-6 h-6 animate-bounce" />
-            ) : (
-              <MicOff className="w-6 h-6 text-cyan-200" />
-            )}
-          </button>
-        </div>
-      )}
     </div>
   );
 }
