@@ -36,7 +36,7 @@ export default function AlertBanner({
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-xl md:text-2xl font-black tracking-wider uppercase text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] leading-snug">
-                  🚨 CRITICAL OVERLOAD: Peak demand of {displayPeakKw} kW at {displayPeakHour}.
+                  🚨 CRITICAL OVERLOAD: Active load of {displayCurrentKw} kW at {displayPeakHour}.
                 </h2>
               </div>
               <p className="text-xs sm:text-sm text-red-100 font-semibold mt-1 leading-relaxed">

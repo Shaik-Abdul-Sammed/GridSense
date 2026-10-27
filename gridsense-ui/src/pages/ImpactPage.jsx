@@ -17,7 +17,16 @@ import {
   Flame,
   Coins,
   TrendingDown,
+  PieChart as PieIcon,
 } from 'lucide-react';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+
+const ESG_OFFSET_MIX = [
+  { name: 'Solar PV Direct Shaving', value: 46, fill: '#10b981', tons: '19.6 T', share: '46%' },
+  { name: 'Peaker Coal Displacement', value: 32, fill: '#06b6d4', tons: '13.6 T', share: '32%' },
+  { name: 'BESS Arbitrage Efficiency', value: 16, fill: '#f59e0b', tons: '6.8 T', share: '16%' },
+  { name: 'Transformer Heat Loss Reduction', value: 6, fill: '#a855f7', tons: '2.6 T', share: '6%' },
+];
 
 export default function ImpactPage() {
   return (
@@ -417,6 +426,87 @@ export default function ImpactPage() {
             <div className="pt-3 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-400">
               <span>SAIDI downtime reduction:</span>
               <span className="text-amber-300 font-bold">-48.5 min / customer</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ESG Carbon Displacement & Clean Energy Allocation Donut Pie Chart */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-slate-900/60 backdrop-blur-xl border border-emerald-500/30 shadow-2xl space-y-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-4 border-b border-white/5">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <PieIcon className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white tracking-tight">
+                  Annual Carbon Abatement &amp; Clean Offset Portfolio
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Proportional emission mitigation breakdown across renewable dispatch streams
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="px-3 py-1 rounded-xl bg-emerald-950/80 text-emerald-300 border border-emerald-800 font-bold">
+                Total: 42.6 T CO₂ / yr
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-5 h-64 relative flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Tooltip
+                    formatter={(val, name) => [`${val}% share of total offset`, name]}
+                    contentStyle={{
+                      backgroundColor: '#0f172a',
+                      borderColor: '#334155',
+                      borderRadius: '0.75rem',
+                      fontSize: '12px',
+                      fontFamily: 'monospace',
+                    }}
+                  />
+                  <Pie
+                    data={ESG_OFFSET_MIX}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={88}
+                    paddingAngle={4}
+                    cornerRadius={6}
+                  >
+                    {ESG_OFFSET_MIX.map((entry, index) => (
+                      <Cell key={`esg-cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">Abatement</span>
+                <span className="text-2xl font-black font-mono text-emerald-400">42.6 T</span>
+                <span className="text-[10px] font-mono text-slate-400 font-bold">CO₂ Displaced</span>
+              </div>
+            </div>
+
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              {ESG_OFFSET_MIX.map((slice) => (
+                <div
+                  key={slice.name}
+                  className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 flex flex-col justify-between hover:border-white/20 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: slice.fill }} />
+                    <span className="text-xs font-bold text-white truncate">{slice.name}</span>
+                  </div>
+                  <div className="mt-3 flex items-baseline justify-between">
+                    <span className="text-xl font-black font-mono text-white">{slice.tons}</span>
+                    <span className="text-xs font-mono font-bold text-emerald-400">{slice.share}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

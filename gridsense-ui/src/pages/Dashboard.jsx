@@ -16,6 +16,8 @@ import {
   Activity,
   CloudSun,
   Sliders,
+  PieChart as PieIcon,
+  TrendingUp,
 } from 'lucide-react';
 import Header from '../components/Header';
 import AlertBanner from '../components/AlertBanner';
@@ -23,6 +25,7 @@ import TourTooltip from '../components/TourTooltip';
 import PowerFlowDiagram from '../components/PowerFlowDiagram';
 import BatteryGauge from '../components/BatteryGauge';
 import LoadCurveChart from '../components/LoadCurveChart';
+import GridEnergyDistribution from '../components/GridEnergyDistribution';
 import ControlPanel from '../components/ControlPanel';
 import MetricsOverview from '../components/MetricsOverview';
 import HourlyTable from '../components/HourlyTable';
@@ -375,8 +378,19 @@ export default function Dashboard() {
   // Digital Twin Display Mode Toggle ('3D' vs '2D')
   const [digitalTwinMode, setDigitalTwinMode] = useState('3D');
 
-  // SMS/Email Alert state
+  // SMS/Email Alert state with auto-dismissal
   const [smsAlert, setSmsAlert] = useState(null);
+  const smsTimeoutRef = useRef(null);
+  const triggerSmsAlert = useCallback((alertObj) => {
+    if (smsTimeoutRef.current) clearTimeout(smsTimeoutRef.current);
+    setSmsAlert(alertObj);
+    smsTimeoutRef.current = setTimeout(() => {
+      setSmsAlert(null);
+    }, 7000);
+  }, []);
+
+  // Main Dashboard Chart View Mode: 'BOTH' | 'CURVE' | 'PIE'
+  const [chartViewMode, setChartViewMode] = useState('BOTH');
 
   // Operator Alert Banner Dismissal state
   const [isBannerDismissed, setIsBannerDismissed] = useState(false);
@@ -520,13 +534,10 @@ export default function Dashboard() {
         }
 
         const isDynamicOverload = predicted_demand_kw >= settings.criticalThreshold;
-        const alert =
-          prediction.alert === 'CRITICAL_OVERLOAD' || isDynamicOverload
-            ? 'CRITICAL_OVERLOAD'
-            : 'NONE';
+        const alert = isDynamicOverload ? 'CRITICAL_OVERLOAD' : 'NONE';
 
         if (alert === 'CRITICAL_OVERLOAD' && !isCyberattack) {
-          setSmsAlert({
+          triggerSmsAlert({
             hour: hourLabel,
             demand: predicted_demand_kw,
             message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
@@ -599,7 +610,7 @@ export default function Dashboard() {
       isRunningRef.current = false;
       if (datasetName) setLoadedCsvName(datasetName);
     },
-    [settings, isCyberattack, climateDelta, speakAlert]
+    [settings, isCyberattack, climateDelta, speakAlert, triggerSmsAlert]
   );
 
   const handleStartSimulation = useCallback(() => {
@@ -742,7 +753,7 @@ export default function Dashboard() {
         }))
       );
       if (nextState) {
-        setSmsAlert({
+        triggerSmsAlert({
           hour: 'NOW',
           demand: 220,
           message:
@@ -786,6 +797,11 @@ export default function Dashboard() {
         true,
         0
       );
+    } else {
+      // Normal nominal load (<200 kW): Clear any previous overload SMS alert and reset banner
+      if (smsTimeoutRef.current) clearTimeout(smsTimeoutRef.current);
+      setSmsAlert(null);
+      setIsBannerDismissed(false);
     }
 
     setForecastData((prev) => {
@@ -996,9 +1012,10 @@ export default function Dashboard() {
 
   const currentDemandVal = Number(latestPrediction?.predicted_demand_kw) || 0;
   const isCurrentOverload =
-    currentDemandVal >= (settings.criticalThreshold || 200) ||
-    latestPrediction?.alert === 'CRITICAL_OVERLOAD' ||
-    isCyberattack;
+    Boolean(
+      isCyberattack ||
+      currentDemandVal >= (settings.criticalThreshold || 200)
+    );
 
   const hasFutureOverload =
     !isCurrentOverload &&
@@ -1598,16 +1615,78 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Main Grid: Recharts Load Curve + Battery Gauge & Hourly Scrubber */}
+        {/* Main Grid: Recharts Load Curve / Energy Mix Pie Charts + Battery Gauge & Hourly Scrubber */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div id="tour-load-curve" className="lg:col-span-2">
-            <LoadCurveChart
-              data={forecastData}
-              isLoading={isStreaming && forecastData.length === 0}
-              peakWindowStart={settings.peakWindowStart}
-              peakWindowEnd={settings.peakWindowEnd}
-              criticalThreshold={settings.criticalThreshold}
-            />
+          <div id="tour-load-curve" className="lg:col-span-2 space-y-4">
+            {/* View Selector Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 pb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs uppercase font-black tracking-wider text-slate-300 font-mono">
+                  Telemetry Visualizations
+                </span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-bold border border-cyan-800/60">
+                  {chartViewMode === 'BOTH' ? 'Curve & Mix Deck' : chartViewMode === 'CURVE' ? '24h Diurnal Curve' : 'Pie Charts & Slices'}
+                </span>
+              </div>
+
+              {/* View Mode Switcher */}
+              <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-white/10 text-xs font-mono">
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('BOTH')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                    chartViewMode === 'BOTH'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  Both Views
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('CURVE')}
+                  className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    chartViewMode === 'CURVE'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>24h Curve</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartViewMode('PIE')}
+                  className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                    chartViewMode === 'PIE'
+                      ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <PieIcon className="w-3.5 h-3.5" />
+                  <span>Pie Charts</span>
+                </button>
+              </div>
+            </div>
+
+            {(chartViewMode === 'BOTH' || chartViewMode === 'CURVE') && (
+              <LoadCurveChart
+                data={forecastData}
+                isLoading={isStreaming && forecastData.length === 0}
+                peakWindowStart={settings.peakWindowStart}
+                peakWindowEnd={settings.peakWindowEnd}
+                criticalThreshold={settings.criticalThreshold}
+              />
+            )}
+
+            {(chartViewMode === 'BOTH' || chartViewMode === 'PIE') && (
+              <GridEnergyDistribution
+                forecastData={forecastData}
+                currentDemand={currentDemandVal}
+                currentGridMode={effectiveGridMode}
+                criticalThreshold={settings.criticalThreshold}
+              />
+            )}
           </div>
 
           <div className="flex flex-col gap-6 justify-between">

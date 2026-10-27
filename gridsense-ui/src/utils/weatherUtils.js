@@ -275,6 +275,156 @@ export async function reverseGeocode(lat, lon) {
   return fallbackResult;
 }
 
+// In-memory cache for place searches
+const searchPlacesCache = new Map();
+
+export const POPULAR_GLOBAL_HUBS = [
+  {
+    id: 'HUB_HYD',
+    name: 'Hyderabad',
+    displayName: 'Hyderabad, Telangana, India',
+    lat: 17.3850,
+    lon: 78.4867,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Telangana',
+    plusCode: '7J9W9FPP+2M',
+    tag: 'SRLDC Southern Regional Dispatch (400kV)',
+  },
+  {
+    id: 'HUB_BLR',
+    name: 'Bengaluru',
+    displayName: 'Bengaluru, Karnataka, India',
+    lat: 12.9716,
+    lon: 77.5946,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Karnataka',
+    plusCode: '7J4VXR4F+XX',
+    tag: 'BESCOM Smart Microgrid Hub (220kV)',
+  },
+  {
+    id: 'HUB_MUM',
+    name: 'Mumbai',
+    displayName: 'Mumbai, Maharashtra, India',
+    lat: 19.0760,
+    lon: 72.8777,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Maharashtra',
+    plusCode: '7JFJ3VGM+3V',
+    tag: 'Tata Power Western Grid Interconnect',
+  },
+  {
+    id: 'HUB_DEL',
+    name: 'New Delhi',
+    displayName: 'New Delhi, Delhi, India',
+    lat: 28.6139,
+    lon: 77.2090,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Delhi',
+    plusCode: '7JWVJ675+HJ',
+    tag: 'NLDC National Load Dispatch Centre',
+  },
+  {
+    id: 'HUB_SF',
+    name: 'San Francisco',
+    displayName: 'San Francisco, California, United States',
+    lat: 37.7749,
+    lon: -122.4194,
+    country: 'United States',
+    flag: '🇺🇸',
+    admin1: 'California',
+    plusCode: '849VQHFJ+X6',
+    tag: 'Substation Alpha-1 (66kV / 11kV)',
+  },
+  {
+    id: 'HUB_NYC',
+    name: 'New York',
+    displayName: 'New York, New York, United States',
+    lat: 40.7128,
+    lon: -74.0060,
+    country: 'United States',
+    flag: '🇺🇸',
+    admin1: 'New York',
+    plusCode: '87G8P27F+4R',
+    tag: 'NYISO Sector Central (138kV)',
+  },
+  {
+    id: 'HUB_LON',
+    name: 'London',
+    displayName: 'London, England, United Kingdom',
+    lat: 51.5074,
+    lon: -0.1278,
+    country: 'United Kingdom',
+    flag: '🇬🇧',
+    admin1: 'England',
+    plusCode: '9C3XGV4C+XV',
+    tag: 'National Grid UK Interconnect',
+  },
+  {
+    id: 'HUB_TYO',
+    name: 'Tokyo',
+    displayName: 'Tokyo, Japan',
+    lat: 35.6762,
+    lon: 139.6503,
+    country: 'Japan',
+    flag: '🇯🇵',
+    admin1: 'Kanto',
+    plusCode: '8Q7XMMG2+F4',
+    tag: 'TEPCO Microgrid Hub (50Hz / 60Hz)',
+  },
+  {
+    id: 'HUB_SYD',
+    name: 'Sydney',
+    displayName: 'Sydney, New South Wales, Australia',
+    lat: -33.8688,
+    lon: 151.2093,
+    country: 'Australia',
+    flag: '🇦🇺',
+    admin1: 'New South Wales',
+    plusCode: '4RRH46J5+FF',
+    tag: 'AEMO Pacific Solar Farm Interconnect',
+  },
+  {
+    id: 'HUB_DXB',
+    name: 'Dubai',
+    displayName: 'Dubai, United Arab Emirates',
+    lat: 25.2048,
+    lon: 55.2708,
+    country: 'United Arab Emirates',
+    flag: '🇦🇪',
+    admin1: 'Dubai',
+    plusCode: '7HQQ673C+W8',
+    tag: 'DEWA Solar Park Substation (400kV)',
+  },
+  {
+    id: 'HUB_BER',
+    name: 'Berlin',
+    displayName: 'Berlin, Germany',
+    lat: 52.5200,
+    lon: 13.4050,
+    country: 'Germany',
+    flag: '🇩🇪',
+    admin1: 'Berlin',
+    plusCode: '9F4MGCH4+2X',
+    tag: '50Hertz Transmission Center',
+  },
+  {
+    id: 'HUB_SIN',
+    name: 'Singapore',
+    displayName: 'Singapore, Singapore',
+    lat: 1.3521,
+    lon: 103.8198,
+    country: 'Singapore',
+    flag: '🇸🇬',
+    admin1: 'Central Region',
+    plusCode: '6PH59R29+RV',
+    tag: 'EMA Jurong Island Microgrid Hub',
+  },
+];
+
 /**
  * Searches places, substations, cities, coordinates, or landmarks worldwide.
  * Supports direct GPS coordinate parsing (e.g. "37.7749, -122.4194") or query search.
@@ -284,6 +434,11 @@ export async function searchPlaces(query) {
     return [];
   }
   const cleanQuery = query.trim();
+  const lowerQuery = cleanQuery.toLowerCase();
+
+  if (searchPlacesCache.has(lowerQuery)) {
+    return searchPlacesCache.get(lowerQuery);
+  }
 
   // Mode 1: Direct Latitude & Longitude coordinate matching
   const coordMatch = cleanQuery.match(
@@ -296,7 +451,7 @@ export async function searchPlaces(query) {
       const pCode = encodePlusCode(lat, lon);
       const latFormatted = `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'}`;
       const lonFormatted = `${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`;
-      return [
+      const res = [
         {
           id: `COORD_${lat.toFixed(4)}_${lon.toFixed(4)}`,
           name: `Pin (${latFormatted}, ${lonFormatted})`,
@@ -304,20 +459,33 @@ export async function searchPlaces(query) {
           lat: Number(lat.toFixed(5)),
           lon: Number(lon.toFixed(5)),
           country: 'Pinpoint Location',
+          flag: '📍',
           admin1: '',
           plusCode: pCode,
           tag: 'Exact Geographic Coordinates',
         },
       ];
+      searchPlacesCache.set(lowerQuery, res);
+      return res;
     }
   }
 
-  // Mode 2: High-speed global geocoding search
+  // Mode 2: Immediate local match against popular utility grid hubs
+  const localHubMatches = POPULAR_GLOBAL_HUBS.filter(
+    (h) =>
+      h.name.toLowerCase().includes(lowerQuery) ||
+      h.displayName.toLowerCase().includes(lowerQuery) ||
+      h.country.toLowerCase().includes(lowerQuery) ||
+      h.tag.toLowerCase().includes(lowerQuery)
+  );
+
+  // Mode 3: High-speed global geocoding search via Open-Meteo
+  let apiMatches = [];
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     const res = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanQuery)}&count=6&language=en&format=json`,
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanQuery)}&count=8&language=en&format=json`,
       { signal: controller.signal }
     );
     clearTimeout(timeoutId);
@@ -325,7 +493,7 @@ export async function searchPlaces(query) {
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data.results)) {
-        return data.results.map((r) => {
+        apiMatches = data.results.map((r) => {
           const displayName = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
           return {
             id: `PLACE_${r.id}`,
@@ -334,6 +502,7 @@ export async function searchPlaces(query) {
             lat: Number(r.latitude.toFixed(5)),
             lon: Number(r.longitude.toFixed(5)),
             country: r.country || '',
+            flag: '🌐',
             admin1: r.admin1 || '',
             plusCode: encodePlusCode(r.latitude, r.longitude),
             tag: `Search Result &bull; ${r.country || 'Global'}`,
@@ -342,7 +511,21 @@ export async function searchPlaces(query) {
       }
     }
   } catch (err) {
-    console.warn('Place search service unavailable:', err.message);
+    console.warn('Place search service notice:', err.message);
   }
-  return [];
+
+  // Combine local high-priority matches with API results without duplicates
+  const combined = [...localHubMatches];
+  apiMatches.forEach((apiItem) => {
+    const isDuplicate = combined.some(
+      (c) =>
+        Math.abs(c.lat - apiItem.lat) < 0.08 && Math.abs(c.lon - apiItem.lon) < 0.08
+    );
+    if (!isDuplicate) {
+      combined.push(apiItem);
+    }
+  });
+
+  searchPlacesCache.set(lowerQuery, combined);
+  return combined;
 }

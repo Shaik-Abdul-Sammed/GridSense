@@ -20,6 +20,7 @@ import {
   Crosshair,
   Globe,
   Radio,
+  Zap,
 } from 'lucide-react';
 import {
   getWeatherInterpretation,
@@ -29,6 +30,7 @@ import {
   encodePlusCode,
   getGoogleMapsUrl,
   searchPlaces,
+  POPULAR_GLOBAL_HUBS,
 } from '../utils/weatherUtils';
 
 const REGIONAL_SUBSTATIONS = [
@@ -103,14 +105,12 @@ export default function WeatherSync({ onWeatherLoaded }) {
   // Prominent warning when location permission is blocked or denied
   const [geoDeniedWarning, setGeoDeniedWarning] = useState(false);
 
-  // Manual city fallback input
-  const [manualCity, setManualCity] = useState('');
-
   // Modern place search autocomplete state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [selectedSearchIndex, setSelectedSearchIndex] = useState(-1);
   const searchDropdownRef = useRef(null);
 
   // Close search dropdown on click outside
@@ -124,12 +124,13 @@ export default function WeatherSync({ onWeatherLoaded }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Debounced search query handler
+  // Debounced search query handler with instant cache checking
   useEffect(() => {
     const trimmed = searchQuery.trim();
     if (!trimmed || trimmed.length < 2) {
       setSearchResults([]);
       setIsSearching(false);
+      setSelectedSearchIndex(-1);
       return;
     }
 
@@ -138,12 +139,13 @@ export default function WeatherSync({ onWeatherLoaded }) {
       try {
         const results = await searchPlaces(trimmed);
         setSearchResults(results);
+        setSelectedSearchIndex(results.length > 0 ? 0 : -1);
       } catch (err) {
-        console.warn('Place search failed:', err);
+        console.warn('Place search notice:', err);
       } finally {
         setIsSearching(false);
       }
-    }, 250);
+    }, 180);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -151,7 +153,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
   // GNSS Watcher and abort controller references for cleanup
   const gnssWatchIdRef = useRef(null);
   const weatherAbortControllerRef = useRef(null);
-  const cityAbortControllerRef = useRef(null);
   const isMountedRef = useRef(true);
 
   // Store onWeatherLoaded in a ref to avoid infinite re-render loops
@@ -166,7 +167,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
     return () => {
       isMountedRef.current = false;
       weatherAbortControllerRef.current?.abort();
-      cityAbortControllerRef.current?.abort();
       if (gnssWatchIdRef.current != null && typeof navigator !== 'undefined' && navigator.geolocation) {
         navigator.geolocation.clearWatch(gnssWatchIdRef.current);
       }
@@ -423,17 +423,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
     }
   };
 
-  // Substation Preset Button Click Handler
-  const handleSelectSubstation = (station) => {
-    if (gnssWatchIdRef.current != null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(gnssWatchIdRef.current);
-      gnssWatchIdRef.current = null;
-    }
-    setIsAcquiringGnss(false);
-    setGeoDeniedWarning(false);
-    fetchWeather(station.lat, station.lon, `${station.name} (${station.tag})`, station.id, null);
-  };
-
   // Search result selection handler
   const handleSelectSearchResult = (result) => {
     if (gnssWatchIdRef.current != null && navigator.geolocation) {
@@ -445,13 +434,52 @@ export default function WeatherSync({ onWeatherLoaded }) {
     setIsSearchOpen(false);
     setSearchQuery('');
     setSearchResults([]);
+    setSelectedSearchIndex(-1);
     fetchWeather(result.lat, result.lon, result.displayName, result.id, null);
   };
 
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = async (e) => {
     if (e) e.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+
     if (searchResults.length > 0) {
-      handleSelectSearchResult(searchResults[0]);
+      const idx = selectedSearchIndex >= 0 && selectedSearchIndex < searchResults.length ? selectedSearchIndex : 0;
+      handleSelectSearchResult(searchResults[idx]);
+      return;
+    }
+
+    // Direct immediate fallback query
+    setIsSearching(true);
+    try {
+      const results = await searchPlaces(query);
+      if (results.length > 0) {
+        handleSelectSearchResult(results[0]);
+      } else {
+        setError(`⚠️ Could not locate "${query}". Please check spelling or enter coordinates.`);
+      }
+    } catch {
+      setError(`Search service unavailable for "${query}".`);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setIsSearchOpen(true);
+      setSelectedSearchIndex((prev) => (searchResults.length > 0 ? (prev < searchResults.length - 1 ? prev + 1 : 0) : -1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setIsSearchOpen(true);
+      setSelectedSearchIndex((prev) => (searchResults.length > 0 ? (prev > 0 ? prev - 1 : searchResults.length - 1) : -1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSearchSubmit();
+    } else if (e.key === 'Escape') {
+      setIsSearchOpen(false);
+      setSelectedSearchIndex(-1);
     }
   };
 
@@ -521,47 +549,7 @@ export default function WeatherSync({ onWeatherLoaded }) {
     }
   };
 
-  // Manual city search fallback via Open-Meteo Geocoding API
-  const handleManualCitySubmit = async (e) => {
-    if (e) e.preventDefault();
-    const query = manualCity.trim();
-    if (!query) return;
 
-    setError(null);
-    setGeoDeniedWarning(false);
-    setIsLoading(true);
-
-    cityAbortControllerRef.current?.abort();
-    const controller = new AbortController();
-    cityAbortControllerRef.current = controller;
-
-    try {
-      const res = await fetch(
-        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`,
-        { signal: controller.signal }
-      );
-      if (!res.ok) throw new Error(`Geocoding HTTP ${res.status}`);
-      const data = await res.json();
-      if (!isMountedRef.current) return;
-      if (!data?.results || data.results.length === 0) {
-        setError(`⚠️ Could not locate city "${query}". Please check the spelling.`);
-        setIsLoading(false);
-        return;
-      }
-      const city = data.results[0];
-      const displayName = [city.name, city.admin1, city.country].filter(Boolean).join(', ');
-      const lat = Number(city.latitude.toFixed(5));
-      const lon = Number(city.longitude.toFixed(5));
-      await fetchWeather(lat, lon, displayName, `CITY_${city.id}`, null);
-      if (isMountedRef.current) setManualCity('');
-    } catch (err) {
-      if (err.name === 'AbortError') return;
-      if (!isMountedRef.current) return;
-      console.warn('City geocoding error:', err);
-      setError(`Failed to geocode "${query}". Please check connection.`);
-      setIsLoading(false);
-    }
-  };
 
   // Mount-only initialization: Load default substation without popping GPS permission prompt (User Gesture Required on Mobile)
   const hasMountedRef = useRef(false);
@@ -667,7 +655,7 @@ export default function WeatherSync({ onWeatherLoaded }) {
           </div>
         </div>
 
-        {/* Action Controls: Locate GPS, Manual City Fallback & Google Maps */}
+        {/* Action Controls: Locate GPS & Google Maps Satellite Link */}
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end shrink-0">
           {/* High-Accuracy GPS Sync Button */}
           <button
@@ -696,29 +684,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
             )}
           </button>
 
-          {/* Manual City Input Fallback */}
-          <form
-            onSubmit={handleManualCitySubmit}
-            className="flex items-center gap-1.5 flex-1 sm:flex-initial"
-          >
-            <div className="relative flex-1 sm:w-56">
-              <input
-                type="text"
-                placeholder="Or enter city (e.g. Hyderabad)"
-                value={manualCity}
-                onChange={(e) => setManualCity(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl text-xs font-mono bg-slate-950/90 border border-white/10 text-white placeholder-slate-400 focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 shadow-inner"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={!manualCity.trim()}
-              className="px-3 py-2 rounded-xl text-xs font-mono font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              Go
-            </button>
-          </form>
-
           {/* Direct Google Maps Navigation / Satellite Exploration */}
           <a
             href={getGoogleMapsUrl(activeCoordinates.lat, activeCoordinates.lon)}
@@ -734,118 +699,152 @@ export default function WeatherSync({ onWeatherLoaded }) {
         </div>
       </div>
 
-      {/* Search Bar & Global Location Resolver */}
-      <div className="pt-2 border-t border-white/5">
-        <div ref={searchDropdownRef} className="relative w-full max-w-xl">
-          <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-            <Search className="w-4 h-4 text-cyan-400 absolute left-3.5 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setIsSearchOpen(true);
-              }}
-              onFocus={() => {
-                if (searchQuery.trim().length >= 2) setIsSearchOpen(true);
-              }}
-              placeholder="Search global city, coordinates (e.g. 14.68, 77.60), or address..."
-              className="w-full pl-9 pr-16 py-2 rounded-xl text-xs font-mono bg-slate-950/80 border border-white/10 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500/70 focus:ring-1 focus:ring-cyan-500/50 transition-all shadow-inner"
-            />
-            <div className="absolute right-2 flex items-center gap-1">
-              {isSearching && (
-                <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin mr-1" />
-              )}
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSearchResults([]);
-                    setIsSearchOpen(false);
-                  }}
-                  className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title="Clear search"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              )}
+      {/* Unified Global Weather Search Bar & Power Hub Command Center */}
+      <div className="pt-2 border-t border-white/5 space-y-3">
+        <div ref={searchDropdownRef} className="relative w-full">
+          <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
+            <div className="relative flex-1 flex items-center">
+              <Search className="w-4 h-4 text-cyan-400 absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => {
+                  if (searchQuery.trim().length >= 2 || searchResults.length > 0) {
+                    setIsSearchOpen(true);
+                  }
+                }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Search any global city, coordinates (e.g. Hyderabad, 17.38, 78.48), or utility hub..."
+                className="w-full pl-9 pr-14 py-2.5 rounded-xl text-xs font-mono bg-slate-950/90 border border-white/10 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all shadow-inner"
+              />
+              <div className="absolute right-2 flex items-center gap-1">
+                {isSearching && (
+                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin mr-1" />
+                )}
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults([]);
+                      setIsSearchOpen(false);
+                      setSelectedSearchIndex(-1);
+                    }}
+                    className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            <button
+              type="submit"
+              disabled={!searchQuery.trim() && !isSearching}
+              className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-slate-950 bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-cyan-950/50 cursor-pointer transition-all shrink-0"
+            >
+              Search
+            </button>
           </form>
 
-          {/* Autocomplete Results Dropdown */}
+          {/* Autocomplete Results Dropdown with Arrow Key Support */}
           {isSearchOpen && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/95 backdrop-blur-xl border border-cyan-500/30 rounded-2xl shadow-2xl overflow-hidden divide-y divide-white/5 max-h-72 overflow-y-auto">
+            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/98 backdrop-blur-xl border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden divide-y divide-white/5 max-h-72 overflow-y-auto">
               {isSearching && searchResults.length === 0 && (
                 <div className="p-3 text-center text-xs font-mono text-slate-400 flex items-center justify-center gap-2">
                   <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-                  Searching global database...
+                  Resolving global satellite geodata...
                 </div>
               )}
               {!isSearching && searchResults.length === 0 && searchQuery.trim().length >= 2 && (
                 <div className="p-3 text-center text-xs font-mono text-slate-400">
-                  No matching locations found for &quot;{searchQuery}&quot;
+                  No matching locations found for &quot;{searchQuery}&quot;. Try typing exact coordinates like <span className="text-cyan-400">17.38, 78.48</span>.
                 </div>
               )}
-              {searchResults.map((result) => (
-                <button
-                  key={result.id}
-                  type="button"
-                  onClick={() => handleSelectSearchResult(result)}
-                  className="w-full text-left p-3 hover:bg-cyan-950/50 hover:text-cyan-200 transition-colors flex items-center justify-between gap-3 group cursor-pointer"
-                >
-                  <div className="flex items-start gap-2.5 min-w-0">
-                    <MapPin className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5 group-hover:scale-110 transition-transform" />
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold font-mono text-white group-hover:text-cyan-300 truncate">
-                        {result.name}
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-400 truncate">
-                        {result.displayName}
+              {searchResults.map((result, idx) => {
+                const isHighlighted = selectedSearchIndex === idx;
+                return (
+                  <button
+                    key={result.id || idx}
+                    type="button"
+                    onClick={() => handleSelectSearchResult(result)}
+                    onMouseEnter={() => setSelectedSearchIndex(idx)}
+                    className={`w-full text-left p-3 transition-colors flex items-center justify-between gap-3 group cursor-pointer ${
+                      isHighlighted
+                        ? 'bg-cyan-950/70 border-l-4 border-l-cyan-400 text-cyan-100'
+                        : 'hover:bg-cyan-950/40 text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2.5 min-w-0">
+                      <span className="text-base shrink-0 select-none">{result.flag || '📍'}</span>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold font-mono text-white group-hover:text-cyan-300 truncate">
+                          {result.name}
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 truncate">
+                          {result.displayName}
+                        </div>
+                        {result.tag && (
+                          <div className="text-[9px] font-mono text-cyan-400/80 truncate mt-0.5">
+                            {result.tag}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-[10px] font-mono text-cyan-400/80 font-semibold">
-                      {result.lat.toFixed(2)}°, {result.lon.toFixed(2)}°
-                    </div>
-                    {result.plusCode && (
-                      <div className="text-[9px] font-mono text-indigo-400/80">
-                        {result.plusCode}
+                    <div className="text-right shrink-0">
+                      <div className="text-[10px] font-mono text-cyan-400/90 font-bold">
+                        {result.lat.toFixed(2)}°, {result.lon.toFixed(2)}°
                       </div>
-                    )}
-                  </div>
-                </button>
-              ))}
+                      {result.plusCode && (
+                        <div className="text-[9px] font-mono text-indigo-300/80">
+                          {result.plusCode}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
-      </div>
 
-      {/* Middle Row: Regional Substation Quick Switcher */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-2 pb-1 border-t border-white/5">
-        <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-          <MapPin className="w-3 h-3 text-cyan-400" />
-          Substations:
-        </span>
-        {REGIONAL_SUBSTATIONS.map((station) => {
-          const isSelected = activeStationId === station.id;
-          return (
-            <button
-              key={station.id}
-              type="button"
-              onClick={() => handleSelectSubstation(station)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
-                isSelected
-                  ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
-                  : 'bg-slate-900/70 text-slate-400 border-white/10 hover:text-white hover:border-white/20'
-              }`}
-            >
-              <span>{station.name}</span>
-              {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-            </button>
-          );
-        })}
+        {/* Quick-Tap Popular Power Grid Hub Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 pt-1">
+          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
+            <Zap className="w-3 h-3 text-amber-400" />
+            Quick Grid Hubs:
+          </span>
+          {POPULAR_GLOBAL_HUBS.map((hub) => {
+            const isSelected =
+              Math.abs(activeCoordinates.lat - hub.lat) < 0.05 &&
+              Math.abs(activeCoordinates.lon - hub.lon) < 0.05;
+
+            return (
+              <button
+                key={hub.id}
+                type="button"
+                onClick={() => {
+                  fetchWeather(hub.lat, hub.lon, hub.displayName, hub.id, null);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
+                  isSelected
+                    ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
+                    : 'bg-slate-900/80 text-slate-300 border-white/10 hover:text-white hover:border-white/20 hover:bg-slate-800'
+                }`}
+                title={`${hub.displayName} • ${hub.tag}`}
+              >
+                <span>{hub.flag}</span>
+                <span>{hub.name}</span>
+                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Accurate Live Meteorological Statistics Cards */}
