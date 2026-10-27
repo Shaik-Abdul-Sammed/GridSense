@@ -21,7 +21,6 @@ import {
   Globe,
   Radio,
   Zap,
-  ChevronDown,
 } from 'lucide-react';
 import {
   getWeatherInterpretation,
@@ -99,8 +98,8 @@ export default function WeatherSync({ onWeatherLoaded }) {
   // Debounced search query handler with instant cache checking
   useEffect(() => {
     const trimmed = searchQuery.trim();
-    if (!trimmed || trimmed.length < 2) {
-      setSearchResults([]);
+    if (!trimmed) {
+      setSearchResults(POPULAR_GLOBAL_HUBS);
       setIsSearching(false);
       setSelectedSearchIndex(-1);
       return;
@@ -117,7 +116,7 @@ export default function WeatherSync({ onWeatherLoaded }) {
       } finally {
         setIsSearching(false);
       }
-    }, 180);
+    }, 120);
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -395,26 +394,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
     }
   };
 
-  // Dropdown City & Substation Selection Handler
-  const handleDropdownSelect = (e) => {
-    const key = e.target.value;
-    if (!key || key === 'CUSTOM') return;
-    const loc = PRESET_LOCATIONS[key];
-    if (loc) {
-      if (gnssWatchIdRef.current != null && navigator.geolocation) {
-        navigator.geolocation.clearWatch(gnssWatchIdRef.current);
-        gnssWatchIdRef.current = null;
-      }
-      setIsAcquiringGnss(false);
-      setGeoDeniedWarning(false);
-      setIsSearchOpen(false);
-      setSearchQuery('');
-      setSearchResults([]);
-      setSelectedSearchIndex(-1);
-      fetchWeather(loc.lat, loc.lon, `${loc.name} (${loc.tag})`, key, null);
-    }
-  };
-
   // Search result selection handler
   const handleSelectSearchResult = (result) => {
     if (gnssWatchIdRef.current != null && navigator.geolocation) {
@@ -424,7 +403,7 @@ export default function WeatherSync({ onWeatherLoaded }) {
     setIsAcquiringGnss(false);
     setGeoDeniedWarning(false);
     setIsSearchOpen(false);
-    setSearchQuery('');
+    setSearchQuery(result.name || '');
     setSearchResults([]);
     setSelectedSearchIndex(-1);
     fetchWeather(result.lat, result.lon, result.displayName, result.id, null);
@@ -627,46 +606,108 @@ export default function WeatherSync({ onWeatherLoaded }) {
             )}
           </button>
 
-          {/* Feature: City & Substation Dropdown Selection Menu */}
-          <div className="relative flex-1 sm:flex-initial min-w-[210px] sm:min-w-[250px]">
-            <select
-              value={PRESET_LOCATIONS[activeStationId] ? activeStationId : 'CUSTOM'}
-              onChange={handleDropdownSelect}
-              className="w-full min-h-[40px] pl-8 pr-7 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/95 text-amber-300 border border-amber-500/40 hover:border-amber-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all cursor-pointer shadow-md shadow-amber-950/40 appearance-none truncate"
-              title="Select city or substation from dropdown list"
-            >
-              <option value="CUSTOM" disabled>
-                {activeStationId === 'LIVE_GPS' ? '📍 Live GNSS Station Active' : '📍 Select Grid Hub / City Preset...'}
-              </option>
-              <optgroup label="🇮🇳 Major Indian Power Grid Hubs">
-                <option value="HUB_HYD">Hyderabad &bull; Telangana (17.38°N)</option>
-                <option value="HUB_BLR">Bengaluru &bull; Karnataka (12.97°N)</option>
-                <option value="HUB_MUM">Mumbai &bull; Maharashtra (19.08°N)</option>
-                <option value="HUB_DEL">New Delhi &bull; NCR (28.61°N)</option>
-                <option value="HUB_VTZ">Visakhapatnam &bull; AP (17.69°N)</option>
-                <option value="HUB_VJA">Vijayawada &bull; AP (16.51°N)</option>
-                <option value="HUB_MAA">Chennai &bull; Tamil Nadu (13.08°N)</option>
-                <option value="SUB_TIRUPATI">Tirupati &bull; AP (13.62°N)</option>
-              </optgroup>
-              <optgroup label="🌍 Global Smart Grid Centers">
-                <option value="HUB_SF">San Francisco &bull; CAISO Alpha-1</option>
-                <option value="HUB_LON">London &bull; UK National Grid</option>
-                <option value="HUB_NYC">New York &bull; NYISO Central</option>
-                <option value="HUB_TYO">Tokyo &bull; TEPCO Megawatt</option>
-                <option value="HUB_SYD">Sydney &bull; AEMO Pacific Solar</option>
-                <option value="HUB_DXB">Dubai &bull; DEWA Solar Park 400kV</option>
-                <option value="HUB_BER">Berlin &bull; 50Hertz Transmission</option>
-                <option value="HUB_SIN">Singapore &bull; Jurong Microgrid</option>
-              </optgroup>
-              <optgroup label="⚡ Regional Grid Feeders">
-                <option value="SUB_ALPHA">Substation Alpha-1 (230kV Feeder)</option>
-                <option value="SUB_BETA">Substation Beta-4 (Industrial 66kV)</option>
-                <option value="SUB_GAMMA">Gamma Solar Farm (50MW PV)</option>
-                <option value="SUB_DELTA">Delta BESS Substation (20MWh)</option>
-              </optgroup>
-            </select>
-            <MapPin className="w-3.5 h-3.5 text-amber-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <ChevronDown className="w-3.5 h-3.5 text-amber-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {/* Autocomplete City & Utility Substation Search Input with Dropdown Recommendations */}
+          <div ref={searchDropdownRef} className="relative flex-1 sm:flex-initial min-w-[220px] sm:min-w-[280px]">
+            <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+              <Search className="w-3.5 h-3.5 text-amber-400 absolute left-3 pointer-events-none z-10" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setIsSearchOpen(true);
+                }}
+                onFocus={() => {
+                  setIsSearchOpen(true);
+                  if (searchResults.length === 0) {
+                    setSearchResults(POPULAR_GLOBAL_HUBS);
+                  }
+                }}
+                onKeyDown={handleSearchKeyDown}
+                placeholder={resolvedPlaceName ? `📍 ${resolvedPlaceName.split(',')[0]} (Type city...)` : "Search city (e.g. Hyderabad, London)..."}
+                className="w-full min-h-[40px] pl-8 pr-12 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/95 text-amber-300 border border-amber-500/40 hover:border-amber-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all shadow-md shadow-amber-950/40 placeholder-slate-400"
+              />
+              <div className="absolute right-2 flex items-center gap-1 z-10">
+                {isSearching && (
+                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin mr-0.5" />
+                )}
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchResults(POPULAR_GLOBAL_HUBS);
+                      setIsSearchOpen(true);
+                      setSelectedSearchIndex(-1);
+                    }}
+                    className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </form>
+
+            {/* Autocomplete Results Dropdown */}
+            {isSearchOpen && (
+              <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/98 backdrop-blur-xl border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden divide-y divide-white/5 max-h-72 overflow-y-auto">
+                {isSearching && searchResults.length === 0 && (
+                  <div className="p-3 text-center text-xs font-mono text-slate-400 flex items-center justify-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
+                    Resolving satellite geodata...
+                  </div>
+                )}
+                {!isSearching && searchResults.length === 0 && searchQuery.trim().length >= 1 && (
+                  <div className="p-3 text-center text-xs font-mono text-slate-400">
+                    No matching locations for &quot;{searchQuery}&quot;. Try typing exact coordinates like <span className="text-cyan-400">17.38, 78.48</span>.
+                  </div>
+                )}
+                {searchResults.map((result, idx) => {
+                  const isHighlighted = selectedSearchIndex === idx;
+                  return (
+                    <button
+                      key={result.id || idx}
+                      type="button"
+                      onClick={() => handleSelectSearchResult(result)}
+                      onMouseEnter={() => setSelectedSearchIndex(idx)}
+                      className={`w-full text-left p-2.5 transition-colors flex items-center justify-between gap-2.5 group cursor-pointer ${
+                        isHighlighted
+                          ? 'bg-cyan-950/70 border-l-4 border-l-cyan-400 text-cyan-100'
+                          : 'hover:bg-cyan-950/40 text-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2 min-w-0">
+                        <span className="text-base shrink-0 select-none">{result.flag || '📍'}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold font-mono text-white group-hover:text-cyan-300 truncate">
+                            {result.name}
+                          </div>
+                          <div className="text-[10px] font-mono text-slate-400 truncate">
+                            {result.displayName}
+                          </div>
+                          {result.tag && (
+                            <div className="text-[9px] font-mono text-cyan-400/80 truncate mt-0.5">
+                              {result.tag}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] font-mono text-cyan-400/90 font-bold">
+                          {result.lat.toFixed(2)}°, {result.lon.toFixed(2)}°
+                        </div>
+                        {result.plusCode && (
+                          <div className="text-[9px] font-mono text-indigo-300/80">
+                            {result.plusCode}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Direct Google Maps Navigation / Satellite Exploration */}
@@ -744,130 +785,15 @@ export default function WeatherSync({ onWeatherLoaded }) {
         </div>
       </div>
 
-      {/* Unified Global Weather Search Bar & Power Hub Command Center */}
-      <div className="pt-2 border-t border-white/5 space-y-3">
-        <div ref={searchDropdownRef} className="relative w-full">
-          <form onSubmit={handleSearchSubmit} className="relative flex items-center gap-2">
-            <div className="relative flex-1 flex items-center">
-              <Search className="w-4 h-4 text-cyan-400 absolute left-3.5 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setIsSearchOpen(true);
-                }}
-                onFocus={() => {
-                  setIsSearchOpen(true);
-                  if (searchResults.length === 0) {
-                    setSearchResults(POPULAR_GLOBAL_HUBS);
-                  }
-                }}
-                onKeyDown={handleSearchKeyDown}
-                placeholder="Search any global city, coordinates (e.g. Hyderabad, 17.38, 78.48), or utility hub..."
-                className="w-full pl-9 pr-14 py-2.5 rounded-xl text-xs font-mono bg-slate-950/90 border border-white/10 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all shadow-inner"
-              />
-              <div className="absolute right-2 flex items-center gap-1">
-                {isSearching && (
-                  <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin mr-1" />
-                )}
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSearchResults([]);
-                      setIsSearchOpen(false);
-                      setSelectedSearchIndex(-1);
-                    }}
-                    className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                    title="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={!searchQuery.trim() && !isSearching}
-              className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-slate-950 bg-gradient-to-r from-cyan-400 to-teal-400 hover:from-cyan-300 hover:to-teal-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-md shadow-cyan-950/50 cursor-pointer transition-all shrink-0"
-            >
-              Search
-            </button>
-          </form>
-
-          {/* Autocomplete Results Dropdown with Arrow Key Support */}
-          {isSearchOpen && (
-            <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-slate-900/98 backdrop-blur-xl border border-cyan-500/40 rounded-2xl shadow-2xl overflow-hidden divide-y divide-white/5 max-h-72 overflow-y-auto">
-              {isSearching && searchResults.length === 0 && (
-                <div className="p-3 text-center text-xs font-mono text-slate-400 flex items-center justify-center gap-2">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-                  Resolving global satellite geodata...
-                </div>
-              )}
-              {!isSearching && searchResults.length === 0 && searchQuery.trim().length >= 2 && (
-                <div className="p-3 text-center text-xs font-mono text-slate-400">
-                  No matching locations found for &quot;{searchQuery}&quot;. Try typing exact coordinates like <span className="text-cyan-400">17.38, 78.48</span>.
-                </div>
-              )}
-              {searchResults.map((result, idx) => {
-                const isHighlighted = selectedSearchIndex === idx;
-                return (
-                  <button
-                    key={result.id || idx}
-                    type="button"
-                    onClick={() => handleSelectSearchResult(result)}
-                    onMouseEnter={() => setSelectedSearchIndex(idx)}
-                    className={`w-full text-left p-3 transition-colors flex items-center justify-between gap-3 group cursor-pointer ${
-                      isHighlighted
-                        ? 'bg-cyan-950/70 border-l-4 border-l-cyan-400 text-cyan-100'
-                        : 'hover:bg-cyan-950/40 text-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-start gap-2.5 min-w-0">
-                      <span className="text-base shrink-0 select-none">{result.flag || '📍'}</span>
-                      <div className="min-w-0">
-                        <div className="text-xs font-bold font-mono text-white group-hover:text-cyan-300 truncate">
-                          {result.name}
-                        </div>
-                        <div className="text-[10px] font-mono text-slate-400 truncate">
-                          {result.displayName}
-                        </div>
-                        {result.tag && (
-                          <div className="text-[9px] font-mono text-cyan-400/80 truncate mt-0.5">
-                            {result.tag}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-[10px] font-mono text-cyan-400/90 font-bold">
-                        {result.lat.toFixed(2)}°, {result.lon.toFixed(2)}°
-                      </div>
-                      {result.plusCode && (
-                        <div className="text-[9px] font-mono text-indigo-300/80">
-                          {result.plusCode}
-                        </div>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+      {/* Quick-Tap Popular Power Grid Hub Chips (Arranged to prevent overflow) */}
+      <div className="pt-2 border-t border-white/5 space-y-1.5">
+        <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+          <span className="flex items-center gap-1.5 text-amber-400">
+            <Zap className="w-3.5 h-3.5" />
+            Major Power Hub Presets:
+          </span>
+          <span className="text-[9px] text-slate-500 hidden sm:inline">Tap any hub to sync weather &amp; telemetry</span>
         </div>
-
-        {/* Quick-Tap Popular Power Grid Hub Chips (Arranged to prevent overflow) */}
-        <div className="space-y-1.5 pt-1">
-          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
-            <span className="flex items-center gap-1.5 text-amber-400">
-              <Zap className="w-3.5 h-3.5" />
-              Major Power Hub Presets:
-            </span>
-            <span className="text-[9px] text-slate-500 hidden sm:inline">Tap any hub to sync weather &amp; telemetry</span>
-          </div>
 
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {POPULAR_GLOBAL_HUBS.map((hub) => {
@@ -897,7 +823,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
             })}
           </div>
         </div>
-      </div>
 
       {/* Accurate Live Meteorological Statistics Cards */}
       {weatherDetails && (

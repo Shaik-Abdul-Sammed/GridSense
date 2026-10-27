@@ -1233,7 +1233,7 @@ export default function Dashboard() {
           Ingestion & Simulation Tools Suboptions Bar
           Prevents clumsy vertical stacking on mobile devices and enables focused workflow
          ========================================================================= */}
-      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5">
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-white/10 p-2 sm:p-2.5 rounded-2xl shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5">
         <div className="flex items-center gap-2 px-2 py-1 shrink-0">
           <Layers className="w-4 h-4 text-cyan-400" />
           <span className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
@@ -1241,7 +1241,7 @@ export default function Dashboard() {
           </span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 w-full xl:flex-1 font-mono text-xs">
+        <div className="flex flex-wrap items-center gap-2 w-full md:flex-1 font-mono text-xs">
           {[
             { id: 'CONTROLS', label: 'Simulation Controls', icon: Activity, badge: isStreaming ? 'Active' : null },
             { id: 'WEATHER', label: 'Weather Sync', icon: CloudSun, badge: 'GPS/City' },
@@ -1256,14 +1256,14 @@ export default function Dashboard() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveToolsTab(tab.id)}
-                className={`w-full min-h-[42px] px-2.5 sm:px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 select-none text-center ${
+                className={`flex-1 min-w-[140px] sm:min-w-[160px] min-h-[40px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-2 select-none text-center ${
                   isTabActive
                     ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-950/60 font-black'
                     : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">{tab.label}</span>
+                <span className="whitespace-nowrap">{tab.label}</span>
                 {tab.badge && (
                   <span
                     className={`text-[9px] px-1.5 py-0.5 rounded-full font-black shrink-0 ${

@@ -489,8 +489,8 @@ export const POPULAR_GLOBAL_HUBS = [
  * high-precision Photon OpenStreetMap search, and Open-Meteo fallback.
  */
 export async function searchPlaces(query) {
-  if (!query || typeof query !== 'string' || query.trim().length < 2) {
-    return [];
+  if (!query || typeof query !== 'string' || query.trim().length === 0) {
+    return POPULAR_GLOBAL_HUBS;
   }
   const cleanQuery = query.trim();
   const lowerQuery = cleanQuery.toLowerCase();
@@ -547,6 +547,13 @@ export async function searchPlaces(query) {
       (lowerQuery.includes('madras') && n.includes('chennai'));
     return isMatch;
   });
+
+  // If query is only 1 letter, return instantaneous local matches without external network lag
+  if (cleanQuery.length === 1) {
+    const oneLetterResults = localHubMatches.length > 0 ? localHubMatches : POPULAR_GLOBAL_HUBS;
+    searchPlacesCache.set(lowerQuery, oneLetterResults);
+    return oneLetterResults;
+  }
 
   // Mode 3: High-Precision Dual-Engine Query (Photon OSM + Open-Meteo)
   let externalMatches = [];
