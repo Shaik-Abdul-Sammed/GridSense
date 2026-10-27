@@ -584,28 +584,30 @@ export default function WeatherSync({ onWeatherLoaded }) {
         </div>
       )}
 
-      {/* Top Banner: Header, Location Place Name & Controls */}
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        {/* Title, Place Name & Identity */}
-        <div className="flex items-start gap-3.5 min-w-0">
-          <div className="p-3 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 shrink-0 shadow-lg shadow-amber-950/40">
-            <Compass className="w-6 h-6 animate-spin-slow" />
+      {/* Top Banner: Location Header, Place Name & Action Buttons */}
+      <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 pb-3 border-b border-white/5">
+        {/* Title, Place Name & Telemetry Badges */}
+        <div className="flex items-start gap-3 min-w-0 flex-1 w-full">
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 text-amber-400 border border-amber-500/30 shrink-0 shadow-lg shadow-amber-950/40">
+            <Compass className="w-5 h-5 sm:w-6 sm:h-6 animate-spin-slow" />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base font-black text-white tracking-tight font-mono uppercase">
+              <h3 className="text-sm sm:text-base font-black text-white tracking-tight font-mono uppercase">
                 Satellite Weather Ingestion &bull; Live Telemetry
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-amber-950 text-amber-300 border border-amber-800/80">
-                WMO &bull; Open-Meteo GPS
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-amber-950 text-amber-300 border border-amber-800/80 shrink-0">
+                WMO &bull; Dual-Engine GPS
               </span>
             </div>
 
-            {/* Prominent Live Location Place Name */}
-            <div className="flex flex-wrap items-center gap-2 mt-1.5">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-bold font-mono text-sm bg-emerald-950/50 px-3 py-1 rounded-xl border border-emerald-800/60 shadow-xs max-w-full">
-                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="break-words">{resolvedPlaceName || 'Resolving location...'}</span>
+            {/* Prominent Live Location Place Name & Badges */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1.5">
+              <div className="flex items-center gap-1.5 text-emerald-400 font-bold font-mono text-xs sm:text-sm bg-emerald-950/50 px-2.5 py-1 rounded-xl border border-emerald-800/60 shadow-xs max-w-full">
+                <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="break-words truncate max-w-[280px] sm:max-w-md" title={resolvedPlaceName}>
+                  {resolvedPlaceName || 'Resolving location...'}
+                </span>
               </div>
 
               {/* Live GPS badge with physical precision radius */}
@@ -655,14 +657,14 @@ export default function WeatherSync({ onWeatherLoaded }) {
           </div>
         </div>
 
-        {/* Action Controls: Locate GPS & Google Maps Satellite Link */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto justify-start lg:justify-end shrink-0">
+        {/* Action Controls: Locate GPS & Google Maps Satellite Link (Arranged without overflow) */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full xl:w-auto shrink-0">
           {/* High-Accuracy GPS Sync Button */}
           <button
             type="button"
             onClick={handleGpsSync}
             disabled={isAcquiringGnss}
-            className={`flex-1 sm:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none border-none active:scale-95 cursor-pointer ${
+            className={`flex-1 sm:flex-initial min-h-[42px] inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-bold font-mono text-xs tracking-wider uppercase text-slate-950 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-500 hover:from-amber-300 hover:to-orange-300 shadow-xl shadow-amber-950/50 transition-all select-none border-none active:scale-95 cursor-pointer whitespace-nowrap ${
               isAcquiringGnss ? 'opacity-70 cursor-wait' : 'hover:shadow-amber-500/30'
             }`}
           >
@@ -689,7 +691,7 @@ export default function WeatherSync({ onWeatherLoaded }) {
             href={getGoogleMapsUrl(activeCoordinates.lat, activeCoordinates.lon)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-950/80 hover:border-cyan-500/80 transition-all shadow-md group cursor-pointer shrink-0"
+            className="flex-1 sm:flex-initial min-h-[42px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-slate-900/90 text-cyan-300 border border-cyan-800/60 hover:bg-cyan-950/80 hover:border-cyan-500/80 transition-all shadow-md group cursor-pointer shrink-0 whitespace-nowrap"
             title="Open exact coordinates in Google Maps (Satellite & 3D view)"
           >
             <Globe className="w-3.5 h-3.5 text-cyan-400 group-hover:rotate-12 transition-transform" />
@@ -813,37 +815,43 @@ export default function WeatherSync({ onWeatherLoaded }) {
           )}
         </div>
 
-        {/* Quick-Tap Popular Power Grid Hub Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 pt-1">
-          <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1">
-            <Zap className="w-3 h-3 text-amber-400" />
-            Quick Grid Hubs:
-          </span>
-          {POPULAR_GLOBAL_HUBS.map((hub) => {
-            const isSelected =
-              Math.abs(activeCoordinates.lat - hub.lat) < 0.05 &&
-              Math.abs(activeCoordinates.lon - hub.lon) < 0.05;
+        {/* Quick-Tap Popular Power Grid Hub Chips (Arranged to prevent overflow) */}
+        <div className="space-y-1.5 pt-1">
+          <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 font-bold uppercase tracking-wider">
+            <span className="flex items-center gap-1.5 text-amber-400">
+              <Zap className="w-3.5 h-3.5" />
+              Major Power Hub Presets:
+            </span>
+            <span className="text-[9px] text-slate-500 hidden sm:inline">Tap any hub to sync weather &amp; telemetry</span>
+          </div>
 
-            return (
-              <button
-                key={hub.id}
-                type="button"
-                onClick={() => {
-                  fetchWeather(hub.lat, hub.lon, hub.displayName, hub.id, null);
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer shrink-0 border flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-lg shadow-amber-950/60 ring-1 ring-amber-400/40'
-                    : 'bg-slate-900/80 text-slate-300 border-white/10 hover:text-white hover:border-white/20 hover:bg-slate-800'
-                }`}
-                title={`${hub.displayName} • ${hub.tag}`}
-              >
-                <span>{hub.flag}</span>
-                <span>{hub.name}</span>
-                {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
-              </button>
-            );
-          })}
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+            {POPULAR_GLOBAL_HUBS.map((hub) => {
+              const isSelected =
+                Math.abs(activeCoordinates.lat - hub.lat) < 0.05 &&
+                Math.abs(activeCoordinates.lon - hub.lon) < 0.05;
+
+              return (
+                <button
+                  key={hub.id}
+                  type="button"
+                  onClick={() => {
+                    fetchWeather(hub.lat, hub.lon, hub.displayName, hub.id, null);
+                  }}
+                  className={`min-h-[36px] px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all cursor-pointer border flex items-center gap-1.5 shrink-0 select-none active:scale-95 ${
+                    isSelected
+                      ? 'bg-amber-500/25 text-amber-300 border-amber-400 shadow-md shadow-amber-950/60 ring-1 ring-amber-400/40'
+                      : 'bg-slate-900/80 text-slate-300 border-white/10 hover:text-white hover:border-white/20 hover:bg-slate-800'
+                  }`}
+                  title={`${hub.displayName} • ${hub.tag}`}
+                >
+                  <span className="text-sm select-none">{hub.flag}</span>
+                  <span>{hub.name}</span>
+                  {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 

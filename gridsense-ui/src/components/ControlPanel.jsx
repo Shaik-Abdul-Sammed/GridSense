@@ -232,123 +232,129 @@ export default function ControlPanel({
           </p>
         </div>
 
-        {/* Action Button Group */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
-          {/* Feature 3: 1-Click Demo Scenario Generator */}
-          {onPlayDemoScenario && (
+        {/* Action Button Group: Organized into Simulation Controls & Export Hub */}
+        <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2.5 w-full xl:w-auto justify-start xl:justify-end">
+          {/* Tier 1: Simulation Run & Scenario Controls */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* Feature 3: 1-Click Demo Scenario Generator */}
+            {onPlayDemoScenario && (
+              <button
+                onClick={onPlayDemoScenario}
+                disabled={isStreaming}
+                title="Inject hardcoded 19:00 spike (>220 kW) triggering CRITICAL_OVERLOAD and storage dispatch"
+                className={`flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wider uppercase text-amber-100 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 shadow-xl shadow-amber-950/60 transition-all select-none cursor-pointer border border-amber-400/40 active:scale-95 ${
+                  isStreaming ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <Sparkles className="w-4 h-4 fill-amber-200 shrink-0" />
+                <span className="whitespace-nowrap">▶ Play Hackathon Demo Scenario</span>
+              </button>
+            )}
+
+            {/* Main Simulation / Stop Button */}
             <button
-              onClick={onPlayDemoScenario}
-              disabled={isStreaming}
-              title="Inject hardcoded 19:00 spike (>220 kW) triggering CRITICAL_OVERLOAD and storage dispatch"
-              className={`inline-flex items-center gap-2 px-4 py-3 rounded-xl font-bold text-xs tracking-wider uppercase text-amber-100 bg-gradient-to-r from-amber-600 via-orange-600 to-amber-500 hover:from-amber-500 hover:to-orange-500 shadow-xl shadow-amber-950/60 transition-all select-none cursor-pointer border border-amber-400/40 active:scale-95 ${
-                isStreaming ? 'opacity-50 cursor-not-allowed' : ''
+              id="tour-forecast-btn"
+              onClick={isStreaming ? onStopSimulation : onStartSimulation}
+              className={`flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center gap-2.5 px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm tracking-wide text-white transition-all shadow-xl cursor-pointer select-none ${
+                isStreaming
+                  ? 'bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 shadow-rose-900/40'
+                  : 'bg-gradient-to-r from-cyan-500 hover:from-cyan-400 to-blue-600 hover:to-blue-500 shadow-cyan-500/25 active:scale-[0.98]'
               }`}
             >
-              <Sparkles className="w-4 h-4 fill-amber-200" />
-              <span>▶ Play Hackathon Demo Scenario</span>
+              {isStreaming ? (
+                <>
+                  <svg
+                    className="w-4 h-4 animate-spin text-white shrink-0"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    />
+                  </svg>
+                  <span className="whitespace-nowrap">Simulating Hour {currentStep} of {totalSteps}... (Stop)</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4 text-cyan-200 fill-cyan-200 shrink-0" />
+                  <span className="whitespace-nowrap">{loadedCsvName ? `Stream ${loadedCsvName}` : 'Generate 24-Hour Forecast'}</span>
+                </>
+              )}
             </button>
-          )}
 
-          {/* Main Simulation / Stop Button */}
-          <button
-            id="tour-forecast-btn"
-            onClick={isStreaming ? onStopSimulation : onStartSimulation}
-            className={`flex-1 sm:flex-initial inline-flex items-center justify-center gap-2.5 px-6 py-3 rounded-xl font-bold text-sm tracking-wide text-white transition-all shadow-xl cursor-pointer select-none ${
-              isStreaming
-                ? 'bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 shadow-rose-900/40'
-                : 'bg-gradient-to-r from-cyan-500 hover:from-cyan-400 to-blue-600 hover:to-blue-500 shadow-cyan-500/25 active:scale-[0.98]'
-            }`}
-          >
-            {isStreaming ? (
-              <>
-                <svg
-                  className="w-4 h-4 animate-spin text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8H4z"
-                  />
-                </svg>
-                <span>Simulating Hour {currentStep} of {totalSteps}... (Stop)</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-4 h-4 text-cyan-200 fill-cyan-200" />
-                <span>{loadedCsvName ? `Stream ${loadedCsvName}` : 'Generate 24-Hour Forecast'}</span>
-              </>
+            {/* Fast-forward button during active stream */}
+            {isStreaming && (
+              <button
+                onClick={onFastForward}
+                title="Abort current delay and fast-forward through remaining hours"
+                className="min-h-[44px] px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer select-none flex items-center justify-center gap-1.5 shrink-0"
+              >
+                <span>Fast-Forward &gt;&gt;</span>
+              </button>
             )}
-          </button>
+          </div>
 
-          {/* Fast-forward button during active stream */}
-          {isStreaming && (
-            <button
-              onClick={onFastForward}
-              title="Abort current delay and fast-forward through remaining hours"
-              className="px-3.5 py-3 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer select-none flex items-center gap-1.5"
-            >
-              <span>Fast-Forward &gt;&gt;</span>
-            </button>
-          )}
+          {/* Tier 2: Reports, Exports & Mock Datasets */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+            {/* PDF Shift Report Button */}
+            {onExportPDF && (
+              <button
+                onClick={onExportPDF}
+                disabled={isExportingPdf}
+                title="Generate a formatted PDF Shift Handover Report with charts, metrics & operator signature"
+                className="flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-950/60 border border-purple-400/40 transition-all cursor-pointer select-none active:scale-95"
+              >
+                <FileDown className="w-4 h-4 text-purple-200 shrink-0" />
+                <span className="whitespace-nowrap">{isExportingPdf ? 'Generating PDF...' : 'Shift Report (PDF)'}</span>
+              </button>
+            )}
 
-          {/* PDF Shift Report Button */}
-          {onExportPDF && (
-            <button
-              onClick={onExportPDF}
-              disabled={isExportingPdf}
-              title="Generate a formatted PDF Shift Handover Report with charts, metrics & operator signature"
-              className="inline-flex items-center gap-2 px-3.5 py-3 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-xl shadow-purple-950/60 border border-purple-400/40 transition-all cursor-pointer select-none active:scale-95"
-            >
-              <FileDown className="w-4 h-4 text-purple-200" />
-              <span>{isExportingPdf ? 'Generating PDF...' : 'Shift Report (PDF)'}</span>
-            </button>
-          )}
+            {/* Feature 10: JSON Export Button */}
+            {forecastData && forecastData.length > 0 && !isStreaming && onExportJSON && (
+              <button
+                onClick={onExportJSON}
+                title="Export complete 24h telemetry dataset to gridsense_telemetry.json"
+                className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/70 hover:bg-cyan-900/80 border border-cyan-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-cyan-950/50"
+              >
+                <FileCode className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span>JSON</span>
+              </button>
+            )}
 
-          {/* Feature 10: JSON Export Button */}
-          {forecastData && forecastData.length > 0 && !isStreaming && onExportJSON && (
-            <button
-              onClick={onExportJSON}
-              title="Export complete 24h telemetry dataset to gridsense_telemetry.json"
-              className="inline-flex items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-cyan-300 bg-cyan-950/70 hover:bg-cyan-900/80 border border-cyan-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-cyan-950/50"
-            >
-              <FileCode className="w-3.5 h-3.5 text-cyan-400" />
-              <span>JSON</span>
-            </button>
-          )}
+            {/* Export Results to CSV Button */}
+            {forecastData && forecastData.length > 0 && !isStreaming && (
+              <button
+                onClick={handleExportResults}
+                title="Export complete forecast telemetry to gridsense_forecast_results.csv"
+                className="min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-emerald-950/50"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>CSV</span>
+              </button>
+            )}
 
-          {/* Export Results to CSV Button */}
-          {forecastData && forecastData.length > 0 && !isStreaming && (
-            <button
-              onClick={handleExportResults}
-              title="Export complete forecast telemetry to gridsense_forecast_results.csv"
-              className="inline-flex items-center gap-1.5 px-3 py-3 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/70 hover:bg-emerald-900/80 border border-emerald-600/60 transition-colors cursor-pointer select-none shadow-lg shadow-emerald-950/50"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              <span>CSV</span>
-            </button>
-          )}
-
-          {/* Demo Mock Data Button */}
-          {!isStreaming && (
-            <button
-              onClick={onGenerateMock}
-              title="Populate instantly with mock hackathon evaluation dataset"
-              className="inline-flex items-center gap-1.5 px-3.5 py-3 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-colors cursor-pointer select-none"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-              <span>Reset Mock</span>
-            </button>
-          )}
+            {/* Demo Mock Data Button */}
+            {!isStreaming && (
+              <button
+                onClick={onGenerateMock}
+                title="Populate instantly with mock hackathon evaluation dataset"
+                className="flex-1 sm:flex-initial min-h-[44px] inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-colors cursor-pointer select-none"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="whitespace-nowrap">Reset Mock</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

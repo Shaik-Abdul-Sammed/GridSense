@@ -94,8 +94,8 @@ export default function Header({
         </div>
       </div>
 
-      {/* Tickers & Real-time Gauges */}
-      <div className="flex flex-wrap items-center gap-2.5 self-stretch xl:self-auto justify-between xl:justify-end">
+      {/* Tickers & Real-time Gauges (Arranged cleanly to prevent overflow on mobile & laptops) */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 self-stretch xl:self-auto justify-start xl:justify-end">
         {/* Real-time Ambient Weather Status with Degrees */}
         <div
           title={`Substation Microclimate: ${formattedTemp}°C | ${weatherCondition} | Humidity: ${humNum}% | Solar DNI: ${solarNum} W/m²`}

@@ -1248,7 +1248,7 @@ export default function Dashboard() {
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-700 py-1 w-full sm:w-auto font-mono text-xs">
+        <div className="flex flex-wrap items-center gap-1.5 py-1 w-full sm:w-auto font-mono text-xs">
           {[
             { id: 'CONTROLS', label: 'Simulation Controls', icon: Activity, badge: isStreaming ? 'Active' : null },
             { id: 'WEATHER', label: 'Weather Sync', icon: CloudSun, badge: 'GPS/City' },
@@ -1263,17 +1263,17 @@ export default function Dashboard() {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveToolsTab(tab.id)}
-                className={`min-h-[42px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+                className={`flex-1 sm:flex-initial min-h-[42px] px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0 select-none text-center ${
                   isTabActive
                     ? 'bg-cyan-500 text-slate-950 shadow-lg shadow-cyan-950/60 font-black'
                     : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-white/5'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{tab.label}</span>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="whitespace-nowrap">{tab.label}</span>
                 {tab.badge && (
                   <span
-                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-black ${
+                    className={`text-[9px] px-1.5 py-0.2 rounded-full font-black shrink-0 ${
                       isTabActive ? 'bg-slate-950 text-cyan-300' : 'bg-slate-900 text-slate-300 border border-white/10'
                     }`}
                   >
@@ -1624,17 +1624,17 @@ export default function Dashboard() {
                 <span className="text-xs uppercase font-black tracking-wider text-slate-300 font-mono">
                   Telemetry Visualizations
                 </span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-bold border border-cyan-800/60">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 font-bold border border-cyan-800/60 shrink-0">
                   {chartViewMode === 'BOTH' ? 'Curve & Mix Deck' : chartViewMode === 'CURVE' ? '24h Diurnal Curve' : 'Pie Charts & Slices'}
                 </span>
               </div>
 
               {/* View Mode Switcher */}
-              <div className="flex items-center bg-slate-900/80 p-0.5 rounded-xl border border-white/10 text-xs font-mono">
+              <div className="flex flex-wrap items-center bg-slate-900/80 p-1 rounded-xl border border-white/10 text-xs font-mono w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setChartViewMode('BOTH')}
-                  className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-initial min-h-[36px] px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer text-center ${
                     chartViewMode === 'BOTH'
                       ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
                       : 'text-slate-400 hover:text-white'
@@ -1645,25 +1645,25 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setChartViewMode('CURVE')}
-                  className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-initial min-h-[36px] px-3 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center ${
                     chartViewMode === 'CURVE'
                       ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <TrendingUp className="w-3.5 h-3.5" />
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                   <span>24h Curve</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setChartViewMode('PIE')}
-                  className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-initial min-h-[36px] px-3 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer text-center ${
                     chartViewMode === 'PIE'
                       ? 'bg-cyan-500 text-slate-950 shadow-md font-black'
                       : 'text-slate-400 hover:text-white'
                   }`}
                 >
-                  <PieIcon className="w-3.5 h-3.5" />
+                  <PieIcon className="w-3.5 h-3.5 shrink-0" />
                   <span>Pie Charts</span>
                 </button>
               </div>
@@ -1703,7 +1703,7 @@ export default function Dashboard() {
                     {latestPrediction?.hour || '--:--'}
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-12 gap-1.5 pt-1">
                   {forecastData.map((d, idx) => {
                     const isSelected = latestPrediction?.hour === d.hour;
                     const isOverload =
@@ -1716,13 +1716,14 @@ export default function Dashboard() {
                       <button
                         key={`${d.timestamp || d.hour}-${idx}`}
                         onClick={() => setSelectedHour(d.hour)}
-                        className={`px-2 py-1 rounded text-[10px] font-mono shrink-0 cursor-pointer transition-all ${
+                        title={`Hour ${d.hour}: ${d.predicted_demand_kw?.toFixed(1) || 0} kW`}
+                        className={`min-h-[34px] px-1.5 py-1 rounded-lg text-[10px] font-mono flex items-center justify-center cursor-pointer transition-all select-none ${
                           isSelected
-                            ? 'bg-cyan-500 text-white font-bold ring-2 ring-cyan-300'
+                            ? 'bg-cyan-500 text-white font-bold ring-2 ring-cyan-300 shadow-md shadow-cyan-500/50 scale-105'
                             : isOverload
-                            ? 'bg-rose-950/80 text-rose-300 border border-rose-800'
+                            ? 'bg-rose-950/80 text-rose-300 border border-rose-800 hover:bg-rose-900'
                             : isSpike
-                            ? 'bg-amber-950/80 text-amber-300 border border-amber-800'
+                            ? 'bg-amber-950/80 text-amber-300 border border-amber-800 hover:bg-amber-900'
                             : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300'
                         }`}
                       >

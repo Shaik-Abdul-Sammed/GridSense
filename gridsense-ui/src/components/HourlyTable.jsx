@@ -128,8 +128,8 @@ export default function HourlyTable({
             </div>
 
             {/* Quick Filter Badges */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 text-xs">
-              <span className="text-[10px] text-slate-400 flex items-center gap-1 font-semibold uppercase tracking-wider mr-1">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-[10px] text-slate-400 flex items-center gap-1 font-semibold uppercase tracking-wider mr-1 shrink-0">
                 <Filter className="w-3 h-3 text-cyan-400" /> Filter:
               </span>
               {[
@@ -145,13 +145,13 @@ export default function HourlyTable({
                     key={btn.id}
                     type="button"
                     onClick={() => setFilterMode(btn.id)}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-medium flex items-center gap-1 cursor-pointer transition-all whitespace-nowrap ${
+                    className={`flex-1 sm:flex-initial min-h-[32px] px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center justify-center gap-1 cursor-pointer transition-all whitespace-nowrap ${
                       filterMode === btn.id
                         ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30'
                         : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
                     }`}
                   >
-                    {Icon && <Icon className="w-3 h-3" />}
+                    {Icon && <Icon className="w-3 h-3 shrink-0" />}
                     <span>{btn.label}</span>
                   </button>
                 );

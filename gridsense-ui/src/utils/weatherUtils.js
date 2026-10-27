@@ -278,6 +278,28 @@ export async function reverseGeocode(lat, lon) {
 // In-memory cache for place searches
 const searchPlacesCache = new Map();
 
+export function getCountryFlag(country = '') {
+  if (!country) return '📍';
+  const c = country.toLowerCase();
+  if (c.includes('india')) return '🇮🇳';
+  if (c.includes('united states') || c === 'usa' || c === 'us') return '🇺🇸';
+  if (c.includes('united kingdom') || c === 'uk' || c.includes('britain') || c.includes('england')) return '🇬🇧';
+  if (c.includes('japan')) return '🇯🇵';
+  if (c.includes('australia')) return '🇦🇺';
+  if (c.includes('emirates') || c.includes('dubai') || c === 'uae') return '🇦🇪';
+  if (c.includes('germany')) return '🇩🇪';
+  if (c.includes('singapore')) return '🇸🇬';
+  if (c.includes('canada')) return '🇨🇦';
+  if (c.includes('france')) return '🇫🇷';
+  if (c.includes('china')) return '🇨🇳';
+  if (c.includes('brazil')) return '🇧🇷';
+  if (c.includes('south africa')) return '🇿🇦';
+  if (c.includes('netherlands')) return '🇳🇱';
+  if (c.includes('spain')) return '🇪🇸';
+  if (c.includes('italy')) return '🇮🇹';
+  return '🌐';
+}
+
 export const POPULAR_GLOBAL_HUBS = [
   {
     id: 'HUB_HYD',
@@ -326,6 +348,42 @@ export const POPULAR_GLOBAL_HUBS = [
     admin1: 'Delhi',
     plusCode: '7JWVJ675+HJ',
     tag: 'NLDC National Load Dispatch Centre',
+  },
+  {
+    id: 'HUB_VTZ',
+    name: 'Visakhapatnam',
+    displayName: 'Visakhapatnam, Andhra Pradesh, India',
+    lat: 17.6868,
+    lon: 83.2185,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Andhra Pradesh',
+    plusCode: '7MC4MGPC+CC',
+    tag: 'APEPDCL Coastal Smart Substation (220kV)',
+  },
+  {
+    id: 'HUB_VJA',
+    name: 'Vijayawada',
+    displayName: 'Vijayawada, Andhra Pradesh, India',
+    lat: 16.5062,
+    lon: 80.6480,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Andhra Pradesh',
+    plusCode: '7M93GJPX+F5',
+    tag: 'APTRANSCO State Load Dispatch Centre',
+  },
+  {
+    id: 'HUB_MAA',
+    name: 'Chennai',
+    displayName: 'Chennai, Tamil Nadu, India',
+    lat: 13.0827,
+    lon: 80.2707,
+    country: 'India',
+    flag: '🇮🇳',
+    admin1: 'Tamil Nadu',
+    plusCode: '7M5237MR+77',
+    tag: 'TANGEDCO Southern Interconnect (400kV)',
   },
   {
     id: 'HUB_SF',
@@ -427,7 +485,8 @@ export const POPULAR_GLOBAL_HUBS = [
 
 /**
  * Searches places, substations, cities, coordinates, or landmarks worldwide.
- * Supports direct GPS coordinate parsing (e.g. "37.7749, -122.4194") or query search.
+ * Supports direct GPS coordinate parsing (e.g. "37.7749, -122.4194"),
+ * high-precision Photon OpenStreetMap search, and Open-Meteo fallback.
  */
 export async function searchPlaces(query) {
   if (!query || typeof query !== 'string' || query.trim().length < 2) {
@@ -470,59 +529,116 @@ export async function searchPlaces(query) {
     }
   }
 
-  // Mode 2: Immediate local match against popular utility grid hubs
-  const localHubMatches = POPULAR_GLOBAL_HUBS.filter(
-    (h) =>
-      h.name.toLowerCase().includes(lowerQuery) ||
-      h.displayName.toLowerCase().includes(lowerQuery) ||
-      h.country.toLowerCase().includes(lowerQuery) ||
-      h.tag.toLowerCase().includes(lowerQuery)
-  );
+  // Mode 2: Immediate local match against popular utility grid hubs (includes aliases)
+  const localHubMatches = POPULAR_GLOBAL_HUBS.filter((h) => {
+    const n = h.name.toLowerCase();
+    const d = h.displayName.toLowerCase();
+    const c = h.country.toLowerCase();
+    const t = h.tag.toLowerCase();
+    const isMatch =
+      n.includes(lowerQuery) ||
+      d.includes(lowerQuery) ||
+      c.includes(lowerQuery) ||
+      t.includes(lowerQuery) ||
+      (lowerQuery.includes('bangalore') && n.includes('bengaluru')) ||
+      (lowerQuery.includes('bombay') && n.includes('mumbai')) ||
+      (lowerQuery.includes('vizag') && n.includes('visakhapatnam')) ||
+      (lowerQuery.includes('delhi') && n.includes('delhi')) ||
+      (lowerQuery.includes('madras') && n.includes('chennai'));
+    return isMatch;
+  });
 
-  // Mode 3: High-speed global geocoding search via Open-Meteo
-  let apiMatches = [];
+  // Mode 3: High-Precision Dual-Engine Query (Photon OSM + Open-Meteo)
+  let externalMatches = [];
+
+  // Sub-engine A: Photon OpenStreetMap (World-class multilingual & alias resolution)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const timeoutId = setTimeout(() => controller.abort(), 2800);
     const res = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanQuery)}&count=8&language=en&format=json`,
+      `https://photon.komoot.io/api/?q=${encodeURIComponent(cleanQuery)}&limit=6`,
       { signal: controller.signal }
     );
     clearTimeout(timeoutId);
 
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.results)) {
-        apiMatches = data.results.map((r) => {
-          const displayName = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
-          return {
-            id: `PLACE_${r.id}`,
-            name: r.name,
-            displayName,
-            lat: Number(r.latitude.toFixed(5)),
-            lon: Number(r.longitude.toFixed(5)),
-            country: r.country || '',
-            flag: '🌐',
-            admin1: r.admin1 || '',
-            plusCode: encodePlusCode(r.latitude, r.longitude),
-            tag: `Search Result &bull; ${r.country || 'Global'}`,
-          };
+      if (Array.isArray(data.features)) {
+        data.features.forEach((f) => {
+          const props = f.properties || {};
+          const coords = f.geometry?.coordinates;
+          if (Array.isArray(coords) && coords.length >= 2) {
+            const lon = Number(coords[0].toFixed(5));
+            const lat = Number(coords[1].toFixed(5));
+            const name = props.name || cleanQuery;
+            const state = props.state || props.county || '';
+            const country = props.country || '';
+            const displayName = [name, state, country].filter(Boolean).join(', ');
+            externalMatches.push({
+              id: `OSM_${props.osm_id || Math.random()}`,
+              name,
+              displayName,
+              lat,
+              lon,
+              country,
+              flag: getCountryFlag(country),
+              admin1: state,
+              plusCode: encodePlusCode(lat, lon),
+              tag: `Geographic Location &bull; ${country || 'Global'}`,
+            });
+          }
         });
       }
     }
-  } catch (err) {
-    console.warn('Place search service notice:', err.message);
+  } catch {
+    // Quiet fallback to Open-Meteo
   }
 
-  // Combine local high-priority matches with API results without duplicates
+  // Sub-engine B: Open-Meteo Geocoding
+  if (externalMatches.length < 3) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2800);
+      const res = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cleanQuery)}&count=6&language=en&format=json`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.results)) {
+          data.results.forEach((r) => {
+            const displayName = [r.name, r.admin1, r.country].filter(Boolean).join(', ');
+            externalMatches.push({
+              id: `PLACE_${r.id}`,
+              name: r.name,
+              displayName,
+              lat: Number(r.latitude.toFixed(5)),
+              lon: Number(r.longitude.toFixed(5)),
+              country: r.country || '',
+              flag: getCountryFlag(r.country),
+              admin1: r.admin1 || '',
+              plusCode: encodePlusCode(r.latitude, r.longitude),
+              tag: `Meteorological Station &bull; ${r.country || 'Global'}`,
+            });
+          });
+        }
+      }
+    } catch {
+      // Quiet fallback
+    }
+  }
+
+  // Combine local high-priority matches with external results, deduplicating within 10km (~0.09 deg)
   const combined = [...localHubMatches];
-  apiMatches.forEach((apiItem) => {
+  externalMatches.forEach((extItem) => {
     const isDuplicate = combined.some(
       (c) =>
-        Math.abs(c.lat - apiItem.lat) < 0.08 && Math.abs(c.lon - apiItem.lon) < 0.08
+        Math.abs(c.lat - extItem.lat) < 0.09 && Math.abs(c.lon - extItem.lon) < 0.09
     );
     if (!isDuplicate) {
-      combined.push(apiItem);
+      combined.push(extItem);
     }
   });
 

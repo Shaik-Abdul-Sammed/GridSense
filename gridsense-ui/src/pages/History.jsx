@@ -528,45 +528,45 @@ export default function History() {
         </div>
       </div>
 
-      {/* Main Section Navigation Tabs */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/80 border border-white/10 overflow-x-auto">
+      {/* Main Section Navigation Tabs (Arranged without horizontal overflow) */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl bg-slate-900/80 border border-white/10">
         <button
           type="button"
           onClick={() => setActiveTab('LOGS')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex-1 sm:flex-initial min-h-[42px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
             activeTab === 'LOGS'
               ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
-          <Layers className="w-4 h-4" />
+          <Layers className="w-4 h-4 shrink-0" />
           <span>Operational Audit Trail ({filteredLogs.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('REPORTS')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex-1 sm:flex-initial min-h-[42px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
             activeTab === 'REPORTS'
               ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
-          <FileCheck className="w-4 h-4" />
+          <FileCheck className="w-4 h-4 shrink-0" />
           <span>Past Shift Reports ({filteredReports.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveTab('INCIDENTS')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+          className={`flex-1 sm:flex-initial min-h-[42px] flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap text-center ${
             activeTab === 'INCIDENTS'
               ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
               : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
           }`}
         >
-          <ShieldAlert className="w-4 h-4" />
-          <span>Transformer & Incident Log ({filteredIncidents.length})</span>
+          <ShieldAlert className="w-4 h-4 shrink-0" />
+          <span>Transformer &amp; Incident Log ({filteredIncidents.length})</span>
         </button>
       </div>
 
@@ -589,8 +589,8 @@ export default function History() {
 
             {/* Filter Badges */}
             <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-                <span className="text-[11px] text-slate-400 flex items-center gap-1 mr-1">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-slate-400 flex items-center gap-1 mr-1 shrink-0">
                   <Filter className="w-3.5 h-3.5 text-cyan-400" />
                   Mode:
                 </span>
@@ -604,7 +604,7 @@ export default function History() {
                     key={btn.id}
                     type="button"
                     onClick={() => setFilterMode(btn.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all whitespace-nowrap ${
+                    className={`flex-1 sm:flex-initial min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all whitespace-nowrap text-center ${
                       filterMode === btn.id
                         ? 'bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-500/30'
                         : 'bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700'
