@@ -1,7 +1,6 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState } from 'react';
 import { Plane, ShieldAlert } from 'lucide-react';
-
-const DroneFleet = lazy(() => import('../components/DroneFleet'));
+import DroneFleet from '../components/DroneFleet';
 
 export default function DroneFleetPage() {
   const [testDemand, setTestDemand] = useState(140);
@@ -50,9 +49,7 @@ export default function DroneFleetPage() {
       </div>
 
       {/* Reactive Drone Fleet Component */}
-      <Suspense fallback={<div className="h-64 rounded-2xl bg-slate-900/60 animate-pulse border border-white/10" />}>
-        <DroneFleet currentDemand={testDemand} gridMode={testMode} transformerHealth={testDemand > 200 ? 45 : 88} />
-      </Suspense>
+      <DroneFleet currentDemand={testDemand} gridMode={testMode} transformerHealth={testDemand > 200 ? 45 : 88} />
     </div>
   );
 }

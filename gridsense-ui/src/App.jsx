@@ -6,17 +6,35 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { SettingsProvider } from './context/SettingsContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-// Dynamic code splitting via React.lazy() to accelerate initial page load
-const Analytics = lazy(() => import('./pages/Analytics'));
-const History = lazy(() => import('./pages/History'));
-const Settings = lazy(() => import('./pages/Settings'));
-const Marketplace = lazy(() => import('./pages/Marketplace'));
-const ImpactPage = lazy(() => import('./pages/ImpactPage'));
-const GamerDemo = lazy(() => import('./pages/GamerDemo'));
-const DigitalTwinPage = lazy(() => import('./pages/DigitalTwinPage'));
-const DroneFleetPage = lazy(() => import('./pages/DroneFleetPage'));
-const FieldTechARPage = lazy(() => import('./pages/FieldTechARPage'));
-const WeatherSyncPage = lazy(() => import('./pages/WeatherSyncPage'));
+// Resilient dynamic import helper that automatically recovers if deployment hashes change
+function lazyWithRetry(componentImport) {
+  return lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      console.warn('Dynamic chunk load failed. Auto-refreshing to fetch latest version...', error);
+      const hasReloaded = sessionStorage.getItem('gridsense_chunk_reloaded');
+      if (!hasReloaded) {
+        sessionStorage.setItem('gridsense_chunk_reloaded', 'true');
+        window.location.reload();
+        return new Promise(() => {}); // Hold execution while reload takes place
+      }
+      throw error;
+    }
+  });
+}
+
+// Dynamic code splitting via lazyWithRetry() to accelerate initial page load and prevent stale chunk errors
+const Analytics = lazyWithRetry(() => import('./pages/Analytics'));
+const History = lazyWithRetry(() => import('./pages/History'));
+const Settings = lazyWithRetry(() => import('./pages/Settings'));
+const Marketplace = lazyWithRetry(() => import('./pages/Marketplace'));
+const ImpactPage = lazyWithRetry(() => import('./pages/ImpactPage'));
+const GamerDemo = lazyWithRetry(() => import('./pages/GamerDemo'));
+const DigitalTwinPage = lazyWithRetry(() => import('./pages/DigitalTwinPage'));
+const DroneFleetPage = lazyWithRetry(() => import('./pages/DroneFleetPage'));
+const FieldTechARPage = lazyWithRetry(() => import('./pages/FieldTechARPage'));
+const WeatherSyncPage = lazyWithRetry(() => import('./pages/WeatherSyncPage'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
 console.log("ACTIVE API URL:", API_URL);

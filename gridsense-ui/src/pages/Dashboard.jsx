@@ -33,12 +33,30 @@ import { useVoiceAlerts } from '../hooks/useVoiceAlerts';
 import { calculateTransformerHealth } from '../utils/failurePredictor';
 import { HACKATHON_DEMO_DATA } from '../utils/demoData';
 
-// Lazy-loaded heavy components for code splitting & faster initial render
-const Substation3D = lazy(() => import('../components/Substation3D'));
-const GridDefenderModal = lazy(() => import('../components/GridDefenderModal'));
-const FieldTechAR = lazy(() => import('../components/FieldTechAR'));
-const DroneFleet = lazy(() => import('../components/DroneFleet'));
-const MeterScanner = lazy(() => import('../components/MeterScanner'));
+// Resilient dynamic import helper to auto-recover if chunk hashes change on deployment
+function lazyWithRetry(componentImport) {
+  return lazy(async () => {
+    try {
+      return await componentImport();
+    } catch (error) {
+      console.warn('Dashboard modal chunk load failed. Auto-refreshing for newest version...', error);
+      const hasReloaded = sessionStorage.getItem('gridsense_chunk_reloaded');
+      if (!hasReloaded) {
+        sessionStorage.setItem('gridsense_chunk_reloaded', 'true');
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+// Lazy-loaded heavy components with deployment chunk auto-recovery
+const Substation3D = lazyWithRetry(() => import('../components/Substation3D'));
+const GridDefenderModal = lazyWithRetry(() => import('../components/GridDefenderModal'));
+const FieldTechAR = lazyWithRetry(() => import('../components/FieldTechAR'));
+const DroneFleet = lazyWithRetry(() => import('../components/DroneFleet'));
+const MeterScanner = lazyWithRetry(() => import('../components/MeterScanner'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
 console.log("ACTIVE API URL:", API_URL);

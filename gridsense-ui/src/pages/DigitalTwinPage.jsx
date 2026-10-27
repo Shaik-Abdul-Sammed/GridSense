@@ -1,7 +1,6 @@
-import { useState, Suspense, lazy } from 'react';
-import { Box, RotateCw, Cpu } from 'lucide-react';
-
-const Substation3D = lazy(() => import('../components/Substation3D'));
+import { useState } from 'react';
+import { Box, Cpu } from 'lucide-react';
+import Substation3D from '../components/Substation3D';
 
 export default function DigitalTwinPage() {
   const [gridMode, setGridMode] = useState('MAIN_GRID_MODE');
@@ -51,14 +50,7 @@ export default function DigitalTwinPage() {
 
       {/* 3D WebGL Canvas Viewport */}
       <div className="h-[550px] w-full rounded-2xl overflow-hidden border border-white/10 bg-slate-950/90 shadow-2xl relative">
-        <Suspense fallback={
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 gap-3">
-            <RotateCw className="w-8 h-8 animate-spin text-cyan-400" />
-            <span className="font-mono text-xs uppercase tracking-widest text-slate-400">Initializing Three.js WebGL Engine...</span>
-          </div>
-        }>
-          <Substation3D gridMode={gridMode} demandKw={demandKw} />
-        </Suspense>
+        <Substation3D gridMode={gridMode} demandKw={demandKw} />
 
         {/* Floating Telemetry HUD */}
         <div className="absolute top-4 left-4 p-3 rounded-xl bg-slate-950/80 border border-white/10 backdrop-blur-md text-xs font-mono space-y-1">

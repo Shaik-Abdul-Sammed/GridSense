@@ -1,7 +1,6 @@
-import { useState, Suspense, lazy } from 'react';
+import { useState } from 'react';
 import { Camera, Eye, Radio, ShieldCheck, Zap } from 'lucide-react';
-
-const FieldTechAR = lazy(() => import('../components/FieldTechAR'));
+import FieldTechAR from '../components/FieldTechAR';
 
 export default function FieldTechARPage() {
   const [isScannerActive, setIsScannerActive] = useState(true);
@@ -63,21 +62,11 @@ export default function FieldTechARPage() {
 
       {/* Main AR Diagnostic Container */}
       <div>
-        <Suspense
-          fallback={
-            <div className="h-[480px] rounded-3xl bg-slate-900/60 animate-pulse border border-white/10 flex items-center justify-center">
-              <span className="font-mono text-xs text-cyan-400 tracking-wider">
-                INITIALIZING AR SPATIAL LENS...
-              </span>
-            </div>
-          }
-        >
-          <FieldTechAR
-            isOpen={isScannerActive}
-            onClose={() => setIsScannerActive(false)}
-            embedded={true}
-          />
-        </Suspense>
+        <FieldTechAR
+          isOpen={isScannerActive}
+          onClose={() => setIsScannerActive(false)}
+          embedded={true}
+        />
 
         {!isScannerActive && (
           <div className="text-center py-20 space-y-4 bg-slate-900/50 border border-white/10 rounded-3xl backdrop-blur-xl">
