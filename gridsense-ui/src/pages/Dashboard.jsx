@@ -510,11 +510,11 @@ export default function Dashboard() {
           hasTriggeredDefenderRef.current = true;
           setDefenderDemand(predicted_demand_kw);
           setIsDefenderOpen(true);
-          // AI Voice Alert
+          // AI Voice Alert: Speak loudly on critical overload trigger
           speakAlert(
-            "Warning. Critical grid overload detected. Predictive failure imminent. Switching to battery storage.",
-            false,
-            25000
+            `Warning. Critical grid overload detected: ${predicted_demand_kw.toFixed(1)} kilowatts. Predictive failure imminent. Switching to battery storage.`,
+            true,
+            0
           );
           await new Promise((resolve) => setTimeout(resolve, 800));
         }
@@ -531,6 +531,11 @@ export default function Dashboard() {
             demand: predicted_demand_kw,
             message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
           });
+          speakAlert(
+            `Warning! Critical grid overload alert. Demand reached ${predicted_demand_kw.toFixed(1)} kilowatts at ${hourLabel}. Safe limit exceeded. Engaging emergency battery storage.`,
+            true,
+            6000
+          );
         }
 
         let isAnomaly = false;
@@ -599,6 +604,7 @@ export default function Dashboard() {
 
   const handleStartSimulation = useCallback(() => {
     if (isStreaming || isRunningRef.current) return;
+    unlockAudio();
     if (csvData && csvData.length > 0) {
       runStreamingSimulation(csvData, loadedCsvName, false);
       return;
@@ -607,7 +613,7 @@ export default function Dashboard() {
       generateHourlyWeather(todayStr, hour)
     );
     runStreamingSimulation(standardItems, null, false);
-  }, [csvData, isStreaming, loadedCsvName, runStreamingSimulation, todayStr]);
+  }, [csvData, isStreaming, loadedCsvName, runStreamingSimulation, todayStr, unlockAudio]);
 
   const handleUnlockAudio = useCallback(() => {
     unlockAudio();
@@ -771,6 +777,16 @@ export default function Dashboard() {
 
   const handleOverrideLoad = (newDemandKw) => {
     if (!newDemandKw || isNaN(newDemandKw)) return;
+    unlockAudio();
+    const val = Number(newDemandKw);
+
+    if (val >= (settings.criticalThreshold || 200)) {
+      speakAlert(
+        `Warning. Critical grid overload overridden to ${val.toFixed(1)} kilowatts. Safe threshold exceeded. Emergency battery storage dispatch active.`,
+        true,
+        0
+      );
+    }
 
     setForecastData((prev) => {
       if (prev.length === 0) return prev;
@@ -990,6 +1006,22 @@ export default function Dashboard() {
       (item) => Number(item.predicted_demand_kw) >= (settings.criticalThreshold || 200)
     );
 
+  // Voice alert whenever active red critical overload warning triggers
+  const lastOverloadSpokenRef = useRef(0);
+  useEffect(() => {
+    if (isCurrentOverload && !isVoiceMuted) {
+      const now = Date.now();
+      if (now - lastOverloadSpokenRef.current > 10000) {
+        lastOverloadSpokenRef.current = now;
+        speakAlert(
+          `Warning! Critical grid overload alert. Current demand is ${currentDemandVal.toFixed(1)} kilowatts, exceeding the ${settings.criticalThreshold || 200} kilowatt safe limit. Emergency battery storage dispatch active.`,
+          true,
+          6000
+        );
+      }
+    }
+  }, [isCurrentOverload, currentDemandVal, settings.criticalThreshold, isVoiceMuted, speakAlert]);
+
   // Automatically reset dismissed state when operator changes inspected hour or triggers a fault
   useEffect(() => {
     setIsBannerDismissed(false);
@@ -1016,7 +1048,7 @@ export default function Dashboard() {
     if (transformerHealth.status === 'IMMINENT_FAILURE') {
       speakAlert(
         `Critical warning. Transformer degradation detected. Remaining useful life: ${transformerHealth.rulHours} hours. Emergency storage dispatch active.`,
-        false,
+        true,
         25000
       );
     }

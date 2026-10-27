@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // Web Audio synthesizer tone generator (guaranteed audio feedback across all modern browsers)
-function playToneChime(isPositive = true) {
+function playToneChime(isPositive = true, isEmergency = false) {
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
@@ -12,10 +12,29 @@ function playToneChime(isPositive = true) {
       ctx.resume().catch(() => {});
     }
 
+    const now = ctx.currentTime;
+
+    if (isEmergency) {
+      // High-urgency SCADA alarm siren warble (880Hz -> 659Hz -> 880Hz)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(659.25, now + 0.12);
+      osc.frequency.setValueAtTime(880, now + 0.24);
+      osc.frequency.setValueAtTime(659.25, now + 0.36);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.5);
+      return;
+    }
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    const now = ctx.currentTime;
     if (isPositive) {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(523.25, now); // C5
@@ -132,8 +151,9 @@ export function useVoiceAlerts() {
         return; // Respect cooldown to prevent alert spamming
       }
 
-      // Always play audio chime feedback
-      playToneChime(true);
+      // Audio chime / siren feedback (positive tone vs emergency SCADA alert warble)
+      const isEmergency = /critical|overload|warning|emergency|failure|danger|breach|alarm/i.test(text);
+      playToneChime(!isEmergency, isEmergency);
 
       if (!synthRef.current) return;
 
