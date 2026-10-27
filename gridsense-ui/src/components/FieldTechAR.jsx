@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import {
   Camera,
@@ -269,6 +270,7 @@ function renderDefectIcon(iconType, className = 'w-4 h-4 shrink-0') {
 }
 
 export default function FieldTechAR({ isOpen = true, onClose, embedded = false }) {
+  const navigate = useNavigate();
   const videoRef = useRef(null);
   const streamRef = useRef(null);
 
@@ -276,6 +278,7 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
   const [cameraUnavailable, setCameraUnavailable] = useState(false);
   const [cameraPermissionRequested, setCameraPermissionRequested] = useState(false);
   const [isSimModeForced, setIsSimModeForced] = useState(false);
+  const [simulationPreset, setSimulationPreset] = useState(null); // 'NORMAL' | 'CRITICAL' | null
 
   const [isScanning, setIsScanning] = useState(false);
   const [scanResults, setScanResults] = useState(true);
@@ -295,6 +298,79 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
       setToastNotification((curr) => (curr === message ? null : curr));
     }, 5000);
   }, []);
+
+  // Exit Camera Handler: Stops all stream tracks and redirects to Dashboard (/)
+  const handleCloseCamera = () => {
+    try {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject;
+        if (typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        videoRef.current.srcObject = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    } catch (err) {
+      console.warn('Error releasing camera tracks:', err);
+    }
+    setHasCamera(false);
+    if (onClose) onClose();
+    navigate('/');
+  };
+
+  // Preset 1: Simulate Normal Asset (Cool colors, 45°C)
+  const handleSimulateNormalPreset = () => {
+    try {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject;
+        if (typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        videoRef.current.srcObject = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    } catch (err) {
+      console.warn('Error releasing camera for preset:', err);
+    }
+    setHasCamera(false);
+    setIsSimModeForced(true);
+    setSimulationPreset('NORMAL');
+    setFilterMode('FLIR');
+    setSelectedFieldId('TRANSFORMER_T2');
+    showToast('📷 Mock Thermal: Healthy Transformer T-2 (45.0°C Nominal)');
+  };
+
+  // Preset 2: Simulate Critical Overload (Hotspot, 92°C)
+  const handleSimulateCriticalPreset = () => {
+    try {
+      if (videoRef.current?.srcObject) {
+        const stream = videoRef.current.srcObject;
+        if (typeof stream.getTracks === 'function') {
+          stream.getTracks().forEach((track) => track.stop());
+        }
+        videoRef.current.srcObject = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+    } catch (err) {
+      console.warn('Error releasing camera for preset:', err);
+    }
+    setHasCamera(false);
+    setIsSimModeForced(true);
+    setSimulationPreset('CRITICAL');
+    setFilterMode('FLIR');
+    setSelectedFieldId('TRANSFORMER_T2');
+    setActiveDefectId('DEF-T2-CORE');
+    showToast('🔥 Mock Thermal: CRITICAL HOTSPOT DETECTED (92.0°C Overload)');
+  };
 
   // Comprehensive Camera Initializer with robust mobile/desktop fallbacks
   const startCamera = useCallback(async () => {
@@ -447,6 +523,12 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
 
   // Live center reticle telemetry reading
   const getCenterReticleReading = () => {
+    if (simulationPreset === 'NORMAL' && (!hasCamera || isSimModeForced)) {
+      return '45.0°C';
+    }
+    if (simulationPreset === 'CRITICAL' && (!hasCamera || isSimModeForced)) {
+      return '92.0°C';
+    }
     if (selectedFieldId === 'TRANSFORMER_T2') {
       const coreState = getDefectEffectiveState(currentField.defects[0]);
       return filterMode === 'FLIR' ? coreState.reading : 'T-2';
@@ -607,16 +689,16 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 ))}
               </div>
 
-              {onClose && !embedded && (
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="min-h-[40px] min-w-[40px] p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                  title="Close Scanner"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
+              {/* Prominent Exit Button: Stop camera tracks & return to Dashboard (/) */}
+              <button
+                type="button"
+                onClick={handleCloseCamera}
+                className="min-h-[38px] px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-mono font-black text-xs flex items-center gap-1.5 shadow-lg shadow-rose-950/70 border border-rose-400/50 cursor-pointer transition-all active:scale-95 shrink-0"
+                title="Stop camera and return to Dashboard"
+              >
+                <X className="w-4 h-4" />
+                <span>✕ Close Camera</span>
+              </button>
             </div>
           </div>
 
@@ -661,6 +743,48 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             })}
           </div>
 
+          {/* Preset Sample Thermal Controls for Hackathon Judges */}
+          <div className="px-4 py-2.5 bg-slate-900/95 border-b border-cyan-500/30 flex flex-wrap items-center justify-between gap-2.5 z-20">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="text-[10px] font-mono font-bold text-slate-300 uppercase tracking-wider">
+                AR Sample Presets:
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* 📷 Preset: Simulate Normal Asset */}
+              <button
+                type="button"
+                onClick={handleSimulateNormalPreset}
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  simulationPreset === 'NORMAL' && (!hasCamera || isSimModeForced)
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-lg shadow-emerald-950/60 font-black'
+                    : 'bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border-emerald-600/40'
+                }`}
+                title="Bypass webcam: Static mock thermal canvas showing healthy transformer (cool colors, 45°C)"
+              >
+                <span>📷</span>
+                <span>Simulate Normal Asset (45°C)</span>
+              </button>
+
+              {/* 🔥 Preset: Simulate Critical Overload */}
+              <button
+                type="button"
+                onClick={handleSimulateCriticalPreset}
+                className={`min-h-[38px] px-3.5 py-1.5 rounded-xl font-mono text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                  simulationPreset === 'CRITICAL' && (!hasCamera || isSimModeForced)
+                    ? 'bg-rose-600 text-white border-rose-400 shadow-lg shadow-rose-950/60 animate-pulse font-black'
+                    : 'bg-rose-950/70 hover:bg-rose-900 text-rose-300 border-rose-600/40'
+                }`}
+                title="Bypass webcam: Static mock thermal canvas showing critical hotspot (bright red/white, 92°C)"
+              >
+                <span>🔥</span>
+                <span>Simulate Critical Overload (92°C)</span>
+              </button>
+            </div>
+          </div>
+
           {/* AR Viewport Container */}
           <div
             className={`relative w-full h-[380px] sm:h-[460px] md:h-[500px] overflow-hidden select-none transition-colors duration-500 ${
@@ -694,16 +818,28 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
             {(!hasCamera || isSimModeForced) && (
               <div
                 className={`absolute inset-0 flex items-center justify-center overflow-hidden transition-all duration-500 ${
-                  filterMode === 'FLIR'
+                  simulationPreset === 'CRITICAL'
+                    ? 'bg-gradient-to-tr from-[#1f0208] via-[#38040d] to-[#590a18]'
+                    : simulationPreset === 'NORMAL'
+                    ? 'bg-gradient-to-tr from-[#02130e] via-[#05221a] to-[#0a382a]'
+                    : filterMode === 'FLIR'
                     ? 'bg-gradient-to-tr from-[#0a0418] via-[#1a0b38] to-[#2c0b38]'
                     : filterMode === 'NVG'
                     ? 'bg-gradient-to-tr from-[#021808] via-[#04280f] to-[#063b15]'
                     : 'bg-gradient-to-tr from-slate-950 via-slate-900 to-black'
                 }`}
               >
+                {/* Critical Hotspot Detected Overlay Warning Banner */}
+                {simulationPreset === 'CRITICAL' && (
+                  <div className="absolute top-12 sm:top-14 left-1/2 -translate-x-1/2 px-4 py-2 rounded-2xl bg-rose-600/95 border-2 border-white text-white font-mono font-black text-xs sm:text-sm tracking-wider uppercase shadow-2xl shadow-rose-950 ring-4 ring-rose-500/60 animate-bounce z-30 flex items-center gap-2">
+                    <span className="text-base sm:text-lg select-none">🔥</span>
+                    <span>CRITICAL HOTSPOT DETECTED (92°C)</span>
+                  </div>
+                )}
+
                 {/* Thermal Radiometric Temperature Gradient Legend on Right Margin */}
                 <div className="absolute right-3 top-16 bottom-16 w-5 sm:w-6 rounded-md bg-gradient-to-b from-white via-yellow-400 via-rose-500 via-purple-700 to-blue-950 border border-white/20 flex flex-col justify-between py-1 px-0.5 text-[8px] font-mono text-white text-center shadow-lg pointer-events-none z-20">
-                  <span className="font-black text-black">90°</span>
+                  <span className="font-black text-black">95°</span>
                   <span className="font-bold text-amber-950">75°</span>
                   <span className="font-bold">60°</span>
                   <span className="font-bold">45°</span>
@@ -715,7 +851,11 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 <div className="w-72 h-72 sm:w-80 sm:h-80 rounded-full border-2 border-dashed border-cyan-500/20 flex items-center justify-center animate-spin-slow">
                   <div
                     className={`w-48 h-48 sm:w-56 sm:h-56 rounded-full border flex items-center justify-center ${
-                      filterMode === 'FLIR'
+                      simulationPreset === 'CRITICAL'
+                        ? 'border-rose-400/70'
+                        : simulationPreset === 'NORMAL'
+                        ? 'border-emerald-400/70'
+                        : filterMode === 'FLIR'
                         ? 'border-rose-500/40'
                         : filterMode === 'NVG'
                         ? 'border-emerald-500/40'
@@ -724,7 +864,11 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                   >
                     <div
                       className={`w-28 h-28 sm:w-32 sm:h-32 rounded-full animate-ping ${
-                        filterMode === 'FLIR'
+                        simulationPreset === 'CRITICAL'
+                          ? 'bg-rose-600/30 border border-rose-400'
+                          : simulationPreset === 'NORMAL'
+                          ? 'bg-emerald-600/25 border border-emerald-400'
+                          : filterMode === 'FLIR'
                           ? 'bg-rose-600/15 border border-rose-500/60'
                           : filterMode === 'NVG'
                           ? 'bg-emerald-600/15 border border-emerald-500/60'
@@ -735,23 +879,41 @@ export default function FieldTechAR({ isOpen = true, onClose, embedded = false }
                 </div>
 
                 {/* Glowing Transformer Core Silhouette in FLIR Spectrum */}
-                {filterMode === 'FLIR' && (
-                  <div
-                    className={`absolute w-44 h-44 sm:w-56 sm:h-56 rounded-3xl blur-2xl animate-pulse pointer-events-none transition-colors duration-700 ${
-                      getFieldAggregateSeverity(selectedFieldId) === 'CRITICAL'
-                        ? 'bg-gradient-to-tr from-rose-600/50 via-amber-500/50 to-yellow-300/40'
-                        : getFieldAggregateSeverity(selectedFieldId) === 'WARNING'
-                        ? 'bg-gradient-to-tr from-amber-600/40 via-yellow-500/40 to-emerald-400/30'
-                        : 'bg-gradient-to-tr from-emerald-600/40 via-cyan-500/40 to-blue-400/30'
-                    }`}
-                  />
+                {simulationPreset === 'CRITICAL' ? (
+                  <div className="absolute w-56 h-56 sm:w-72 sm:h-72 rounded-full blur-3xl bg-gradient-to-tr from-rose-600 via-red-500 to-white/90 animate-pulse pointer-events-none" />
+                ) : simulationPreset === 'NORMAL' ? (
+                  <div className="absolute w-48 h-48 sm:w-60 sm:h-60 rounded-full blur-3xl bg-gradient-to-tr from-emerald-600/40 via-cyan-500/40 to-blue-600/30 animate-pulse pointer-events-none" />
+                ) : (
+                  filterMode === 'FLIR' && (
+                    <div
+                      className={`absolute w-44 h-44 sm:w-56 sm:h-56 rounded-3xl blur-2xl animate-pulse pointer-events-none transition-colors duration-700 ${
+                        getFieldAggregateSeverity(selectedFieldId) === 'CRITICAL'
+                          ? 'bg-gradient-to-tr from-rose-600/50 via-amber-500/50 to-yellow-300/40'
+                          : getFieldAggregateSeverity(selectedFieldId) === 'WARNING'
+                          ? 'bg-gradient-to-tr from-amber-600/40 via-yellow-500/40 to-emerald-400/30'
+                          : 'bg-gradient-to-tr from-emerald-600/40 via-cyan-500/40 to-blue-400/30'
+                      }`}
+                    />
+                  )
                 )}
 
                 {/* Simulated FLIR Radiometry Calibration Watermark */}
-                <div className="absolute bottom-12 left-4 text-[9px] font-mono font-bold text-amber-300/80 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60 flex items-center gap-1.5 shadow-sm">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span>FLIR RADIOMETRY: EMISSIVITY 0.95 &bull; IR OPTIC 24°</span>
-                </div>
+                {simulationPreset === 'CRITICAL' ? (
+                  <div className="absolute bottom-12 left-4 text-[9px] font-mono font-bold text-rose-300 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/60 flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-ping" />
+                    <span>CRITICAL OVERLOAD MOCK: 92.0°C &bull; CORE HOTSPOT BREACH</span>
+                  </div>
+                ) : simulationPreset === 'NORMAL' ? (
+                  <div className="absolute bottom-12 left-4 text-[9px] font-mono font-bold text-emerald-300 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-500/60 flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>NORMAL ASSET MOCK: 45.0°C &bull; HEALTHY NOMINAL ENVELOPE</span>
+                  </div>
+                ) : (
+                  <div className="absolute bottom-12 left-4 text-[9px] font-mono font-bold text-amber-300/80 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60 flex items-center gap-1.5 shadow-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span>FLIR RADIOMETRY: EMISSIVITY 0.95 &bull; IR OPTIC 24°</span>
+                  </div>
+                )}
               </div>
             )}
 

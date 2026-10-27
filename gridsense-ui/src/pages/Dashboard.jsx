@@ -591,10 +591,17 @@ export default function Dashboard() {
     runStreamingSimulation(standardItems, null, false);
   }, [csvData, isStreaming, loadedCsvName, runStreamingSimulation, todayStr]);
 
+  const handleUnlockAudio = useCallback(() => {
+    unlockAudio();
+    speakAlert('GridSense voice telemetry online. Monitoring active grid.', true, 0);
+  }, [unlockAudio, speakAlert]);
+
   const handlePlayDemoScenario = useCallback(() => {
     if (isStreaming || isRunningRef.current) return;
+    unlockAudio();
+    speakAlert('GridSense voice telemetry online. Monitoring active grid.', true, 0);
     runStreamingSimulation(HACKATHON_DEMO_DATA, 'Hackathon Demo Scenario', true);
-  }, [isStreaming, runStreamingSimulation]);
+  }, [isStreaming, unlockAudio, speakAlert, runStreamingSimulation]);
 
   const handleStopSimulation = useCallback(() => {
     stopRequestedRef.current = true;
@@ -1155,7 +1162,7 @@ export default function Dashboard() {
         isVoiceMuted={isVoiceMuted}
         onToggleVoiceMute={toggleVoiceMute}
         isAudioUnlocked={isAudioUnlocked}
-        onUnlockAudio={unlockAudio}
+        onUnlockAudio={handleUnlockAudio}
         ambientTemp={latestPrediction?.ambient_temp_c ?? 26.5}
         humidityPct={latestPrediction?.humidity_pct ?? 55}
         solarIrradiance={latestPrediction?.solar_irradiance_wm2 ?? 350}

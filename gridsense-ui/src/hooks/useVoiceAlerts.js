@@ -120,8 +120,12 @@ export function useVoiceAlerts() {
 
   const speakAlert = useCallback(
     (text, forced = false, cooldownMs = 15000) => {
-      // Strict gating: do not speak if muted or audio has not been unlocked via user gesture
-      if (isMuted || !isAudioUnlocked) return;
+      // Strict gating: do not speak if muted or audio has not been unlocked via user gesture (unless explicitly forced)
+      if (isMuted) return;
+      if (!isAudioUnlocked && !forced) return;
+      if (!isAudioUnlocked && forced) {
+        setIsAudioUnlocked(true);
+      }
 
       const now = Date.now();
       if (!forced && now - lastSpokenRef.current < cooldownMs) {
