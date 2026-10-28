@@ -43,6 +43,10 @@ def predict(input_df: pd.DataFrame):
             headers=headers,
             timeout=10,
         )
+        print(f"DEBUG: HTTP Status Code: {response.status_code}")
+        if response.status_code != 200:
+            print(f"DEBUG: API Error Response: {response.text}")
+
         if response.status_code == 200:
             result = response.json()
             if "predictions" in result and len(result["predictions"]) > 0:
@@ -58,6 +62,7 @@ def predict(input_df: pd.DataFrame):
             elif "prediction" in result:
                 return np.array([float(result["prediction"])], dtype=float)
     except Exception as e:
+        print(f"DEBUG: Exception caught: {e}")
         print(f"Warning: QuickML endpoint call failed ({e}). Using fallback physics simulation.")
 
     hours = input_df['hour_of_day']
