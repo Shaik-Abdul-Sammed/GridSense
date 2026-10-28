@@ -37,13 +37,13 @@ def after_request_cors(response):
 # QuickML Endpoint & Authentication Configuration
 QUICKML_ENDPOINT_KEY = os.environ.get(
     "QUICKML_ENDPOINT_KEY",
-    "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
+    "1ec78befe2c4dd5eb699df3dad669476952454340a0714c52aff318a1d429a7446c272f2e54081e967dc24ff1c2e95a2"
 )
-CATALYST_ORG = os.environ.get("CATALYST_ORG", "60093168651")
+CATALYST_ORG = os.environ.get("CATALYST_ORG", "60093168085")
 QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
 QUICKML_ENDPOINT_URL = os.environ.get(
     "QUICKML_ENDPOINT_URL",
-    f"https://api.catalyst.zoho.in/quickml/v1/project/{QUICKML_PROJECT_ID}/endpoints/predict"
+    "https://api.catalyst.zoho.in/quickml/v1/project/89804000000013023/endpoints/predict?explainModel=true"
 )
 
 QUICKML_HEADERS = {
@@ -119,13 +119,17 @@ def call_quickml_api(features_dict):
     except (ValueError, TypeError):
         solar = 0.0
 
+    hour_of_day = hour
+    is_peak = 1 if (18 <= hour <= 22) else 0
+
     payload = {
         "data": [
             {
-                "timestamp": timestamp_str,
                 "ambient_temp_c": ambient_temp,
                 "humidity_pct": humidity,
                 "solar_irradiance_wm2": solar,
+                "hour_of_day": hour_of_day,
+                "is_peak": is_peak,
             }
         ]
     }
