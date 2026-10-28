@@ -320,7 +320,6 @@ export default function WeatherSync({ onWeatherLoaded }) {
     } catch (err) {
       if (err.name === 'AbortError') return;
       if (!isMountedRef.current) return;
-      console.warn('Weather sync error, using localized calibration:', err.message);
       setError(`Satellite weather sync encountered a temporary issue (${err.message}). Showing localized calibration.`);
 
       const fallback24h = Array.from({ length: 24 }, (_, idx) => {
@@ -496,27 +495,24 @@ export default function WeatherSync({ onWeatherLoaded }) {
 
           // Non-denial error: Timeout (code 3) or Position Unavailable (code 2)
           // Fall back gracefully to standard/network accuracy with cached position allowed
-          console.warn('High-accuracy GPS delayed, attempting standard network location:', err?.message);
           navigator.geolocation.getCurrentPosition(
             onPosSuccess,
-            (fallbackErr) => {
+            () => {
               if (!isMountedRef.current) return;
               setIsAcquiringGnss(false);
               setIsLoading(false);
               setGeoDeniedWarning(true);
-              console.warn('Network location failed:', fallbackErr?.code, fallbackErr?.message);
             },
             { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
           );
         },
         { enableHighAccuracy: true, timeout: 6000, maximumAge: 60000 }
       );
-    } catch (e) {
+    } catch {
       if (!isMountedRef.current) return;
       setIsAcquiringGnss(false);
       setIsLoading(false);
       setGeoDeniedWarning(true);
-      console.warn('Geolocation invocation error:', e);
     }
   };
 
