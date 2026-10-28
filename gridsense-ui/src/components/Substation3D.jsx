@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 import { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text, Float } from '@react-three/drei';
+import { OrbitControls, Html, Float } from '@react-three/drei';
 import * as THREE from 'three';
 import { Rotate3d, Zap, ShieldAlert, BatteryCharging } from 'lucide-react';
 
@@ -138,15 +138,15 @@ function GridTower({ isIslanded, isActiveMode }) {
       </mesh>
 
       {/* Floating 3D Label */}
-      <Text
-        position={[0, 4.3, 0]}
-        fontSize={0.35}
-        color={isIslanded ? '#ef4444' : '#f8fafc'}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {isIslanded ? 'GRID OFFLINE [BREACH]' : 'MAIN GRID TOWER'}
-      </Text>
+      <Html position={[0, 4.3, 0]} center distanceFactor={14} className="pointer-events-none select-none">
+        <div className={`px-2.5 py-1 rounded-lg font-mono text-[11px] font-extrabold whitespace-nowrap shadow-xl border backdrop-blur-md ${
+          isIslanded
+            ? 'bg-rose-950/90 text-rose-300 border-rose-500 animate-pulse'
+            : 'bg-slate-950/80 text-white border-white/10'
+        }`}>
+          {isIslanded ? '⚠️ GRID OFFLINE [BREACH]' : '⚡ MAIN GRID TOWER'}
+        </div>
+      </Html>
     </group>
   );
 }
@@ -216,15 +216,14 @@ function BatteryContainer({ isDischarging, isIslanded, soc }) {
       ))}
 
       {/* Floating 3D Label */}
-      <Text
-        position={[0, 2.3, 0]}
-        fontSize={0.35}
-        color={bessColor}
-        anchorX="center"
-        anchorY="middle"
-      >
-        {`BESS BATTERY (${soc}%)`}
-      </Text>
+      <Html position={[0, 2.3, 0]} center distanceFactor={14} className="pointer-events-none select-none">
+        <div
+          className="px-2.5 py-1 rounded-lg font-mono text-[11px] font-extrabold whitespace-nowrap shadow-xl border backdrop-blur-md bg-slate-950/80"
+          style={{ color: bessColor, borderColor: `${bessColor}60` }}
+        >
+          {`🔋 BESS BATTERY (${soc}%)`}
+        </div>
+      </Html>
     </group>
   );
 }
@@ -277,24 +276,29 @@ function SmartHouse({ demandKw }) {
       </mesh>
 
       {/* Floating 3D Demand Label */}
-      <Text
-        position={[0, 2.9, 0]}
-        fontSize={0.32}
-        color="#38bdf8"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {`SMART LOAD: ${Number(demandKw || 120).toFixed(0)} kW`}
-      </Text>
+      <Html position={[0, 2.9, 0]} center distanceFactor={14} className="pointer-events-none select-none">
+        <div className="px-2.5 py-1 rounded-lg font-mono text-[11px] font-extrabold whitespace-nowrap shadow-xl border border-cyan-500/50 bg-slate-950/80 text-cyan-300 backdrop-blur-md">
+          {`🏡 SMART LOAD: ${Number(demandKw || 120).toFixed(0)} kW`}
+        </div>
+      </Html>
     </group>
   );
 }
 
 // 3D Scene Root
-function MicrogridScene({ gridMode, batterySoc, demandKw }) {
+function MicrogridScene({ gridMode, batterySoc, demandKw, autoRotate = true }) {
   const isIslanded = gridMode === 'ISLANDED_MODE';
   const isRenewable = gridMode === 'RENEWABLE_STORAGE_MODE';
   const isMainGrid = gridMode === 'MAIN_GRID_MODE' && !isIslanded;
+
+  const sceneGroupRef = useRef();
+
+  // Dynamic 5x speedup rotation on scene group
+  useFrame((_, delta) => {
+    if (sceneGroupRef.current && autoRotate) {
+      sceneGroupRef.current.rotation.y += delta * 0.45;
+    }
+  });
 
   // Scene Coordinates
   const gridTowerPos = [-4, 2.2, 0];
@@ -302,7 +306,7 @@ function MicrogridScene({ gridMode, batterySoc, demandKw }) {
   const housePos = [3.6, 1.4, 0.8];
 
   return (
-    <group>
+    <group ref={sceneGroupRef}>
       <ambientLight intensity={0.4} />
       <directionalLight position={[10, 15, 10]} intensity={1.2} />
       <pointLight position={[0, 5, 0]} intensity={0.8} color="#38bdf8" />
@@ -415,12 +419,13 @@ export default function Substation3D({
             gridMode={gridMode}
             batterySoc={batterySoc}
             demandKw={demandKw}
+            autoRotate={autoRotate}
           />
           <OrbitControls
             enableDamping={true}
             dampingFactor={0.05}
             autoRotate={autoRotate}
-            autoRotateSpeed={3.2} // 4x speedup (increased from 0.8) for a dynamic, smooth 3D camera orbit
+            autoRotateSpeed={4.5} // 5x faster smooth camera orbit
             maxPolarAngle={Math.PI / 2.1} // Prevent going below ground plane
             minDistance={4}
             maxDistance={18}

@@ -153,12 +153,25 @@ function generateSimulatedResponse(weatherPayload, hour, settings) {
   };
 }
 
-// Network retry logic with detailed error capture
-async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
+// Network retry logic with detailed error capture & fast fail-safe timeout
+async function fetchWithRetry(url, options, retries = 1, delay = 600, timeoutMs = 3500) {
   let lastError = null;
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const timeoutController = new AbortController();
+    const timer = setTimeout(() => timeoutController.abort(), timeoutMs);
+
+    const onCallerAbort = () => timeoutController.abort();
+    if (options?.signal) {
+      options.signal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, { ...options, signal: timeoutController.signal });
+      clearTimeout(timer);
+      if (options?.signal) {
+        options.signal.removeEventListener('abort', onCallerAbort);
+      }
+
       if (!res.ok) {
         let errorBody = '';
         try {
@@ -173,8 +186,12 @@ async function fetchWithRetry(url, options, retries = 2, delay = 1000) {
       }
       return await res.json();
     } catch (err) {
+      clearTimeout(timer);
+      if (options?.signal) {
+        options.signal.removeEventListener('abort', onCallerAbort);
+      }
       lastError = err;
-      if (options?.signal?.aborted || err.name === 'AbortError') {
+      if (options?.signal?.aborted) {
         throw err;
       }
       if (attempt === retries) {
@@ -485,7 +502,7 @@ export default function Dashboard() {
             );
             setIsOnline(true);
           } catch (fetchErr) {
-            if (fetchErr.name === 'AbortError' || stopRequestedRef.current) break;
+            if (stopRequestedRef.current || abortControllerRef.current?.signal?.aborted) break;
 
             setIsOnline(false);
             prediction = generateSimulatedResponse(item, hourNum, settings);
@@ -494,11 +511,12 @@ export default function Dashboard() {
               rawMsg.includes('Failed to fetch') ||
               rawMsg.includes('NetworkError') ||
               rawMsg.includes('Network request failed') ||
-              fetchErr?.name === 'TypeError';
+              fetchErr?.name === 'TypeError' ||
+              fetchErr?.name === 'AbortError';
             const extraHint = isCorsOrNetwork
-              ? ' (CORS Origin blocked or AppSail backend offline/starting)'
+              ? ' (AppSail backend sleeping/starting; engaging physics fallback)'
               : '';
-            setError(`Connection Failed: ${rawMsg}${extraHint}`);
+            setError(`Backend Notice: ${rawMsg}${extraHint}`);
           }
         }
 
