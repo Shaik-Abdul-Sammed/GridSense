@@ -59,7 +59,6 @@ const DroneFleet = lazyWithRetry(() => import('../components/DroneFleet'));
 const MeterScanner = lazyWithRetry(() => import('../components/MeterScanner'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
-console.log("ACTIVE API URL:", API_URL);
 
 // Timezone-safe hour parser
 function parseTimezoneSafeHour(timestampStr, fallbackHour = 0) {

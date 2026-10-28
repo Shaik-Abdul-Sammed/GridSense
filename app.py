@@ -22,12 +22,12 @@ app = Flask(__name__)
 @app.after_request
 def after_request_cors(response):
     origin = request.headers.get('Origin')
-    # For local development, inject origin since Catalyst's reverse proxy is not present
-    if origin == "http://localhost:5173":
+    allowed_origins = [
+        "http://localhost:5173",
+        "https://gridsense-ui-zjbtthvz.onslate.in"
+    ]
+    if origin in allowed_origins and "Access-Control-Allow-Origin" not in response.headers:
         response.headers["Access-Control-Allow-Origin"] = origin
-    # Note: For the live Slate deployment (https://gridsense-ui-zjbtthvz.onslate.in),
-    # the Zoho Catalyst Cloud Gateway is already configured to inject Access-Control-Allow-Origin.
-    # Omitting it here prevents the browser "MultipleAllowOriginValues" duplicate header error.
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-QUICKML-ENDPOINT-KEY"
