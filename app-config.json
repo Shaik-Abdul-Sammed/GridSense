@@ -1,8 +1,12 @@
 {
-	"command": "echo Please specify the start-up command in the app-config.json file under the key command for AppSail $X_ZC_RESOURCE_NAME",
-	"build_path": "./",
-	"stack": "python_3_13",
-	"env_variables": {},
-	"memory": 256,
-	"scripts": {}
+  "name": "appsail",
+  "type": "python3.13",
+  "stack": "python_3_13",
+  "build_path": "./",
+  "command": "python3 app.py",
+  "env_variables": {
+    "PYTHONPATH": ".:lib"
+  },
+  "memory": 256,
+  "scripts": {}
 }

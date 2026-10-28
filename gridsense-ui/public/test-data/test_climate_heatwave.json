@@ -1,0 +1,19 @@
+{
+  "scenario": "GLOBAL_WARMING_HEATWAVE_SURGE",
+  "description": "Simulates an extreme +4.5°C climate anomaly forcing regional HVAC chilling saturation and predictive transformer degradation.",
+  "globalTempDeltaC": 4.5,
+  "hvacCoolingLoadFactor": 1.48,
+  "incidentMetadata": {
+    "substation": "ALPHA-1",
+    "riskLevel": "CRITICAL_THERMAL_OVERLOAD",
+    "expectedRulHours": 3.2
+  },
+  "hourlyProjection": [
+    { "hour": "00:00", "ambient_temp_c": 31.5, "projected_demand_kw": 142.0, "stress_score": 38 },
+    { "hour": "06:00", "ambient_temp_c": 35.0, "projected_demand_kw": 168.0, "stress_score": 54 },
+    { "hour": "12:00", "ambient_temp_c": 44.5, "projected_demand_kw": 195.0, "stress_score": 82 },
+    { "hour": "15:00", "ambient_temp_c": 46.2, "projected_demand_kw": 218.0, "stress_score": 91 },
+    { "hour": "19:00", "ambient_temp_c": 43.0, "projected_demand_kw": 242.0, "stress_score": 96 },
+    { "hour": "23:00", "ambient_temp_c": 37.0, "projected_demand_kw": 178.0, "stress_score": 68 }
+  ]
+}

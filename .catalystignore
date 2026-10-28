@@ -1,0 +1,14 @@
+# Ignore heavy frontend and unnecessary files for AppSail python backend
+gridsense-ui
+gridsense-ui/**
+node_modules
+node_modules/**
+.git
+.git/**
+__pycache__
+__pycache__/**
+*.pyc
+train_telemetry.csv
+sample_test_input.csv
+catalyst-debug.log
+.DS_Store

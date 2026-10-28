@@ -1,0 +1,13 @@
+{
+  "marketEvent": "HIGH_SOLAR_PROSUMER_SURPLUS",
+  "description": "Rooftop solar generation exceeds regional load, generating massive P2P microgrid transactions.",
+  "activeProsumers": 42,
+  "totalSurplusKw": 680.5,
+  "averageClearingPrice": 0.095,
+  "sampleTransactions": [
+    { "id": "TX-01", "seller": "House #04 (Solar 8kW)", "buyer": "Bakery Alpha", "amountKw": 5.2, "pricePerKwh": 0.09, "timestamp": "12:00:00" },
+    { "id": "TX-02", "seller": "House #12 (Solar 10kW)", "buyer": "EV Charging Hub #1", "amountKw": 7.8, "pricePerKwh": 0.095, "timestamp": "12:01:15" },
+    { "id": "TX-03", "seller": "House #19 (Solar 6kW)", "buyer": "House #02", "amountKw": 3.4, "pricePerKwh": 0.10, "timestamp": "12:02:40" },
+    { "id": "TX-04", "seller": "Community Solar Array #1", "buyer": "Data Center Beta", "amountKw": 24.5, "pricePerKwh": 0.088, "timestamp": "12:03:10" }
+  ]
+}

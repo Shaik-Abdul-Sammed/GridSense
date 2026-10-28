@@ -1,0 +1,18 @@
+{
+  "scenario": "CRITICAL_CYBERATTACK_SCADA_BREACH",
+  "description": "Simulates an advanced adversarial SCADA breach forcing zero grid power and emergency islanding.",
+  "forcedMode": "ISLANDED_MODE",
+  "gridStatus": "OFFLINE_COMPROMISED",
+  "mainGridPowerKw": 0,
+  "emergencyBatteryDischarge": true,
+  "incidentTimestamp": "2026-10-24 19:14:02",
+  "telemetryOverride": [
+    { "hour": "00:00", "demand_kw": 120.0, "grid_kw": 0, "battery_kw": 120.0, "status": "ISLANDED" },
+    { "hour": "04:00", "demand_kw": 110.0, "grid_kw": 0, "battery_kw": 110.0, "status": "ISLANDED" },
+    { "hour": "08:00", "demand_kw": 165.0, "grid_kw": 0, "battery_kw": 165.0, "status": "ISLANDED" },
+    { "hour": "12:00", "demand_kw": 190.0, "grid_kw": 0, "battery_kw": 190.0, "status": "ISLANDED" },
+    { "hour": "16:00", "demand_kw": 175.0, "grid_kw": 0, "battery_kw": 175.0, "status": "ISLANDED" },
+    { "hour": "19:00", "demand_kw": 225.0, "grid_kw": 0, "battery_kw": 225.0, "status": "CRITICAL_ISLANDED" },
+    { "hour": "22:00", "demand_kw": 160.0, "grid_kw": 0, "battery_kw": 160.0, "status": "ISLANDED" }
+  ]
+}

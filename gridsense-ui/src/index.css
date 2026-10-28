@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Global Theme variables and transitions */
+:root {
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
+  --bg-card: rgba(15, 23, 42, 0.7);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --border-color: rgba(255, 255, 255, 0.1);
+  color-scheme: dark;
+}
+
+html:not(.dark) {
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #ffffff;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: rgba(0, 0, 0, 0.1);
+  color-scheme: light;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Light mode overrides for high-level containers so the entire UI instantly adapts cleanly */
+html:not(.dark) .from-slate-950 {
+  --tw-gradient-from: #f8fafc var(--tw-gradient-from-position) !important;
+}
+
+html:not(.dark) .via-slate-900 {
+  --tw-gradient-via: #f1f5f9 var(--tw-gradient-via-position) !important;
+}
+
+html:not(.dark) .to-black {
+  --tw-gradient-to: #e2e8f0 var(--tw-gradient-to-position) !important;
+}
+
+html:not(.dark) .bg-slate-950\/95,
+html:not(.dark) .bg-slate-950\/90,
+html:not(.dark) .bg-slate-950\/70,
+html:not(.dark) .bg-slate-950\/60,
+html:not(.dark) .bg-slate-950\/50,
+html:not(.dark) .bg-slate-950 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+}
+
+html:not(.dark) .bg-slate-900\/90,
+html:not(.dark) .bg-slate-900\/80,
+html:not(.dark) .bg-slate-900\/60,
+html:not(.dark) .bg-slate-900\/50,
+html:not(.dark) .bg-slate-900 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #1e293b !important;
+}
+
+html:not(.dark) .bg-slate-850,
+html:not(.dark) .bg-slate-800\/80,
+html:not(.dark) .bg-slate-800\/60,
+html:not(.dark) .bg-slate-800\/50,
+html:not(.dark) .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+html:not(.dark) .bg-slate-700 {
+  background-color: #e2e8f0 !important;
+  color: #1e293b !important;
+}
+
+html:not(.dark) .text-white {
+  color: #0f172a !important;
+}
+
+html:not(.dark) button.text-white,
+html:not(.dark) button .text-white,
+html:not(.dark) .bg-gradient-to-tr .text-white,
+html:not(.dark) .bg-gradient-to-r .text-white {
+  color: #ffffff !important;
+}
+
+html:not(.dark) .text-slate-100,
+html:not(.dark) .text-slate-200,
+html:not(.dark) .text-slate-300 {
+  color: #1e293b !important;
+}
+
+html:not(.dark) .text-slate-400 {
+  color: #475569 !important;
+}
+
+html:not(.dark) .border-white\/10,
+html:not(.dark) .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+html:not(.dark) .border-slate-800 {
+  border-color: #cbd5e1 !important;
+}
+
+/* Light mode adjustments for badges & high-contrast indicators */
+html:not(.dark) .bg-cyan-950,
+html:not(.dark) .bg-cyan-950\/80,
+html:not(.dark) .bg-cyan-950\/50 {
+  background-color: #e0f2fe !important;
+  border-color: #7dd3fc !important;
+  color: #0369a1 !important;
+}
+
+html:not(.dark) .bg-emerald-950,
+html:not(.dark) .bg-emerald-950\/60 {
+  background-color: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
+  color: #047857 !important;
+}
+
+html:not(.dark) .bg-rose-950,
+html:not(.dark) .bg-rose-950\/80,
+html:not(.dark) .bg-rose-950\/50 {
+  background-color: #ffe4e6 !important;
+  border-color: #fecdd3 !important;
+  color: #be123c !important;
+}
+
+html:not(.dark) .bg-amber-950 {
+  background-color: #fef3c7 !important;
+  border-color: #fde68a !important;
+  color: #b45309 !important;
+}
+
+/* Retain flow dash and pulse animations */
+@keyframes flowDash {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+/* iOS Safari WebKit Backdrop Filter Glassmorphism Support */
+.backdrop-blur-3xl,
+.backdrop-blur-2xl,
+.backdrop-blur-xl,
+.backdrop-blur-lg,
+.backdrop-blur-md,
+.backdrop-blur-sm,
+.backdrop-blur {
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+.backdrop-blur-md {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+}
+
+.animate-flow-dash {
+  stroke-dasharray: 6 6;
+  animation: flowDash 0.8s linear infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px currentColor);
+  }
+  50% {
+    filter: drop-shadow(0 0 16px currentColor);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+/* Joyride Cyber-Glassmorphism Styles & Global Overrides */
+.react-joyride__beacon,
+button[data-action="beacon"],
+[data-test-id="beacon"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.__floater,
+.__floater__body,
+.react-joyride__tooltip {
+  background-color: #030712 !important;
+  color: #f8fafc !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(6, 182, 212, 0.5) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 30px rgba(6, 182, 212, 0.3) !important;
+}
+
+.__floater__arrow polygon,
+.react-joyride__tooltip svg polygon {
+  fill: #030712 !important;
+}
+
+/* Ensure Joyride primary button is always glowing cyan/emerald, never black */
+.react-joyride__tooltip button[data-action="primary"],
+button[data-action="primary"] {
+  background: linear-gradient(135deg, #06b6d4 0%, #10b981 100%) !important;
+  color: #020617 !important;
+  font-weight: 800 !important;
+  border: none !important;
+  border-radius: 12px !important;
+  box-shadow: 0 0 15px rgba(6, 182, 212, 0.5) !important;
+}
+
+/* Thin Custom Scrollbar for Sleek Sidebar */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.25);
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}
+
+/* Force-hide React Joyride beacon globally */
+.react-joyride__beacon {
+  display: none !important;
+}
+

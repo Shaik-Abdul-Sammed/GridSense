@@ -1,8 +1,18 @@
 {
+  "project": {
+    "id": "89804000000013023"
+  },
   "appsail": [
     {
-      "source": ".",
-      "name": "appsail"
+      "name": "appsail",
+      "source": "./",
+      "runtime": "python3.13"
+    }
+  ],
+  "slate": [
+    {
+      "name": "gridsense-ui",
+      "source": "gridsense-ui"
     }
   ]
 }
