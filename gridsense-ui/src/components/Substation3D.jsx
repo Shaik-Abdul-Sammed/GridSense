@@ -44,6 +44,8 @@ function EnergyStream({ start, end, color, speed = 1.8, count = 5 }) {
   );
 }
 
+const _tempPos = new THREE.Vector3();
+
 function FlowingOrb({ p1, p2, offset, speed, color }) {
   const meshRef = useRef();
   const progressRef = useRef(offset);
@@ -53,9 +55,9 @@ function FlowingOrb({ p1, p2, offset, speed, color }) {
     progressRef.current = (progressRef.current + delta * speed * 0.4) % 1;
     // Arch upward slightly in the middle for high-voltage transmission aesthetic
     const t = progressRef.current;
-    const currentPos = new THREE.Vector3().lerpVectors(p1, p2, t);
-    currentPos.y += Math.sin(t * Math.PI) * 0.8;
-    meshRef.current.position.copy(currentPos);
+    _tempPos.lerpVectors(p1, p2, t);
+    _tempPos.y += Math.sin(t * Math.PI) * 0.8;
+    meshRef.current.position.copy(_tempPos);
   });
 
   return (
@@ -339,7 +341,7 @@ function MicrogridScene({ gridMode, batterySoc, demandKw, autoRotate = true }) {
           end={housePos}
           color="#f59e0b"
           speed={2.2}
-          count={6}
+          count={3}
         />
       )}
 
@@ -350,7 +352,7 @@ function MicrogridScene({ gridMode, batterySoc, demandKw, autoRotate = true }) {
           end={housePos}
           color={isIslanded ? '#f43f5e' : '#06b6d4'}
           speed={isIslanded ? 3.0 : 2.0}
-          count={7}
+          count={4}
         />
       )}
     </group>

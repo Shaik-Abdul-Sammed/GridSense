@@ -502,21 +502,28 @@ export default function Dashboard() {
             );
             setIsOnline(true);
           } catch (fetchErr) {
-            if (stopRequestedRef.current || abortControllerRef.current?.signal?.aborted) break;
+            // If the user clicked Fast-Forward, we aborted the request intentionally. 
+            // Do NOT show the error banner.
+            if (fetchErr.name === 'AbortError' || fetchErr.message?.includes('aborted') || fastForwardRef.current) {
+              console.log('Fetch intentionally aborted for fast-forward.');
+              if (stopRequestedRef.current) break;
+              prediction = generateSimulatedResponse(item, hourNum, settings);
+            } else {
+              if (stopRequestedRef.current || abortControllerRef.current?.signal?.aborted) break;
 
-            setIsOnline(false);
-            prediction = generateSimulatedResponse(item, hourNum, settings);
-            const rawMsg = fetchErr?.message || String(fetchErr);
-            const isCorsOrNetwork =
-              rawMsg.includes('Failed to fetch') ||
-              rawMsg.includes('NetworkError') ||
-              rawMsg.includes('Network request failed') ||
-              fetchErr?.name === 'TypeError' ||
-              fetchErr?.name === 'AbortError';
-            const extraHint = isCorsOrNetwork
-              ? ' (AppSail backend sleeping/starting; engaging physics fallback)'
-              : '';
-            setError(`Backend Notice: ${rawMsg}${extraHint}`);
+              setIsOnline(false);
+              prediction = generateSimulatedResponse(item, hourNum, settings);
+              const rawMsg = fetchErr?.message || String(fetchErr);
+              const isCorsOrNetwork =
+                rawMsg.includes('Failed to fetch') ||
+                rawMsg.includes('NetworkError') ||
+                rawMsg.includes('Network request failed') ||
+                fetchErr?.name === 'TypeError';
+              const extraHint = isCorsOrNetwork
+                ? ' (AppSail backend sleeping/starting; engaging physics fallback)'
+                : '';
+              setError(`Backend Notice: ${rawMsg}${extraHint}`);
+            }
           }
         }
 
@@ -620,8 +627,12 @@ export default function Dashboard() {
         });
         setLastUpdated(new Date().toLocaleTimeString());
 
+        if (i === itemsToProcess.length - 1) {
+          setSelectedHour(newPoint.hour || hourLabel);
+        }
+
         if (i < itemsToProcess.length - 1) {
-          const delayTime = fastForwardRef.current ? 100 : (settings.streamingInterval || 1500);
+          const delayTime = fastForwardRef.current ? 250 : (settings.streamingInterval || 1500);
           await new Promise((resolve) => setTimeout(resolve, delayTime));
         }
       }
