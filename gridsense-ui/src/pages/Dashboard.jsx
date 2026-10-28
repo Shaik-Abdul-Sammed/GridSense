@@ -440,6 +440,7 @@ export default function Dashboard() {
 
       setIsStreaming(true);
       setError(null);
+      setCurrentStep(0);
       stopRequestedRef.current = false;
       fastForwardRef.current = false;
       hasTriggeredDefenderRef.current = false;
