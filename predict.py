@@ -1,12 +1,18 @@
+import os
+import sys
 import numpy as np
 import pandas as pd
-import requests
+
+# Ensure AppSail bundled libraries in ./lib are accessible
+if os.path.exists("./lib") and "./lib" not in sys.path:
+    sys.path.insert(0, "./lib")
+
+try:
+    import zcatalyst_sdk
+except ImportError:
+    zcatalyst_sdk = None
 
 ENDPOINT_KEY = "1ec78befe2c4dd5eb699df3dad669476952454340a0714c52aff318a1d429a7446c272f2e54081e967dc24ff1c2e95a2"
-CATALYST_ORG = "60093168085"
-QUICKML_PROJECT_ID = "89804000000013023"
-QUICKML_ENDPOINT_URL = f"https://api.catalyst.zoho.in/quickml/v1/project/{QUICKML_PROJECT_ID}/endpoints/predict?explainModel=true"
-ACCESS_TOKEN = "m_1004.027df06436808071c6cca95e4b34f744.6a1b44e7c59194526698e7a0e29713b8"
 
 
 def predict(input_df: pd.DataFrame):
@@ -28,45 +34,40 @@ def predict(input_df: pd.DataFrame):
     # Drop the raw timestamp before sending to QuickML (it only expects numerical features)
     input_df_for_api = input_df.drop(columns=['timestamp'])
 
-    payload = {"data": input_df_for_api.to_dict(orient='records')}
-
-    headers = {
-        "X-QUICKML-ENDPOINT-KEY": ENDPOINT_KEY,
-        "CATALYST-ORG": CATALYST_ORG,
-        "Environment": "Development",
-        "Content-Type": "application/json",
-        "Authorization": f"Zoho-oauthtoken {ACCESS_TOKEN}",
-    }
-
     try:
-        response = requests.post(
-            QUICKML_ENDPOINT_URL,
-            json=payload,
-            headers=headers,
-            timeout=10,
-        )
-        print(f"DEBUG: HTTP Status Code: {response.status_code}")
-        if response.status_code != 200:
-            print(f"DEBUG: API Error Response: {response.text}")
+        if zcatalyst_sdk is None:
+            raise ImportError("zcatalyst_sdk module is not available.")
 
-        if response.status_code == 200:
-            result = response.json()
-            if "predictions" in result and len(result["predictions"]) > 0:
-                return np.array(result["predictions"], dtype=float)
-            elif "data" in result and len(result["data"]) > 0:
-                preds = []
-                for item in result["data"]:
-                    if isinstance(item, dict):
-                        preds.append(item.get("predicted_demand_kw", item.get("prediction", 165.0)))
+        # Initialize Catalyst SDK context
+        app = zcatalyst_sdk.initialize()
+        quickml = app.quick_ml()
+
+        records = input_df_for_api.to_dict(orient='records')
+        predictions = []
+
+        for row in records:
+            result = quickml.predict(ENDPOINT_KEY, row)
+            if isinstance(result, dict):
+                if "prediction" in result:
+                    predictions.append(float(result["prediction"]))
+                elif "data" in result and len(result["data"]) > 0:
+                    first = result["data"][0]
+                    if isinstance(first, dict):
+                        predictions.append(float(first.get("predicted_demand_kw", first.get("prediction", 165.0))))
                     else:
-                        preds.append(item)
-                return np.array(preds, dtype=float)
-            elif "prediction" in result:
-                return np.array([float(result["prediction"])], dtype=float)
-    except Exception as e:
-        print(f"DEBUG: Exception caught: {e}")
-        print(f"Warning: QuickML endpoint call failed ({e}). Using fallback physics simulation.")
+                        predictions.append(float(first))
+                elif "predictions" in result and len(result["predictions"]) > 0:
+                    predictions.append(float(result["predictions"][0]))
+            elif isinstance(result, (int, float)):
+                predictions.append(float(result))
 
+        if len(predictions) == len(input_df):
+            return np.array(predictions, dtype=float)
+
+    except Exception as e:
+        print(f"SDK Error: {e}. Using fallback.")
+
+    # Physics-grounded fallback load forecaster
     hours = input_df['hour_of_day']
     base_load = 120.0 + 30.0 * np.sin(2 * np.pi * (hours - 6) / 24)
     cooling_load = np.maximum(0.0, input_df["ambient_temp_c"] - 24.0) * 8.5
