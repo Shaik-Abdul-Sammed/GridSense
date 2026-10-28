@@ -22,12 +22,9 @@ app = Flask(__name__)
 @app.after_request
 def after_request_cors(response):
     origin = request.headers.get('Origin')
-    # For local development, inject origin since Catalyst's reverse proxy is not present
+    # ONLY set CORS header for local development. Zoho Gateway handles the live domain.
     if origin == "http://localhost:5173":
         response.headers["Access-Control-Allow-Origin"] = origin
-    # Note: For the live Slate deployment (https://gridsense-ui-zjbtthvz.onslate.in),
-    # the Zoho Catalyst Cloud Gateway is already configured to inject Access-Control-Allow-Origin.
-    # Omitting it here prevents the browser "MultipleAllowOriginValues" duplicate header error.
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, X-QUICKML-ENDPOINT-KEY"
@@ -37,13 +34,13 @@ def after_request_cors(response):
 # QuickML Endpoint & Authentication Configuration
 QUICKML_ENDPOINT_KEY = os.environ.get(
     "QUICKML_ENDPOINT_KEY",
-    "f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54"
+    "1ec78befe2c4dd5eb699df3dad669476952454340a0714c52aff318a1d429a7446c272f2e54081e967dc24ff1c2e95a2"
 )
-CATALYST_ORG = os.environ.get("CATALYST_ORG", "60093168651")
+CATALYST_ORG = os.environ.get("CATALYST_ORG", "60093168085")
 QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
 QUICKML_ENDPOINT_URL = os.environ.get(
     "QUICKML_ENDPOINT_URL",
-    f"https://api.catalyst.zoho.in/quickml/v1/project/{QUICKML_PROJECT_ID}/endpoints/predict"
+    "https://api.catalyst.zoho.in/quickml/v1/project/89804000000013023/endpoints/predict"
 )
 
 QUICKML_HEADERS = {
@@ -54,7 +51,11 @@ QUICKML_HEADERS = {
 }
 
 # Attach OAuth token if provided in runtime environment
-_zoho_token = os.environ.get("ZOHO_OAUTH_TOKEN") or os.environ.get("CATALYST_ACCESS_TOKEN")
+_zoho_token = (
+    os.environ.get("ZOHO_OAUTH_TOKEN")
+    or os.environ.get("CATALYST_ACCESS_TOKEN")
+    or "1000.ba7de0d374b6393c3401936b8d3d39a7.a55753304dfed09c68411172659420cd"
+)
 if _zoho_token:
     QUICKML_HEADERS["Authorization"] = f"Zoho-oauthtoken {_zoho_token}"
 
@@ -119,6 +120,9 @@ def call_quickml_api(features_dict):
     except (ValueError, TypeError):
         solar = 0.0
 
+    hour_of_day = hour
+    is_peak = 1 if (18 <= hour <= 22) else 0
+
     payload = {
         "data": [
             {
@@ -126,6 +130,8 @@ def call_quickml_api(features_dict):
                 "ambient_temp_c": ambient_temp,
                 "humidity_pct": humidity,
                 "solar_irradiance_wm2": solar,
+                "hour_of_day": hour_of_day,
+                "is_peak": is_peak,
             }
         ]
     }
@@ -170,7 +176,9 @@ def call_quickml_api(features_dict):
 
         if response.status_code == 200:
             result = response.json()
-            if "predictions" in result and len(result["predictions"]) > 0:
+            if "result" in result and len(result["result"]) > 0:
+                return float(result["result"][0])
+            elif "predictions" in result and len(result["predictions"]) > 0:
                 return float(result["predictions"][0])
             elif "data" in result and len(result["data"]) > 0:
                 first_item = result["data"][0]

@@ -37,7 +37,6 @@ const FieldTechARPage = lazyWithRetry(() => import('./pages/FieldTechARPage'));
 const WeatherSyncPage = lazyWithRetry(() => import('./pages/WeatherSyncPage'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
-console.log("ACTIVE API URL:", API_URL);
 
 export default function App() {
   // Strict API connection debugging: detect if deployed on Slate or remote cloud but pointing to localhost

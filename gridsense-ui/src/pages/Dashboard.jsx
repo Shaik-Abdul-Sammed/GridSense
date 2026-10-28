@@ -59,7 +59,6 @@ const DroneFleet = lazyWithRetry(() => import('../components/DroneFleet'));
 const MeterScanner = lazyWithRetry(() => import('../components/MeterScanner'));
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:9000/forecast';
-console.log("ACTIVE API URL:", API_URL);
 
 // Timezone-safe hour parser
 function parseTimezoneSafeHour(timestampStr, fallbackHour = 0) {
@@ -191,7 +190,7 @@ async function fetchWithRetry(url, options, retries = 1, delay = 600, timeoutMs 
         options.signal.removeEventListener('abort', onCallerAbort);
       }
       lastError = err;
-      if (options?.signal?.aborted) {
+      if (options?.signal?.aborted || err.name === 'AbortError' || err.message?.toLowerCase().includes('aborted')) {
         throw err;
       }
       if (attempt === retries) {
@@ -394,6 +393,7 @@ export default function Dashboard() {
   // SMS/Email Alert state with auto-dismissal
   const [smsAlert, setSmsAlert] = useState(null);
   const smsTimeoutRef = useRef(null);
+  const lastToastTimeRef = useRef(0);
   const triggerSmsAlert = useCallback((alertObj) => {
     if (smsTimeoutRef.current) clearTimeout(smsTimeoutRef.current);
     setSmsAlert(alertObj);
@@ -502,21 +502,26 @@ export default function Dashboard() {
             );
             setIsOnline(true);
           } catch (fetchErr) {
-            if (stopRequestedRef.current || abortControllerRef.current?.signal?.aborted) break;
+            // 1. Check if the user clicked Stop or Fast-Forward
+            const isAborted = 
+              fetchErr.name === 'AbortError' || 
+              fetchErr.message?.toLowerCase().includes('aborted') ||
+              abortControllerRef.current?.signal?.aborted ||
+              stopRequestedRef.current ||
+              fastForwardRef.current;
 
-            setIsOnline(false);
-            prediction = generateSimulatedResponse(item, hourNum, settings);
-            const rawMsg = fetchErr?.message || String(fetchErr);
-            const isCorsOrNetwork =
-              rawMsg.includes('Failed to fetch') ||
-              rawMsg.includes('NetworkError') ||
-              rawMsg.includes('Network request failed') ||
-              fetchErr?.name === 'TypeError' ||
-              fetchErr?.name === 'AbortError';
-            const extraHint = isCorsOrNetwork
-              ? ' (AppSail backend sleeping/starting; engaging physics fallback)'
-              : '';
-            setError(`Backend Notice: ${rawMsg}${extraHint}`);
+            if (isAborted) {
+              console.log('Fetch intentionally aborted.');
+              if (stopRequestedRef.current) break;
+              prediction = generateSimulatedResponse(item, hourNum, settings);
+            } else {
+              // Only show the error banner for genuine network failures
+              if (stopRequestedRef.current || abortControllerRef.current?.signal?.aborted) break;
+              setIsOnline(false);
+              prediction = generateSimulatedResponse(item, hourNum, settings);
+              const rawMsg = fetchErr?.message || String(fetchErr);
+              setError(`Backend Notice: ${rawMsg}`);
+            }
           }
         }
 
@@ -552,11 +557,15 @@ export default function Dashboard() {
 
         if (alert === 'CRITICAL_OVERLOAD' && !isCyberattack) {
           setIsBannerDismissed(false);
-          triggerSmsAlert({
-            hour: hourLabel,
-            demand: predicted_demand_kw,
-            message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
-          });
+          const now = Date.now();
+          if (now - lastToastTimeRef.current > 5000) {
+            triggerSmsAlert({
+              hour: hourLabel,
+              demand: predicted_demand_kw,
+              message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
+            });
+            lastToastTimeRef.current = now;
+          }
           speakAlert(
             `Warning! Critical grid overload alert. Demand reached ${predicted_demand_kw.toFixed(1)} kilowatts at ${hourLabel}. Safe limit exceeded. Engaging emergency battery storage.`,
             true,
@@ -616,8 +625,13 @@ export default function Dashboard() {
         });
         setLastUpdated(new Date().toLocaleTimeString());
 
-        if (i < itemsToProcess.length - 1 && !fastForwardRef.current) {
-          await new Promise((resolve) => setTimeout(resolve, settings.streamingInterval || 1500));
+        if (i === itemsToProcess.length - 1) {
+          setSelectedHour(newPoint.hour || hourLabel);
+        }
+
+        if (i < itemsToProcess.length - 1) {
+          const delayTime = fastForwardRef.current ? 250 : (settings.streamingInterval || 1500);
+          await new Promise((resolve) => setTimeout(resolve, delayTime));
         }
       }
 
@@ -980,6 +994,18 @@ export default function Dashboard() {
       console.error('Failed to export JSON telemetry:', err);
     }
   };
+
+  const sortedForecastData = useMemo(() => {
+    if (!forecastData || forecastData.length === 0) return [];
+    return [...forecastData].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      if (timeA && timeB && timeA !== timeB) return timeA - timeB;
+      const hA = parseInt(String(a.hour || '0').split(':')[0], 10);
+      const hB = parseInt(String(b.hour || '0').split(':')[0], 10);
+      return hA - hB;
+    });
+  }, [forecastData]);
 
   const criticalHours = useMemo(() => {
     if (!forecastData || forecastData.length === 0) return [];
@@ -1686,7 +1712,7 @@ export default function Dashboard() {
 
             {(chartViewMode === 'BOTH' || chartViewMode === 'CURVE') && (
               <LoadCurveChart
-                data={forecastData}
+                data={sortedForecastData}
                 isLoading={isStreaming && forecastData.length === 0}
                 peakWindowStart={settings.peakWindowStart}
                 peakWindowEnd={settings.peakWindowEnd}

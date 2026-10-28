@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .catalystrc
 .env
+check_rmse.py
+train_v2.csv
