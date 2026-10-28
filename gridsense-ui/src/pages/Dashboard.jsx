@@ -190,7 +190,7 @@ async function fetchWithRetry(url, options, retries = 1, delay = 600, timeoutMs 
         options.signal.removeEventListener('abort', onCallerAbort);
       }
       lastError = err;
-      if (options?.signal?.aborted) {
+      if (options?.signal?.aborted || err.name === 'AbortError' || err.message?.toLowerCase().includes('aborted')) {
         throw err;
       }
       if (attempt === retries) {
@@ -502,27 +502,25 @@ export default function Dashboard() {
             );
             setIsOnline(true);
           } catch (fetchErr) {
-            // If the user clicked Fast-Forward, we aborted the request intentionally. 
-            // Do NOT show the error banner.
-            if (fetchErr.name === 'AbortError' || fetchErr.message?.includes('aborted') || fastForwardRef.current) {
-              console.log('Fetch intentionally aborted for fast-forward.');
+            // 1. Check if the user clicked Stop or Fast-Forward
+            const isAborted = 
+              fetchErr.name === 'AbortError' || 
+              fetchErr.message?.toLowerCase().includes('aborted') ||
+              abortControllerRef.current?.signal?.aborted ||
+              stopRequestedRef.current ||
+              fastForwardRef.current;
+
+            if (isAborted) {
+              console.log('Fetch intentionally aborted.');
               if (stopRequestedRef.current) break;
               prediction = generateSimulatedResponse(item, hourNum, settings);
             } else {
+              // Only show the error banner for genuine network failures
               if (stopRequestedRef.current || abortControllerRef.current?.signal?.aborted) break;
-
               setIsOnline(false);
               prediction = generateSimulatedResponse(item, hourNum, settings);
               const rawMsg = fetchErr?.message || String(fetchErr);
-              const isCorsOrNetwork =
-                rawMsg.includes('Failed to fetch') ||
-                rawMsg.includes('NetworkError') ||
-                rawMsg.includes('Network request failed') ||
-                fetchErr?.name === 'TypeError';
-              const extraHint = isCorsOrNetwork
-                ? ' (AppSail backend sleeping/starting; engaging physics fallback)'
-                : '';
-              setError(`Backend Notice: ${rawMsg}${extraHint}`);
+              setError(`Backend Notice: ${rawMsg}`);
             }
           }
         }
@@ -996,6 +994,18 @@ export default function Dashboard() {
       console.error('Failed to export JSON telemetry:', err);
     }
   };
+
+  const sortedForecastData = useMemo(() => {
+    if (!forecastData || forecastData.length === 0) return [];
+    return [...forecastData].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      if (timeA && timeB && timeA !== timeB) return timeA - timeB;
+      const hA = parseInt(String(a.hour || '0').split(':')[0], 10);
+      const hB = parseInt(String(b.hour || '0').split(':')[0], 10);
+      return hA - hB;
+    });
+  }, [forecastData]);
 
   const criticalHours = useMemo(() => {
     if (!forecastData || forecastData.length === 0) return [];
@@ -1702,7 +1712,7 @@ export default function Dashboard() {
 
             {(chartViewMode === 'BOTH' || chartViewMode === 'CURVE') && (
               <LoadCurveChart
-                data={forecastData}
+                data={sortedForecastData}
                 isLoading={isStreaming && forecastData.length === 0}
                 peakWindowStart={settings.peakWindowStart}
                 peakWindowEnd={settings.peakWindowEnd}

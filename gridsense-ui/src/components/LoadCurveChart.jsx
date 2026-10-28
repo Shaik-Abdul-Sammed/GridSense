@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -83,7 +84,19 @@ export default function LoadCurveChart({
   peakWindowEnd = '22:00',
   criticalThreshold = 200,
 }) {
-  const hasData = Array.isArray(data) && data.length > 0;
+  const sortedData = useMemo(() => {
+    if (!Array.isArray(data)) return [];
+    return [...data].sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      if (timeA && timeB && timeA !== timeB) return timeA - timeB;
+      const hA = parseInt(String(a.hour || '0').split(':')[0], 10);
+      const hB = parseInt(String(b.hour || '0').split(':')[0], 10);
+      return hA - hB;
+    });
+  }, [data]);
+
+  const hasData = sortedData.length > 0;
 
   return (
     <div className="bg-slate-900/50 backdrop-blur-xl border border-white/10 shadow-2xl rounded-2xl p-6 flex flex-col justify-between">
@@ -134,7 +147,7 @@ export default function LoadCurveChart({
         {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={data}
+              data={sortedData}
               margin={{ top: 20, right: 30, left: 10, bottom: 20 }}
             >
               <defs>
