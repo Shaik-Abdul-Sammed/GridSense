@@ -197,7 +197,7 @@ Traditional **Supervisory Control and Data Acquisition (SCADA)** architectures a
 * **Outcome**: Sub-second demand estimates enabling proactive pre-cooling and battery dispatch hours before peak congestion.
 
 ### 2. Time-Series Feature Engineering (ML v2)
-To drastically reduce the RMSE of our Zoho QuickML model, we implemented time-series feature engineering. By extracting hour_of_day (0-23) and creating a binary is_peak flag (18:00-22:00), we explicitly provided the regression model with the temporal context required to accurately predict evening demand spikes. This transformed our baseline model into a high-precision forecasting engine.
+To drastically reduce the RMSE of our Zoho QuickML model and improve evening peak predictions, we implemented time-series feature engineering. By extracting `hour_of_day` (0-23) and creating a binary `is_peak` flag (18:00-22:00), we explicitly provided the regression model with the temporal context required to accurately predict evening demand spikes. This transformed our baseline model into a high-precision forecasting engine.
 
 ### 3. Physics-Grounded Diurnal Fallback Simulator
 * **The "Why"**: In critical infrastructure, relying strictly on a remote third-party API without local fallback introduces a single point of failure (SPOF). If network latency or API quotas interrupt the QuickML endpoint, grid operators cannot be left blind.
@@ -374,10 +374,14 @@ cd GridSense
 Create a `.env` file in the project root (`hulk/.env`):
 ```env
 # Zoho Catalyst & QuickML Credentials
-QUICKML_ENDPOINT_KEY=f77c83a71a942063cfff5a53f27c0eaabf332cd7852a055ab322ca45d4d13883d7e5dbf8b5c034c73e3f621c20c47f54
-CATALYST_ORG=60093168651
+QUICKML_ENDPOINT_KEY=1ec78befe2c4dd5eb699df3dad669476952454340a0714c52aff318a1d429a7446c272f2e54081e967dc24ff1c2e95a2
+CATALYST_ORG=60093168085
 CATALYST_PROJECT_ID=89804000000013023
+ZOHO_OAUTH_TOKEN=your_zoho_oauth_access_token_here
 ```
+
+> [!NOTE]
+> Local execution of `predict.py` requires a Zoho OAuth `ACCESS_TOKEN` (generate via `catalyst token:generate` or the Zoho API Console) because raw REST requests to QuickML require authentication.
 
 #### Frontend Environment Variables
 Create a `.env` file in the frontend directory (`gridsense-ui/.env`):
@@ -388,7 +392,19 @@ VITE_API_URL=https://appsail-50047147234.development.catalystappsail.in/forecast
 
 ---
 
-### Step 3: Run the Python / Flask Backend
+### Step 3: Verify QuickML Model Inference & Run Backend
+
+#### 1. Verify QuickML Inference (`predict.py` & `test_eval.py`)
+```bash
+# Verify the QuickML model inference bridge
+python3 predict.py
+
+# Run the official HackSphere 3.0 pre-submission validation suite
+python3 test_eval.py
+```
+> **Note**: Local execution of `predict.py` requires a valid Zoho OAuth token in the `ACCESS_TOKEN` variable due to Catalyst API Gateway security.
+
+#### 2. Start the Python / Flask Backend (Catalyst AppSail)
 Open a terminal in the root directory:
 ```bash
 # 1. Set PYTHONPATH to include local libraries
