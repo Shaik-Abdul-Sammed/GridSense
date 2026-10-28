@@ -393,6 +393,7 @@ export default function Dashboard() {
   // SMS/Email Alert state with auto-dismissal
   const [smsAlert, setSmsAlert] = useState(null);
   const smsTimeoutRef = useRef(null);
+  const lastToastTimeRef = useRef(0);
   const triggerSmsAlert = useCallback((alertObj) => {
     if (smsTimeoutRef.current) clearTimeout(smsTimeoutRef.current);
     setSmsAlert(alertObj);
@@ -551,11 +552,15 @@ export default function Dashboard() {
 
         if (alert === 'CRITICAL_OVERLOAD' && !isCyberattack) {
           setIsBannerDismissed(false);
-          triggerSmsAlert({
-            hour: hourLabel,
-            demand: predicted_demand_kw,
-            message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
-          });
+          const now = Date.now();
+          if (now - lastToastTimeRef.current > 5000) {
+            triggerSmsAlert({
+              hour: hourLabel,
+              demand: predicted_demand_kw,
+              message: `🚨 SMS Sent to Grid Operator: Demand exceeded ${settings.criticalThreshold}kW (${predicted_demand_kw.toFixed(1)} kW at ${hourLabel})! Autonomous battery storage dispatch activated.`,
+            });
+            lastToastTimeRef.current = now;
+          }
           speakAlert(
             `Warning! Critical grid overload alert. Demand reached ${predicted_demand_kw.toFixed(1)} kilowatts at ${hourLabel}. Safe limit exceeded. Engaging emergency battery storage.`,
             true,
@@ -615,8 +620,9 @@ export default function Dashboard() {
         });
         setLastUpdated(new Date().toLocaleTimeString());
 
-        if (i < itemsToProcess.length - 1 && !fastForwardRef.current) {
-          await new Promise((resolve) => setTimeout(resolve, settings.streamingInterval || 1500));
+        if (i < itemsToProcess.length - 1) {
+          const delayTime = fastForwardRef.current ? 100 : (settings.streamingInterval || 1500);
+          await new Promise((resolve) => setTimeout(resolve, delayTime));
         }
       }
 

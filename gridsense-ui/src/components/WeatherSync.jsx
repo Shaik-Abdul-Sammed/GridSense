@@ -64,11 +64,11 @@ const PRESET_LOCATIONS = {
 export default function WeatherSync({ onWeatherLoaded }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isAcquiringGnss, setIsAcquiringGnss] = useState(false);
-  const [activeStationId, setActiveStationId] = useState('SUB_SF');
-  const [resolvedPlaceName, setResolvedPlaceName] = useState('San Francisco, California, United States');
-  const [activePlusCode, setActivePlusCode] = useState('849VQHFJ+X6');
-  const [activeCoordinates, setActiveCoordinates] = useState({ lat: 37.7749, lon: -122.4194 });
-  const [coordinatesLabel, setCoordinatesLabel] = useState('37.7749° N &bull; 122.4194° W');
+  const [activeStationId, setActiveStationId] = useState('HUB_HYD');
+  const [resolvedPlaceName, setResolvedPlaceName] = useState('Hyderabad, Telangana, India');
+  const [activePlusCode, setActivePlusCode] = useState('7J9W9FPP+2M');
+  const [activeCoordinates, setActiveCoordinates] = useState({ lat: 17.3850, lon: 78.4867 });
+  const [coordinatesLabel, setCoordinatesLabel] = useState('17.3850° N &bull; 78.4867° E');
   const [gpsAccuracy, setGpsAccuracy] = useState(null);
   const [weatherDetails, setWeatherDetails] = useState(null);
   const [error, setError] = useState(null);
@@ -346,8 +346,8 @@ export default function WeatherSync({ onWeatherLoaded }) {
 
       const fallbackPlus = encodePlusCode(lat, lon);
       const fallbackMeta = {
-        stationId: stationId || 'SUB_SF',
-        placeName: customPlaceName || 'Substation Alpha-1 (San Francisco, CA)',
+        stationId: stationId || 'HUB_HYD',
+        placeName: customPlaceName || 'Hyderabad, Telangana, India (SRLDC Southern Regional Dispatch)',
         plusCode: fallbackPlus,
         coordinates: { lat, lon },
         coordinatesLabel: formatCoordinates(lat, lon),
@@ -524,10 +524,10 @@ export default function WeatherSync({ onWeatherLoaded }) {
     if (hasMountedRef.current) return;
     hasMountedRef.current = true;
 
-    // Load default Alpha-1 substation on initial mount.
+    // Load default Hyderabad power grid hub on initial mount.
     // Geolocation is triggered strictly on user click via handleGpsSync to satisfy iOS Safari & Android Chrome policies.
-    const def = PRESET_LOCATIONS.HUB_SF;
-    fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, 'HUB_SF', null);
+    const def = PRESET_LOCATIONS.HUB_HYD;
+    fetchWeather(def.lat, def.lon, `${def.name} (${def.tag})`, 'HUB_HYD', null);
   }, []);
 
   return (
