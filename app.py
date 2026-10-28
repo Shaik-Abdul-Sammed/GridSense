@@ -43,7 +43,7 @@ CATALYST_ORG = os.environ.get("CATALYST_ORG", "60093168085")
 QUICKML_PROJECT_ID = os.environ.get("CATALYST_PROJECT_ID", "89804000000013023")
 QUICKML_ENDPOINT_URL = os.environ.get(
     "QUICKML_ENDPOINT_URL",
-    "https://api.catalyst.zoho.in/quickml/v1/project/89804000000013023/endpoints/predict?explainModel=true"
+    "https://api.catalyst.zoho.in/quickml/v1/project/89804000000013023/endpoints/predict"
 )
 
 QUICKML_HEADERS = {
@@ -54,7 +54,11 @@ QUICKML_HEADERS = {
 }
 
 # Attach OAuth token if provided in runtime environment
-_zoho_token = os.environ.get("ZOHO_OAUTH_TOKEN") or os.environ.get("CATALYST_ACCESS_TOKEN")
+_zoho_token = (
+    os.environ.get("ZOHO_OAUTH_TOKEN")
+    or os.environ.get("CATALYST_ACCESS_TOKEN")
+    or "1000.ba7de0d374b6393c3401936b8d3d39a7.a55753304dfed09c68411172659420cd"
+)
 if _zoho_token:
     QUICKML_HEADERS["Authorization"] = f"Zoho-oauthtoken {_zoho_token}"
 
@@ -125,6 +129,7 @@ def call_quickml_api(features_dict):
     payload = {
         "data": [
             {
+                "timestamp": timestamp_str,
                 "ambient_temp_c": ambient_temp,
                 "humidity_pct": humidity,
                 "solar_irradiance_wm2": solar,
@@ -174,7 +179,9 @@ def call_quickml_api(features_dict):
 
         if response.status_code == 200:
             result = response.json()
-            if "predictions" in result and len(result["predictions"]) > 0:
+            if "result" in result and len(result["result"]) > 0:
+                return float(result["result"][0])
+            elif "predictions" in result and len(result["predictions"]) > 0:
                 return float(result["predictions"][0])
             elif "data" in result and len(result["data"]) > 0:
                 first_item = result["data"][0]

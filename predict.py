@@ -1,18 +1,12 @@
-import os
-import sys
 import numpy as np
 import pandas as pd
-
-# Ensure AppSail bundled libraries in ./lib are accessible
-if os.path.exists("./lib") and "./lib" not in sys.path:
-    sys.path.insert(0, "./lib")
-
-try:
-    import zcatalyst_sdk
-except ImportError:
-    zcatalyst_sdk = None
+import requests
 
 ENDPOINT_KEY = "1ec78befe2c4dd5eb699df3dad669476952454340a0714c52aff318a1d429a7446c272f2e54081e967dc24ff1c2e95a2"
+CATALYST_ORG = "60093168085"
+QUICKML_PROJECT_ID = "89804000000013023"
+QUICKML_ENDPOINT_URL = "https://api.catalyst.zoho.in/quickml/v1/project/89804000000013023/endpoints/predict"
+ACCESS_TOKEN = "1000.ba7de0d374b6393c3401936b8d3d39a7.a55753304dfed09c68411172659420cd"
 
 
 def predict(input_df: pd.DataFrame):
@@ -27,45 +21,47 @@ def predict(input_df: pd.DataFrame):
     input_df = input_df.copy()
 
     # Ensure timestamp is a datetime object
-    input_df['timestamp'] = pd.to_datetime(input_df['timestamp'])
+    dt_series = pd.to_datetime(input_df['timestamp'])
     # Create engineered features
-    input_df['hour_of_day'] = input_df['timestamp'].dt.hour
+    input_df['hour_of_day'] = dt_series.dt.hour
     input_df['is_peak'] = input_df['hour_of_day'].apply(lambda x: 1 if 18 <= x <= 22 else 0)
-    # Drop the raw timestamp before sending to QuickML (it only expects numerical features)
-    input_df_for_api = input_df.drop(columns=['timestamp'])
+    input_df['timestamp'] = dt_series.dt.strftime('%Y-%m-%d %H:%M:%S')
+
+    payload = {"data": input_df.to_dict(orient='records')}
+
+    headers = {
+        "X-QUICKML-ENDPOINT-KEY": ENDPOINT_KEY,
+        "CATALYST-ORG": CATALYST_ORG,
+        "Environment": "Development",
+        "Content-Type": "application/json",
+        "Authorization": f"Zoho-oauthtoken {ACCESS_TOKEN}",
+    }
 
     try:
-        if zcatalyst_sdk is None:
-            raise ImportError("zcatalyst_sdk module is not available.")
-
-        # Initialize Catalyst SDK context
-        app = zcatalyst_sdk.initialize()
-        quickml = app.quick_ml()
-
-        records = input_df_for_api.to_dict(orient='records')
-        predictions = []
-
-        for row in records:
-            result = quickml.predict(ENDPOINT_KEY, row)
-            if isinstance(result, dict):
-                if "prediction" in result:
-                    predictions.append(float(result["prediction"]))
-                elif "data" in result and len(result["data"]) > 0:
-                    first = result["data"][0]
-                    if isinstance(first, dict):
-                        predictions.append(float(first.get("predicted_demand_kw", first.get("prediction", 165.0))))
+        response = requests.post(
+            QUICKML_ENDPOINT_URL,
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
+        if response.status_code == 200:
+            result = response.json()
+            if "result" in result and len(result["result"]) > 0:
+                return np.array(result["result"], dtype=float)
+            elif "predictions" in result and len(result["predictions"]) > 0:
+                return np.array(result["predictions"], dtype=float)
+            elif "data" in result and len(result["data"]) > 0:
+                preds = []
+                for item in result["data"]:
+                    if isinstance(item, dict):
+                        preds.append(item.get("predicted_demand_kw", item.get("prediction", 165.0)))
                     else:
-                        predictions.append(float(first))
-                elif "predictions" in result and len(result["predictions"]) > 0:
-                    predictions.append(float(result["predictions"][0]))
-            elif isinstance(result, (int, float)):
-                predictions.append(float(result))
-
-        if len(predictions) == len(input_df):
-            return np.array(predictions, dtype=float)
-
+                        preds.append(item)
+                return np.array(preds, dtype=float)
+            elif "prediction" in result:
+                return np.array([float(result["prediction"])], dtype=float)
     except Exception as e:
-        print(f"SDK Error: {e}. Using fallback.")
+        print(f"Warning: QuickML endpoint call failed ({e}). Using fallback physics simulation.")
 
     # Physics-grounded fallback load forecaster
     hours = input_df['hour_of_day']
