@@ -6,6 +6,7 @@ ENDPOINT_KEY = "1ec78befe2c4dd5eb699df3dad669476952454340a0714c52aff318a1d429a74
 CATALYST_ORG = "60093168085"
 QUICKML_PROJECT_ID = "89804000000013023"
 QUICKML_ENDPOINT_URL = f"https://api.catalyst.zoho.in/quickml/v1/project/{QUICKML_PROJECT_ID}/endpoints/predict?explainModel=true"
+ACCESS_TOKEN = "m_1004.027df06436808071c6cca95e4b34f744.6a1b44e7c59194526698e7a0e29713b8"
 
 
 def predict(input_df: pd.DataFrame):
@@ -34,6 +35,7 @@ def predict(input_df: pd.DataFrame):
         "CATALYST-ORG": CATALYST_ORG,
         "Environment": "Development",
         "Content-Type": "application/json",
+        "Authorization": f"Zoho-oauthtoken {ACCESS_TOKEN}",
     }
 
     try:
