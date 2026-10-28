@@ -22,11 +22,8 @@ app = Flask(__name__)
 @app.after_request
 def after_request_cors(response):
     origin = request.headers.get('Origin')
-    allowed_origins = [
-        "http://localhost:5173",
-        "https://gridsense-ui-zjbtthvz.onslate.in"
-    ]
-    if origin in allowed_origins and "Access-Control-Allow-Origin" not in response.headers:
+    # ONLY set CORS header for local development. Zoho Gateway handles the live domain.
+    if origin == "http://localhost:5173":
         response.headers["Access-Control-Allow-Origin"] = origin
 
     response.headers["Access-Control-Allow-Credentials"] = "true"
