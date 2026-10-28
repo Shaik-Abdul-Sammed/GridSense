@@ -455,7 +455,9 @@ export default function Dashboard() {
       for (let i = 0; i < itemsToProcess.length; i++) {
         if (stopRequestedRef.current) break;
 
-        setCurrentStep(i + 1);
+        if (!fastForwardRef.current) {
+          setCurrentStep(i + 1);
+        }
         const rawItem = itemsToProcess[i];
         const effectiveTemp = Number((Number(rawItem.ambient_temp_c) + climateDelta).toFixed(1));
         const item = { ...rawItem, ambient_temp_c: effectiveTemp };
@@ -636,6 +638,7 @@ export default function Dashboard() {
         }
       }
 
+      setCurrentStep(itemsToProcess.length);
       setIsStreaming(false);
       isRunningRef.current = false;
       if (datasetName) setLoadedCsvName(datasetName);
@@ -1399,6 +1402,7 @@ export default function Dashboard() {
             isStreaming={isStreaming}
             currentStep={currentStep}
             totalSteps={totalSteps}
+            fastForwardRef={fastForwardRef}
             apiUrl={API_URL}
             error={error}
             onClearError={() => setError(null)}

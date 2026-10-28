@@ -18,6 +18,7 @@ export default function ControlPanel({
   isStreaming,
   currentStep,
   totalSteps,
+  fastForwardRef,
   apiUrl,
   error,
   onClearError,
@@ -282,7 +283,12 @@ export default function ControlPanel({
                       d="M4 12a8 8 0 018-8v8H4z"
                     />
                   </svg>
-                  <span className="whitespace-nowrap">Simulating Hour {currentStep} of {totalSteps}... (Stop)</span>
+                  <span className="whitespace-nowrap">
+                    {fastForwardRef?.current 
+                      ? 'Fast-Forwarding Simulation...' 
+                      : `Simulating Hour ${currentStep} of ${totalSteps}...`}
+                  </span>
+                  <span>(Stop)</span>
                 </>
               ) : (
                 <>
